@@ -1,12 +1,12 @@
-import { MessageCircle } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { AuthGateButton } from "./AuthGate";
 
 type ThanksButtonProps = {
-  count: number;
+  count?: number;
   inverted?: boolean;
 };
 
-export function ThanksButton({ count, inverted = false }: ThanksButtonProps) {
+export function ThanksButton({ inverted = false }: ThanksButtonProps) {
   return (
     <AuthGateButton
       className={
@@ -15,8 +15,8 @@ export function ThanksButton({ count, inverted = false }: ThanksButtonProps) {
       }
       ariaLabel="THANKSを送る"
     >
-      <MessageCircle aria-hidden="true" size={17} />
-      THANKS {count}
+      <Sparkles aria-hidden="true" size={17} />
+      Thanks
     </AuthGateButton>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Quote } from "lucide-react";
+import { ChevronRight, Quote } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { articles } from "@/lib/mockData";
@@ -54,15 +54,10 @@ export function MainFeature() {
               <Quote aria-hidden="true" size={16} />
               <span>{article.author}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-ink">
-                THANKS {article.thanks}
-              </span>
-              <div className="flex items-center gap-1.5 text-sm font-bold text-white/90">
-                <MessageCircle aria-hidden="true" size={17} />
-                {article.comments}
-              </div>
-            </div>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-black text-ink">
+              READ
+              <ChevronRight aria-hidden="true" size={14} />
+            </span>
           </div>
         </div>
       </Link>

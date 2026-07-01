@@ -1,7 +1,9 @@
-import { Flag, MapPin, MessageCircle, MoreHorizontal } from "lucide-react";
+import { Flag, MapPin, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
+import { CommentPanel } from "@/components/CommentPanel";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
+import { ReactionBar } from "@/components/ReactionBar";
 import { VisualTile } from "@/components/VisualTile";
 import { findBackyardPost, findPost } from "@/lib/mockData";
 
@@ -16,7 +18,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         <section className="px-4 pt-8">
           <h1 className="text-2xl font-black text-ink">投稿が見つかりません</h1>
           <p className="mt-3 text-sm font-medium leading-relaxed text-mute">
-            指定されたスナップは、SNAPまたはBackyardの一覧にまだ登録されていません。
+            指定されたスナップ、またはBackyard投稿はまだ登録されていません。
           </p>
           <Link href="/snap" className="mt-5 inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
             SNAPへ戻る
@@ -31,8 +33,6 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   const area = post?.area ?? backyardPost?.attribute ?? "";
   const category = post?.category ?? backyardPost?.category ?? "";
   const body = post?.body ?? backyardPost?.body ?? "";
-  const thanks = post?.thanks ?? backyardPost?.empathy ?? 0;
-  const comments = post?.comments ?? backyardPost?.comments ?? 0;
   const accents = post?.accents ?? ["news", "student", "tool"];
   const imageUrl = post?.imageUrl;
   const source = post?.source ?? "Backyard匿名投稿";
@@ -76,15 +76,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           <MagazineImage src={imageUrl} alt={body} variant={accents[0]} className="mt-4 aspect-[16/9]" />
         )}
 
-        <div className="mt-4 flex items-center justify-between">
-          <span className="rounded-full bg-blush px-4 py-2 text-sm font-black text-white">
-            {isBackyard ? "共感" : "THANKS"} {thanks}
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-sm font-bold text-mute">
-            <MessageCircle aria-hidden="true" size={17} />
-            コメント {comments}
-          </span>
-        </div>
+        <ReactionBar commentHref="#comments" className="mt-4" />
 
         <button className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute">
           <Flag aria-hidden="true" size={14} />
@@ -92,17 +84,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         </button>
       </article>
 
-      <section className="px-4 pt-7">
-        <h2 className="text-base font-black text-ink">コメント</h2>
-        <div className="mt-3 grid gap-2">
-          <div className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
-            <p className="text-xs font-black text-blush">BARBER HUB編集部</p>
-            <p className="mt-1 text-sm font-medium leading-relaxed text-ink">
-              このスナップは、同じ悩みや学びを持つ理容師に届くよう、編集部が整理対象にしています。
-            </p>
-          </div>
-        </div>
-      </section>
+      <CommentPanel title={isBackyard ? "Backyardコメント" : "スナップへのコメント"} placeholder="経験や気づきをコメントする" />
     </PageChrome>
   );
 }

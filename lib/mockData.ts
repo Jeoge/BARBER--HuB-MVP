@@ -8,6 +8,10 @@ export type Article = {
   body: string[];
   thanks: number;
   comments: number;
+  likeCount?: number;
+  thanksCount?: number;
+  saveCount?: number;
+  commentCount?: number;
   accent: string;
   imageUrl?: string;
 };
@@ -36,6 +40,10 @@ export type Post = {
   body: string;
   thanks: number;
   comments: number;
+  likeCount?: number;
+  thanksCount?: number;
+  saveCount?: number;
+  commentCount?: number;
   accents: string[];
   imageUrl?: string;
 };
@@ -96,6 +104,34 @@ export type Product = {
   accent: string;
   imageUrl?: string;
 };
+
+export type ReactionMetrics = {
+  likeCount: number;
+  thanksCount: number;
+  saveCount: number;
+  commentCount: number;
+};
+
+type CountableContent = {
+  thanks?: number;
+  comments?: number;
+  likeCount?: number;
+  thanksCount?: number;
+  saveCount?: number;
+  commentCount?: number;
+};
+
+export function getReactionMetrics(item: CountableContent): ReactionMetrics {
+  const thanksCount = item.thanksCount ?? item.thanks ?? 0;
+  const commentCount = item.commentCount ?? item.comments ?? 0;
+
+  return {
+    likeCount: item.likeCount ?? Math.max(thanksCount * 2 - commentCount, 0),
+    thanksCount,
+    saveCount: item.saveCount ?? Math.max(Math.round(thanksCount / 3), 0),
+    commentCount,
+  };
+}
 
 export const articles: Article[] = [
   {
