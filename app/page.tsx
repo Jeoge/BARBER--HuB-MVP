@@ -15,7 +15,7 @@ import { articles, jobs, seminars } from "@/lib/mockData";
 
 export default function Home() {
   return (
-    <main className="mx-auto min-h-screen max-w-[430px] overflow-x-hidden bg-white pb-40 shadow-[0_0_80px_rgba(17,17,17,0.08)]">
+    <main className="mx-auto min-h-screen max-w-[430px] overflow-x-hidden bg-white pb-40 shadow-[0_0_70px_rgba(17,17,17,0.06)]">
       <Header />
       <CategoryNavigation />
       <LiveEditorialCover />
@@ -30,13 +30,14 @@ export default function Home() {
       <HorizontalRail title="メーカー新商品" items={articles.filter((article) => article.category === "メーカー新商品")} />
       <HorizontalRail title="講習会" items={seminars} hrefPrefix="/seminars" />
       <HorizontalRail title="学生・求人" items={jobs} hrefPrefix="/jobs" />
-      <section className="px-4 pt-7">
+      <section className="px-4 pt-9">
         <div className="rounded-[8px] bg-ink p-5 text-white">
-          <p className="text-xl font-black leading-tight">
-            BARBER HUBは、毎日編集される理容業界の表紙です
+          <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-white/55">BARBER HUB EDIT</p>
+          <p className="mt-2 text-xl font-black leading-tight">
+            毎朝、理容業界の表紙を開く。
           </p>
-          <p className="mt-2 text-sm font-medium leading-relaxed text-white/72">
-            固定記事だけでなく、投稿・ニュース・新商品もAI編集部が整理。開くたびに、今日の理容業界が見えてきます。
+          <p className="mt-2 text-sm font-medium leading-relaxed text-white/68">
+            ニュース、SNAP、道具、講習会。今日見るべきものだけを、軽く。
           </p>
         </div>
       </section>

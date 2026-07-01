@@ -7,7 +7,7 @@ import { AuthGateLink } from "./AuthGate";
 
 const navItems = [
   { label: "ホーム", href: "/", icon: Home },
-  { label: "スナップ", displayLabel: "Snap", href: "/snap", icon: Users, signature: true },
+  { label: "スナップ", displayLabel: "Snap", href: "/snap", icon: Users },
   { label: "探す", href: "/explore", icon: Search },
   { label: "通知", href: "/notifications", icon: Bell, auth: true },
   { label: "マイページ", href: "/mypage", icon: UserCircle, auth: true },
@@ -17,20 +17,18 @@ export function BottomNavigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-line bg-white/94 px-3 pb-[max(env(safe-area-inset-bottom),0.45rem)] pt-1.5 shadow-[0_-10px_24px_rgba(17,17,17,0.05)] backdrop-blur-sm">
+    <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-line/70 bg-white/92 px-3 pb-[max(env(safe-area-inset-bottom),0.45rem)] pt-1.5 shadow-[0_-8px_18px_rgba(17,17,17,0.035)] backdrop-blur-sm">
       <div className="grid grid-cols-5 gap-1">
-        {navItems.map(({ label, href, icon: Icon, auth }) => {
+        {navItems.map(({ label, displayLabel, href, icon: Icon, auth }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           const className =
-            "flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-[8px] text-[0.6rem] font-black " +
-            (active ? "text-blush" : "text-ink");
-          const item = navItems.find((navItem) => navItem.href === href);
-          const textClassName = item?.signature ? "signature-type snap-signature text-[0.9rem]" : "";
+            "flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-[8px] text-[0.58rem] font-semibold " +
+            (active ? "text-blush" : "text-ink/80");
 
           const content = (
             <>
-              <Icon aria-hidden="true" size={19} strokeWidth={active ? 2.8 : 2.2} />
-              <span className={textClassName}>{item?.displayLabel ?? label}</span>
+              <Icon aria-hidden="true" size={18} strokeWidth={active ? 2.4 : 2} />
+              <span>{displayLabel ?? label}</span>
             </>
           );
 

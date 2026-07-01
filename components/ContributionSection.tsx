@@ -35,34 +35,32 @@ const contributionCards = [
 
 export function ContributionSection() {
   return (
-    <section className="px-4 pt-6">
-      <div className="rounded-[8px] border border-blush/20 bg-white p-4 shadow-sm">
-        <p className="text-[0.7rem] font-black uppercase tracking-[0.14em] text-blush">
+    <section className="px-4 pt-9">
+      <div className="rounded-[8px] border border-line/80 bg-white p-4 shadow-[0_8px_22px_rgba(17,17,17,0.035)]">
+        <p className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-blush">
           Contribution
         </p>
-        <h2 className="mt-1 text-lg font-black leading-tight text-ink">
+        <h2 className="mt-1 text-[1.05rem] font-black leading-tight text-ink">
           THANKSがあなたの信頼になる
         </h2>
-        <div className="mt-2 grid gap-1.5 text-[0.8rem] font-bold leading-relaxed text-mute">
-          <p>BARBER HUBでは、人気より貢献を評価します。</p>
-          <p>あなたの経験が、誰かの役に立つほど信頼になります。</p>
-          <p>THANKSは、いいねではなく感謝の証です。</p>
-        </div>
+        <p className="mt-2 text-[0.8rem] font-medium leading-relaxed text-mute">
+          人気より、貢献を。
+        </p>
 
-        <div className="no-scrollbar mt-4 flex gap-2.5 overflow-x-auto pb-1">
+        <div className="no-scrollbar mt-4 flex gap-3 overflow-x-auto pb-1">
           {contributionCards.map(({ title, body, stat, icon: Icon }) => (
             <article
               key={title}
-              className="w-[72%] shrink-0 rounded-[8px] border border-blush/15 bg-blushSoft/40 p-3"
+              className="w-[68%] shrink-0 rounded-[8px] border border-line/80 bg-white p-3"
             >
-              <div className="mb-3 grid h-9 w-9 place-items-center rounded-full bg-white text-blush">
-                <Icon aria-hidden="true" size={18} />
+              <div className="mb-3 grid h-8 w-8 place-items-center rounded-full bg-neutral-50 text-blush">
+                <Icon aria-hidden="true" size={16} />
               </div>
               <h3 className="text-sm font-black text-ink">{title}</h3>
-              <p className="mt-1 min-h-10 text-[0.76rem] font-medium leading-relaxed text-mute">
+              <p className="mt-1 line-clamp-2 min-h-9 text-[0.74rem] font-medium leading-relaxed text-mute">
                 {body}
               </p>
-              <p className="mt-3 rounded-full bg-white px-3 py-1.5 text-[0.72rem] font-black text-ink">
+              <p className="mt-3 text-[0.72rem] font-semibold text-ink">
                 {stat}
               </p>
             </article>

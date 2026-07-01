@@ -127,7 +127,7 @@ export function BackyardSection() {
             本音と信頼を両立します
           </div>
           <p className="mt-1.5 text-[0.72rem] font-medium leading-relaxed text-mute">
-            Backyardの投稿は、個別投稿を勝手に表側へ転載しません。AI編集部は個人が特定されない形で、悩みの傾向だけを整理します。
+            Backyardの投稿は、個別投稿を勝手に表側へ転載しません。編集部は個人が特定されない形で、悩みの傾向だけを整理します。
           </p>
         </div>
       </div>
