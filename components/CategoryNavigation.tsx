@@ -6,7 +6,7 @@ import { AuthGateLink } from "./AuthGate";
 
 const navItems = [
   { label: "ホーム", href: "/" },
-  { label: "スナップ", href: "/snap" },
+  { label: "スナップ", displayLabel: "Snap", href: "/snap", signature: true },
   { label: "経営", href: "/explore?category=business" },
   { label: "集客", href: "/explore?category=marketing" },
   { label: "AI", href: "/explore?category=ai" },
@@ -29,15 +29,17 @@ export function CategoryNavigation() {
           const active = item.href === pathname || (pathname === "/explore" && item.href.startsWith("/explore"));
           const className =
             "shrink-0 rounded-full px-3 py-1.5 text-[0.74rem] font-black " +
+            (item.signature ? "signature-type snap-signature " : "") +
             (active ? "bg-blush text-white" : "border border-line bg-white text-ink");
+          const label = item.displayLabel ?? item.label;
 
           return item.auth ? (
             <AuthGateLink key={item.href} className={className} kind="backyard" ariaLabel={item.label}>
-              {item.label}
+              {label}
             </AuthGateLink>
           ) : (
-            <Link key={item.href} href={item.href} className={className}>
-              {item.label}
+            <Link key={item.href} href={item.href} className={className} aria-label={item.label}>
+              {label}
             </Link>
           );
         })}

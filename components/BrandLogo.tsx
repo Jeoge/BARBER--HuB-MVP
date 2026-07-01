@@ -10,7 +10,7 @@ export function BrandLogo() {
         <p className="text-[1.02rem] font-black tracking-[0.02em]">
           BARBER <span className="text-blush">HUB</span>
         </p>
-        <p className="mt-0.5 text-[0.47rem] font-bold uppercase tracking-[0.14em] text-ink">
+        <p className="signature-type brand-signature mt-0.5 text-ink">
           One Success. Shared Success.
         </p>
       </div>

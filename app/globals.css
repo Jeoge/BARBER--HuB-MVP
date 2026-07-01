@@ -38,3 +38,22 @@ button, a {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.signature-type {
+  font-family: "Segoe Script", "Snell Roundhand", "Brush Script MT", "Bradley Hand ITC", cursive;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.snap-signature {
+  font-size: 0.9rem;
+  transform: translateY(0.02rem);
+}
+
+.brand-signature {
+  font-size: 0.56rem;
+  letter-spacing: 0.025em;
+}

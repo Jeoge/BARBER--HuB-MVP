@@ -7,7 +7,7 @@ import { AuthGateLink } from "./AuthGate";
 
 const navItems = [
   { label: "ホーム", href: "/", icon: Home },
-  { label: "スナップ", href: "/snap", icon: Users },
+  { label: "スナップ", displayLabel: "Snap", href: "/snap", icon: Users, signature: true },
   { label: "探す", href: "/explore", icon: Search },
   { label: "通知", href: "/notifications", icon: Bell, auth: true },
   { label: "マイページ", href: "/mypage", icon: UserCircle, auth: true },
@@ -24,11 +24,13 @@ export function BottomNavigation() {
           const className =
             "flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-[8px] text-[0.6rem] font-black " +
             (active ? "text-blush" : "text-ink");
+          const item = navItems.find((navItem) => navItem.href === href);
+          const textClassName = item?.signature ? "signature-type snap-signature text-[0.9rem]" : "";
 
           const content = (
             <>
               <Icon aria-hidden="true" size={19} strokeWidth={active ? 2.8 : 2.2} />
-              <span>{label}</span>
+              <span className={textClassName}>{item?.displayLabel ?? label}</span>
             </>
           );
 
