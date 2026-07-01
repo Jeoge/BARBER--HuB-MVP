@@ -1,9 +1,9 @@
 import { Archive, GraduationCap } from "lucide-react";
 import Link from "next/link";
+import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { ProductSection } from "@/components/ProductSection";
-import { VisualTile } from "@/components/VisualTile";
 import { getRelatedProducts, seminars } from "@/lib/mockData";
 
 export default function SeminarsPage() {
@@ -28,7 +28,7 @@ export default function SeminarsPage() {
       <section className="grid gap-3 px-4 pt-4">
         {seminars.map((seminar) => (
           <Link key={seminar.id} href="/articles/fukuoka-seminar" className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
-            <VisualTile variant={seminar.accent} className="aspect-[16/8]" />
+            <MagazineImage src={seminar.imageUrl} alt={seminar.title} variant={seminar.accent} className="aspect-[16/8]" />
             <div className="mt-3 flex items-center justify-between gap-2">
               <span className="rounded-full bg-blushSoft px-2 py-1 text-[0.62rem] font-black text-blush">
                 {seminar.category}

@@ -1,9 +1,9 @@
 import { BadgeCheck, Building2, Handshake, PackageOpen, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { AuthGateLink } from "@/components/AuthGate";
+import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
-import { VisualTile } from "@/components/VisualTile";
 import { partners, products } from "@/lib/mockData";
 
 const revenueModels = [
@@ -61,7 +61,7 @@ export default function PartnersPage() {
         <div className="mt-3 no-scrollbar flex gap-3 overflow-x-auto pb-1">
           {products.map((product) => (
             <Link key={product.id} href={`/products/${product.id}`} className="w-[72%] shrink-0 rounded-[8px] border border-line bg-white p-3 shadow-sm">
-              <VisualTile variant={product.accent} className="aspect-[16/8]" />
+              <MagazineImage src={product.imageUrl} alt={product.name} variant={product.accent} className="aspect-[16/8]" />
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 <span className="rounded-full bg-blushSoft px-2 py-1 text-[0.62rem] font-black text-blush">
                   {product.category}

@@ -4,7 +4,7 @@ import { ChevronRight, Newspaper } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { articles, news, posts, qaItems } from "@/lib/mockData";
-import { VisualTile } from "./VisualTile";
+import { MagazineImage } from "./MagazineImage";
 
 const editorPickItems = [
   { type: "article", tag: "FEATURE", item: articles[0], title: "仕上げ前の一言で、次回予約が変わる" },
@@ -36,6 +36,15 @@ function sourceForPick(pick: (typeof editorPickItems)[number]) {
   return "BARBER HUB EDIT";
 }
 
+function imageForPick(pick: (typeof editorPickItems)[number]) {
+  if ("imageUrl" in pick.item) return pick.item.imageUrl;
+  return "/images/editor-pick-qa.jpg";
+}
+
+function variantForPick(pick: (typeof editorPickItems)[number]) {
+  return "accent" in pick.item ? pick.item.accent : "haircut";
+}
+
 export function LiveEditorialCover() {
   const [now, setNow] = useState<Date | null>(null);
 
@@ -64,16 +73,16 @@ export function LiveEditorialCover() {
         <p className="pb-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-mute">{state.updatedAt} update</p>
       </div>
 
-      <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto pb-1">
+      <div className="no-scrollbar mt-3 -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
         {[lead, ...highlights].map((pick, index) => (
           <Link
             key={`${pick.type}-${pick.item.id}`}
             href={hrefForPick(pick)}
-            className={(index === 0 ? "w-[68%]" : "w-[54%]") + " shrink-0 rounded-[8px] border border-line/80 bg-white p-2.5 shadow-[0_6px_18px_rgba(17,17,17,0.035)]"}
+            className={(index === 0 ? "w-[74%]" : "w-[58%]") + " shrink-0 snap-start rounded-[7px] border border-line/60 bg-white p-2.5 shadow-[0_5px_14px_rgba(17,17,17,0.025)]"}
           >
-            <VisualTile variant={"accent" in pick.item ? pick.item.accent : "haircut"} className="aspect-[16/8]" />
+            <MagazineImage src={imageForPick(pick)} alt={pick.title} variant={variantForPick(pick)} className="aspect-[16/8.2]" />
             <div className="mt-2 flex items-center justify-between gap-2">
-              <p className="text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-blush">{pick.tag}</p>
+              <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-blush">{pick.tag}</p>
               {index === 0 ? (
                 <span className="inline-flex items-center gap-0.5 text-[0.62rem] font-semibold text-mute">
                   READ
@@ -81,7 +90,7 @@ export function LiveEditorialCover() {
                 </span>
               ) : null}
             </div>
-            <h3 className={(index === 0 ? "text-[0.96rem]" : "text-[0.8rem]") + " mt-1 line-clamp-2 font-black leading-snug text-ink"}>
+            <h3 className={(index === 0 ? "text-[0.94rem]" : "text-[0.78rem]") + " mt-1 line-clamp-2 font-extrabold leading-snug text-ink"}>
               {pick.title}
             </h3>
             {index === 0 ? <p className="mt-1 truncate text-[0.68rem] font-medium text-mute">{sourceForPick(pick)}</p> : null}

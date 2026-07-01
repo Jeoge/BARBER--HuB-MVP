@@ -1,8 +1,8 @@
 import { BadgeCheck, PackageCheck, Send, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { AuthGateLink } from "@/components/AuthGate";
+import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
-import { VisualTile } from "@/components/VisualTile";
 import { findArticle, findProduct, seminars } from "@/lib/mockData";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -43,7 +43,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         </div>
         <h1 className="mt-3 text-[1.55rem] font-black leading-tight text-ink">{product.name}</h1>
         <p className="mt-2 text-sm font-black text-mute">{product.maker}</p>
-        <VisualTile variant={product.accent} className="mt-4 aspect-[16/10]" />
+        <MagazineImage src={product.imageUrl} alt={product.name} variant={product.accent} className="mt-4 aspect-[16/10]" />
         <p className="mt-4 text-[0.92rem] font-medium leading-relaxed text-ink">{product.description}</p>
 
         <div className="mt-4 rounded-[8px] border border-blush/20 bg-blushSoft p-3">

@@ -1,7 +1,7 @@
 import { BadgeCheck, ExternalLink, PackageCheck, Send } from "lucide-react";
 import Link from "next/link";
 import { AuthGateLink } from "./AuthGate";
-import { VisualTile } from "./VisualTile";
+import { MagazineImage } from "./MagazineImage";
 import type { Product } from "@/lib/mockData";
 
 type ProductSectionProps = {
@@ -32,7 +32,7 @@ export function ProductSection({ title, subtitle, products }: ProductSectionProp
         {products.map((product) => (
           <article key={product.id} className="w-[82%] shrink-0 rounded-[8px] border border-line bg-white p-3 shadow-sm">
             <Link href={`/products/${product.id}`} className="block">
-              <VisualTile variant={product.accent} className="aspect-[16/8]" />
+              <MagazineImage src={product.imageUrl} alt={product.name} variant={product.accent} className="aspect-[16/8]" />
               <div className="mt-3 flex flex-wrap items-center gap-1.5">
                 <span className="rounded-full bg-blushSoft px-2 py-1 text-[0.62rem] font-black text-blush">
                   {product.category}

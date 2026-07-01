@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { MagazineImage } from "./MagazineImage";
 import { SectionTitle } from "./SectionTitle";
-import { VisualTile } from "./VisualTile";
 
 type RailItem = {
   id: string;
@@ -10,6 +10,7 @@ type RailItem = {
   meta?: string;
   summary?: string;
   accent: string;
+  imageUrl?: string;
 };
 
 type HorizontalRailProps = {
@@ -32,7 +33,7 @@ export function HorizontalRail({ title, items, hrefPrefix = "/articles" }: Horiz
               href={href}
               className="w-[70%] shrink-0 rounded-[8px] border border-line/80 bg-white p-2.5 shadow-[0_8px_20px_rgba(17,17,17,0.035)]"
             >
-            <VisualTile variant={item.accent} className="aspect-[16/9]" />
+            <MagazineImage src={item.imageUrl} alt={item.title} variant={item.accent} className="aspect-[16/9]" />
             <div className="mt-3 flex items-start justify-between gap-2">
               <div>
                 <span className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-blush">

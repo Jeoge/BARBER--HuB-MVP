@@ -1,7 +1,7 @@
 import { MessageCircle, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { posts } from "@/lib/mockData";
-import { VisualTile } from "./VisualTile";
+import { MagazineImage } from "./MagazineImage";
 
 export function SnapSection() {
   return (
@@ -41,11 +41,7 @@ export function SnapSection() {
 
             <p className="line-clamp-2 text-[0.86rem] font-medium leading-relaxed text-ink">{post.body}</p>
 
-            <div className="mt-3 grid grid-cols-3 gap-1.5">
-              {post.accents.map((accent, index) => (
-                <VisualTile key={`${post.id}-${accent}-${index}`} variant={accent} className="aspect-square" />
-              ))}
-            </div>
+            <MagazineImage src={post.imageUrl} alt={post.body} variant={post.accents[0]} className="mt-3 aspect-[16/9]" />
 
             <div className="mt-3 flex items-end justify-between gap-3">
               <div>

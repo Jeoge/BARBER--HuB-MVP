@@ -1,5 +1,6 @@
 import { Flag, MapPin, MessageCircle, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
+import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { VisualTile } from "@/components/VisualTile";
 import { findBackyardPost, findPost } from "@/lib/mockData";
@@ -33,6 +34,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   const thanks = post?.thanks ?? backyardPost?.empathy ?? 0;
   const comments = post?.comments ?? backyardPost?.comments ?? 0;
   const accents = post?.accents ?? ["news", "student", "tool"];
+  const imageUrl = post?.imageUrl;
   const source = post?.source ?? "Backyard匿名投稿";
 
   return (
@@ -64,11 +66,15 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
         <p className="mt-4 text-[0.94rem] font-medium leading-relaxed text-ink">{body}</p>
 
-        <div className="mt-4 grid grid-cols-3 gap-1.5">
-          {accents.map((accent, index) => (
-            <VisualTile key={`${id}-${accent}-${index}`} variant={accent} className="aspect-square" />
-          ))}
-        </div>
+        {isBackyard ? (
+          <div className="mt-4 grid grid-cols-3 gap-1.5">
+            {accents.map((accent, index) => (
+              <VisualTile key={`${id}-${accent}-${index}`} variant={accent} className="aspect-square" />
+            ))}
+          </div>
+        ) : (
+          <MagazineImage src={imageUrl} alt={body} variant={accents[0]} className="mt-4 aspect-[16/9]" />
+        )}
 
         <div className="mt-4 flex items-center justify-between">
           <span className="rounded-full bg-blush px-4 py-2 text-sm font-black text-white">

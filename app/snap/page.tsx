@@ -1,8 +1,8 @@
 import { MessageCircle, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
-import { VisualTile } from "@/components/VisualTile";
 import { posts } from "@/lib/mockData";
 
 export default function SnapPage() {
@@ -33,11 +33,7 @@ export default function SnapPage() {
                 </span>
               </div>
               <p className="text-[0.86rem] font-medium leading-relaxed text-ink">{post.body}</p>
-              <div className="mt-3 grid grid-cols-3 gap-1.5">
-                {post.accents.map((accent, index) => (
-                  <VisualTile key={`${post.id}-${accent}-${index}`} variant={accent} className="aspect-square" />
-                ))}
-              </div>
+              <MagazineImage src={post.imageUrl} alt={post.body} variant={post.accents[0]} className="mt-3 aspect-[16/9]" />
               <div className="mt-3 flex items-end justify-between gap-3">
                 <div>
                   <span className="rounded-full bg-blush px-3 py-1.5 text-xs font-black text-white">

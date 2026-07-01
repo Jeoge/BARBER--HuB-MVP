@@ -17,17 +17,17 @@ export function BottomNavigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-line/70 bg-white/92 px-3 pb-[max(env(safe-area-inset-bottom),0.45rem)] pt-1.5 shadow-[0_-8px_18px_rgba(17,17,17,0.035)] backdrop-blur-sm">
+    <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-line/60 bg-white/88 px-3 pb-[max(env(safe-area-inset-bottom),0.45rem)] pt-1.5 shadow-[0_-6px_14px_rgba(17,17,17,0.025)] backdrop-blur-sm">
       <div className="grid grid-cols-5 gap-1">
         {navItems.map(({ label, displayLabel, href, icon: Icon, auth }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           const className =
-            "flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-[8px] text-[0.58rem] font-semibold " +
-            (active ? "text-blush" : "text-ink/80");
+            "flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-[8px] text-[0.57rem] font-medium " +
+            (active ? "text-blush/90" : "text-ink/68");
 
           const content = (
             <>
-              <Icon aria-hidden="true" size={18} strokeWidth={active ? 2.4 : 2} />
+              <Icon aria-hidden="true" size={17} strokeWidth={active ? 2.25 : 1.9} />
               <span>{displayLabel ?? label}</span>
             </>
           );

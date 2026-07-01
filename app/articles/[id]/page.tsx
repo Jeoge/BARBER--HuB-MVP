@@ -1,8 +1,8 @@
 import { CalendarDays, MessageCircle, UserRound } from "lucide-react";
 import Link from "next/link";
+import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { ProductSection } from "@/components/ProductSection";
-import { VisualTile } from "@/components/VisualTile";
 import { articles, findArticle, getRelatedProducts } from "@/lib/mockData";
 
 export default async function ArticleDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -43,7 +43,7 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
             {article.date}
           </span>
         </div>
-        <VisualTile variant={article.accent} className="mt-4 aspect-[16/10]" />
+        <MagazineImage src={article.imageUrl} alt={article.title} variant={article.accent} className="mt-4 aspect-[16/10]" />
         <div className="mt-4 flex items-center justify-between">
           <span className="rounded-full bg-blush px-4 py-2 text-sm font-black text-white">
             THANKS {article.thanks}
