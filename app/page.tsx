@@ -3,13 +3,13 @@ import { BottomNavigation } from "@/components/BottomNavigation";
 import { CategoryNavigation } from "@/components/CategoryNavigation";
 import { ContributionSection } from "@/components/ContributionSection";
 import { EditorialTrustSection } from "@/components/EditorialTrustSection";
-import { Feed } from "@/components/Feed";
 import { FloatingPostButton } from "@/components/FloatingPostButton";
 import { Header } from "@/components/Header";
 import { HorizontalRail } from "@/components/HorizontalRail";
 import { LiveEditorialCover } from "@/components/LiveEditorialCover";
 import { MainFeature } from "@/components/MainFeature";
 import { QASection } from "@/components/QASection";
+import { SnapSection } from "@/components/SnapSection";
 import { ThanksRanking } from "@/components/ThanksRanking";
 import { articles, jobs, seminars } from "@/lib/mockData";
 
@@ -19,7 +19,7 @@ export default function Home() {
       <Header />
       <CategoryNavigation />
       <LiveEditorialCover />
-      <Feed />
+      <SnapSection />
       <BackyardSection />
       <HorizontalRail title="新着記事" items={articles.slice(0, 5)} />
       <ContributionSection />

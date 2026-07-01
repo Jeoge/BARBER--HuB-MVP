@@ -23,8 +23,8 @@ const copyMap: Record<GateKind, Copy> = {
   backyard: {
     title: "Backyardは理容師限定です",
     body: "普段言えない悩みや本音を、匿名で相談できる会員限定エリアです。安心して使える場所にするため、会員登録が必要です。",
-    cta: "会員登録してBackyardへ",
-    href: "/signup?next=/backyard",
+    cta: "会員登録して匿名設定へ",
+    href: "/signup?next=/backyard/setup",
   },
   jobs: {
     title: "求人掲載には会員登録が必要です",

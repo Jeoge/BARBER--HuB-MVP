@@ -1,11 +1,11 @@
-import { CheckCircle2, LockKeyhole, Sparkles } from "lucide-react";
+import { CheckCircle2, ImagePlus, LockKeyhole, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 
 const benefits = [
   "毎朝3分で業界の動きがわかる",
   "経験を共有するとTHANKSが届く",
-  "フィード投稿・Q&A・Backyardが使える",
+  "スナップ投稿・Q&A・Backyardが使える",
   "求人や講習会情報を受け取れる",
   "得意技術や地域に合わせて情報が届く",
 ];
@@ -77,6 +77,20 @@ export default function SignupPage() {
       </section>
 
       <section className="grid gap-4 px-4 pt-5">
+        <div className="flex items-center gap-4 rounded-[8px] border border-line bg-white p-4 shadow-sm">
+          <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-neutral-100 text-mute">
+            <ImagePlus aria-hidden="true" size={24} />
+          </div>
+          <div className="min-w-0">
+            <button className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-sm font-black text-white">
+              写真を追加
+            </button>
+            <Link href="#signup-form" className="mt-2 block text-xs font-black text-blush">
+              あとで設定
+            </Link>
+          </div>
+        </div>
+
         {[
           ["名前または表示名", "例：TAKA"],
           ["メールアドレス", "example@barberhub.jp"],

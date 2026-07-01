@@ -4,7 +4,8 @@ import { FilePenLine } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 const labels: Record<string, string> = {
-  feed: "フィード投稿",
+  feed: "スナップ投稿",
+  snap: "スナップ投稿",
   article: "記事を書く",
   question: "Q&Aで相談",
   anonymous: "Backyardに匿名投稿",

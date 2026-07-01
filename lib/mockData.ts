@@ -72,6 +72,22 @@ export type BackyardPost = {
   reaction: string;
 };
 
+export type Product = {
+  id: string;
+  name: string;
+  maker: string;
+  category: string;
+  description: string;
+  priceLabel: string;
+  sponsorLabel?: string;
+  salonVerifiedLabel?: string;
+  features: string[];
+  useCases: string[];
+  relatedArticleIds: string[];
+  relatedSeminarIds: string[];
+  accent: string;
+};
+
 export const articles: Article[] = [
   {
     id: "rakuten-ai",
@@ -376,6 +392,110 @@ export const backyardPosts: BackyardPost[] = [
   },
 ];
 
+export const products: Product[] = [
+  {
+    id: "quiet-clipper-pro",
+    name: "静音プロクリッパー S1",
+    maker: "メーカー情報",
+    category: "バリカン",
+    description: "朝イチ施術や子どもカットでも使いやすい、音と振動を抑えたプロ向けクリッパー。",
+    priceLabel: "業務用価格",
+    sponsorLabel: "メーカー提供",
+    salonVerifiedLabel: "サロン確認済み会員向け",
+    features: ["静音モーター", "フェード向け薄刃対応", "長時間営業でも扱いやすい軽量設計"],
+    useCases: ["フェード", "子どもカット", "朝イチ施術"],
+    relatedArticleIds: ["silent-clipper", "rakuten-ai"],
+    relatedSeminarIds: ["seminar-fade"],
+    accent: "tool",
+  },
+  {
+    id: "fade-brush-comb-set",
+    name: "フェードブラシ & コームセット",
+    maker: "ディーラーセレクト",
+    category: "フェード道具",
+    description: "ぼかしの境目を確認しやすく、講習会でも紹介されることが多い基本セット。",
+    priceLabel: "参考価格 3,800円前後",
+    salonVerifiedLabel: "サロン確認済み会員向け",
+    features: ["境目の確認がしやすい", "細かい毛払いに対応", "練習会の持ち物にも向く"],
+    useCases: ["フェード", "刈り上げ", "講習会"],
+    relatedArticleIds: ["fukuoka-seminar"],
+    relatedSeminarIds: ["seminar-fade", "contest-style"],
+    accent: "haircut",
+  },
+  {
+    id: "gray-blend-toner",
+    name: "白髪ぼかし用グレイトナー",
+    maker: "メーカー新商品",
+    category: "カラー剤",
+    description: "40代以上の男性に、若返りより清潔感を提案しやすい白髪ぼかし用トナー。",
+    priceLabel: "業務用価格",
+    sponsorLabel: "PR",
+    salonVerifiedLabel: "サロン確認済み会員向け",
+    features: ["自然ななじみ", "短時間メニュー化しやすい", "カウンセリング提案に向く"],
+    useCases: ["白髪ぼかし", "単価アップ", "40代以上の提案"],
+    relatedArticleIds: ["gray-blending-40s-article"],
+    relatedSeminarIds: ["online-gray"],
+    accent: "news",
+  },
+  {
+    id: "scalp-care-starter",
+    name: "頭皮ケア スターターセット",
+    maker: "プロ向け商材",
+    category: "スキャルプケア",
+    description: "梅雨時期や汗をかく季節の会話から提案につなげやすい、シャンプーと頭皮用化粧水のセット。",
+    priceLabel: "参考価格 6,500円前後",
+    salonVerifiedLabel: "サロン確認済み会員向け",
+    features: ["季節提案に使いやすい", "店販導線を作りやすい", "ヘッドスパ前の説明に向く"],
+    useCases: ["頭皮ケア", "店販", "ヘッドスパ"],
+    relatedArticleIds: ["google-review-growth"],
+    relatedSeminarIds: [],
+    accent: "student",
+  },
+  {
+    id: "review-request-card",
+    name: "口コミ依頼カード テンプレート",
+    maker: "BARBER HUB編集部",
+    category: "集客ツール",
+    description: "Google口コミを自然にお願いするための、店頭配布・LINE送信用の説明カード案。",
+    priceLabel: "無料テンプレート予定",
+    features: ["売り込み感を抑える文面", "再来店後に渡しやすい", "口コミ返信例と連動"],
+    useCases: ["Google口コミ", "新規予約", "接客後フォロー"],
+    relatedArticleIds: ["google-review-growth"],
+    relatedSeminarIds: [],
+    accent: "seminar",
+  },
+];
+
+export const partners = [
+  {
+    id: "makers",
+    title: "メーカー一覧",
+    body: "新商品、講習会連動商品、タイアップ記事を整理して掲載します。",
+  },
+  {
+    id: "dealers",
+    title: "ディーラー一覧",
+    body: "地域の理容師が相談しやすい仕入れ先・問い合わせ先をまとめます。",
+  },
+  {
+    id: "sponsor",
+    title: "スポンサー商品",
+    body: "スポンサー、PR、メーカー提供は必ず明記し、中立性を守ります。",
+  },
+];
+
+const relatedProductMap: Record<string, string[]> = {
+  "rakuten-ai": ["quiet-clipper-pro", "review-request-card"],
+  "silent-clipper": ["quiet-clipper-pro", "fade-brush-comb-set"],
+  "fukuoka-seminar": ["fade-brush-comb-set", "quiet-clipper-pro"],
+  "gray-blending-40s-article": ["gray-blend-toner"],
+  "google-review-growth": ["review-request-card", "scalp-care-starter"],
+  "fade-blend": ["quiet-clipper-pro", "fade-brush-comb-set"],
+  "google-review-request": ["review-request-card"],
+  "seminar-fade": ["fade-brush-comb-set", "quiet-clipper-pro"],
+  "online-gray": ["gray-blend-toner"],
+};
+
 export function findArticle(id: string) {
   return articles.find((article) => article.id === id);
 }
@@ -394,4 +514,13 @@ export function findQaItem(id: string) {
 
 export function findBackyardPost(id: string) {
   return backyardPosts.find((post) => post.id === id);
+}
+
+export function findProduct(id: string) {
+  return products.find((product) => product.id === id);
+}
+
+export function getRelatedProducts(contentId: string) {
+  const ids = relatedProductMap[contentId] ?? [];
+  return ids.map((id) => findProduct(id)).filter((product): product is Product => product != null);
 }

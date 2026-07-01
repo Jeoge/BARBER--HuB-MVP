@@ -1,12 +1,14 @@
 import { CalendarDays, MessageCircle, UserRound } from "lucide-react";
 import Link from "next/link";
 import { PageChrome } from "@/components/PageChrome";
+import { ProductSection } from "@/components/ProductSection";
 import { VisualTile } from "@/components/VisualTile";
-import { articles, findArticle } from "@/lib/mockData";
+import { articles, findArticle, getRelatedProducts } from "@/lib/mockData";
 
 export default async function ArticleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const article = findArticle(id);
+  const relatedProducts = getRelatedProducts(id);
 
   if (article == null) {
     return (
@@ -58,6 +60,12 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
           ))}
         </div>
       </article>
+
+      <ProductSection
+        title="この記事に出てきた道具"
+        subtitle="AI編集部が、記事の文脈に合う商品だけを整理しています。"
+        products={relatedProducts}
+      />
 
       <section className="px-4 pt-7">
         <h2 className="text-base font-black text-ink">関連記事</h2>

@@ -6,12 +6,13 @@ import { AuthGateLink } from "./AuthGate";
 
 const navItems = [
   { label: "ホーム", href: "/" },
-  { label: "フィード", href: "/feed" },
+  { label: "スナップ", href: "/snap" },
   { label: "経営", href: "/explore?category=business" },
   { label: "集客", href: "/explore?category=marketing" },
   { label: "AI", href: "/explore?category=ai" },
   { label: "技術", href: "/explore?category=tech" },
   { label: "道具", href: "/explore?category=tools" },
+  { label: "メーカー", href: "/partners" },
   { label: "Q&A", href: "/qa" },
   { label: "講習会", href: "/seminars" },
   { label: "求人", href: "/jobs" },

@@ -3,18 +3,18 @@ import Link from "next/link";
 import { posts } from "@/lib/mockData";
 import { VisualTile } from "./VisualTile";
 
-export function Feed() {
+export function SnapSection() {
   return (
     <section className="pt-2">
       <div className="mb-1.5 flex items-end justify-between px-4 pr-16">
         <div>
-          <h2 className="text-[0.96rem] font-black text-ink">みんなの投稿</h2>
+          <h2 className="text-[0.96rem] font-black text-ink">みんなのスナップ</h2>
           <p className="mt-0.5 text-[0.68rem] font-bold text-mute">
-            全国の理容師が今シェアしていること
+            全国の理容師が切り取った日常の1コマ
           </p>
         </div>
-        <Link href="/feed" className="text-xs font-bold text-blush">
-          投稿を見る
+        <Link href="/snap" className="text-xs font-bold text-blush">
+          SNAPを見る
         </Link>
       </div>
 
@@ -36,7 +36,7 @@ export function Feed() {
                   <p className="text-xs font-bold text-mute">{post.area}</p>
                 </div>
               </div>
-              <span className="grid h-8 w-8 place-items-center rounded-full" aria-label="投稿メニュー">
+              <span className="grid h-8 w-8 place-items-center rounded-full" aria-label="スナップメニュー">
                 <MoreHorizontal aria-hidden="true" size={20} />
               </span>
             </div>
@@ -49,10 +49,13 @@ export function Feed() {
               ))}
             </div>
 
-            <div className="mt-3 flex items-center justify-between">
-              <span className="rounded-full bg-blush px-3 py-1.5 text-xs font-black text-white">
-                THANKS {post.thanks}
-              </span>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <div>
+                <span className="rounded-full bg-blush px-3 py-1.5 text-xs font-black text-white">
+                  THANKS {post.thanks}
+                </span>
+                <p className="mt-1.5 text-[0.66rem] font-bold text-mute">記事じゃなくても大丈夫</p>
+              </div>
               <div className="flex items-center gap-1.5 text-sm font-bold text-mute">
                 <MessageCircle aria-hidden="true" size={17} />
                 {post.comments}

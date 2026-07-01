@@ -68,6 +68,15 @@ export function BackyardSection() {
           ))}
         </div>
 
+        <div className="mt-3 grid gap-2">
+          <Link href="/backyard/setup" className="inline-flex h-11 items-center justify-center rounded-[8px] bg-blush text-sm font-black text-white">
+            匿名ニックネームを設定して入る
+          </Link>
+          <Link href="/signup?next=/backyard/setup" className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-ink">
+            未会員の方は無料登録
+          </Link>
+        </div>
+
         <div className="mt-3 grid gap-2.5">
           {backyardPosts.map((post) => (
             <Link key={post.id} href={`/posts/${post.id}`} className="block rounded-[8px] border border-line bg-white p-3">

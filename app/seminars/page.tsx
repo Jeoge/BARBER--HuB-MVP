@@ -2,8 +2,9 @@ import { Archive, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { ProductSection } from "@/components/ProductSection";
 import { VisualTile } from "@/components/VisualTile";
-import { seminars } from "@/lib/mockData";
+import { getRelatedProducts, seminars } from "@/lib/mockData";
 
 export default function SeminarsPage() {
   return (
@@ -39,6 +40,11 @@ export default function SeminarsPage() {
           </Link>
         ))}
       </section>
+      <ProductSection
+        title="講習会で紹介された商品"
+        subtitle="講習会や練習会で出てきた道具を、後から確認できます。"
+        products={getRelatedProducts("seminar-fade")}
+      />
     </PageChrome>
   );
 }

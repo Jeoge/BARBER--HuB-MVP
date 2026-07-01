@@ -1,11 +1,13 @@
 import { CheckCircle2, MessageCircle, Users } from "lucide-react";
 import Link from "next/link";
 import { PageChrome } from "@/components/PageChrome";
-import { findQaItem } from "@/lib/mockData";
+import { ProductSection } from "@/components/ProductSection";
+import { findQaItem, getRelatedProducts } from "@/lib/mockData";
 
 export default async function QaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const question = findQaItem(id);
+  const relatedProducts = getRelatedProducts(id);
 
   if (question == null) {
     return (
@@ -50,6 +52,12 @@ export default async function QaDetailPage({ params }: { params: Promise<{ id: s
           </span>
         </div>
       </article>
+
+      <ProductSection
+        title="この技術に使う道具メモ"
+        subtitle="相談内容に関連する道具を、押し売りではなく確認用にまとめています。"
+        products={relatedProducts}
+      />
 
       <section className="px-4 pt-7">
         <h2 className="text-base font-black text-ink">みんなの解決アイデア</h2>

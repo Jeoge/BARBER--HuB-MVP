@@ -7,7 +7,7 @@ import { AuthGateLink } from "./AuthGate";
 
 const navItems = [
   { label: "ホーム", href: "/", icon: Home },
-  { label: "フィード", href: "/feed", icon: Users },
+  { label: "スナップ", href: "/snap", icon: Users },
   { label: "探す", href: "/explore", icon: Search },
   { label: "通知", href: "/notifications", icon: Bell, auth: true },
   { label: "マイページ", href: "/mypage", icon: UserCircle, auth: true },

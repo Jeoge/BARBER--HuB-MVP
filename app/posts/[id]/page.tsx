@@ -15,10 +15,10 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         <section className="px-4 pt-8">
           <h1 className="text-2xl font-black text-ink">投稿が見つかりません</h1>
           <p className="mt-3 text-sm font-medium leading-relaxed text-mute">
-            指定された投稿は、フィードまたはBackyardの一覧にまだ登録されていません。
+            指定されたスナップは、SNAPまたはBackyardの一覧にまだ登録されていません。
           </p>
-          <Link href="/feed" className="mt-5 inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
-            フィードへ戻る
+          <Link href="/snap" className="mt-5 inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
+            SNAPへ戻る
           </Link>
         </section>
       </PageChrome>
@@ -92,7 +92,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           <div className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
             <p className="text-xs font-black text-blush">BARBER HUB編集部</p>
             <p className="mt-1 text-sm font-medium leading-relaxed text-ink">
-              この投稿は、同じ悩みや学びを持つ理容師に届くよう、編集部が整理対象にしています。
+              このスナップは、同じ悩みや学びを持つ理容師に届くよう、編集部が整理対象にしています。
             </p>
           </div>
         </div>

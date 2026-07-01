@@ -1,4 +1,4 @@
-import { Briefcase, GraduationCap, MessageSquare, Search, ShieldCheck, Sparkles, Wrench } from "lucide-react";
+import { Briefcase, GraduationCap, MessageSquare, PackageOpen, Search, ShieldCheck, Sparkles, Wrench } from "lucide-react";
 import Link from "next/link";
 import { AuthGateLink } from "@/components/AuthGate";
 import { PageChrome } from "@/components/PageChrome";
@@ -10,6 +10,7 @@ const categories = [
   { label: "集客", icon: Sparkles, href: "/explore?category=marketing" },
   { label: "AI", icon: Sparkles, href: "/explore?category=ai" },
   { label: "道具", icon: Wrench, href: "/explore?category=tools" },
+  { label: "メーカー情報", icon: PackageOpen, href: "/partners" },
   { label: "求人", icon: Briefcase, href: "/jobs" },
   { label: "講習会", icon: GraduationCap, href: "/seminars" },
   { label: "Q&A", icon: MessageSquare, href: "/qa" },
