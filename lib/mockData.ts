@@ -18,7 +18,7 @@ export type Article = {
 };
 
 // Image paths use files in public/images. Example:
-// imageUrl: "/images/editor-pick-fade.jpg"
+// imageUrl: "/images/fade-cut.jpg"
 // If a file is missing, MagazineImage falls back to the premium gray placeholder.
 
 export type NewsItem = {
@@ -153,7 +153,7 @@ export const articles: Article[] = [
     thanks: 128,
     comments: 24,
     accent: "news",
-    imageUrl: "/images/editor-pick-fade.jpg",
+    imageUrl: "/images/fade-cut.jpg",
   },
   {
     id: "freee-api-cost",
@@ -171,7 +171,7 @@ export const articles: Article[] = [
     thanks: 96,
     comments: 18,
     accent: "student",
-    imageUrl: "/images/article-cost-management.jpg",
+    imageUrl: "/images/shop-interior.jpg",
   },
   {
     id: "cti-pos",
@@ -189,7 +189,7 @@ export const articles: Article[] = [
     thanks: 84,
     comments: 12,
     accent: "tool",
-    imageUrl: "/images/article-pos-cti.jpg",
+    imageUrl: "/images/shop-interior.jpg",
   },
   {
     id: "gray-blending-40s-article",
@@ -207,7 +207,7 @@ export const articles: Article[] = [
     thanks: 154,
     comments: 31,
     accent: "haircut",
-    imageUrl: "/images/article-gray-blending.jpg",
+    imageUrl: "/images/fade-cut.jpg",
   },
   {
     id: "google-review-growth",
@@ -225,7 +225,7 @@ export const articles: Article[] = [
     thanks: 112,
     comments: 19,
     accent: "news",
-    imageUrl: "/images/article-google-review.jpg",
+    imageUrl: "/images/shop-interior.jpg",
   },
   {
     id: "silent-clipper",
@@ -243,7 +243,7 @@ export const articles: Article[] = [
     thanks: 76,
     comments: 11,
     accent: "tool",
-    imageUrl: "/images/tool-silent-clipper.jpg",
+    imageUrl: "/images/tools-stilllife.jpg",
   },
   {
     id: "fukuoka-seminar",
@@ -261,7 +261,7 @@ export const articles: Article[] = [
     thanks: 89,
     comments: 17,
     accent: "seminar",
-    imageUrl: "/images/seminar-fade-report.jpg",
+    imageUrl: "/images/fade-cut.jpg",
   },
 ];
 
@@ -330,7 +330,7 @@ export const posts: Post[] = [
     thanks: 128,
     comments: 13,
     accents: ["haircut", "news", "tool"],
-    imageUrl: "/images/snap-fade-style.jpg",
+    imageUrl: "/images/fade-cut.jpg",
   },
   {
     id: "price-change",
@@ -343,7 +343,7 @@ export const posts: Post[] = [
     thanks: 86,
     comments: 19,
     accents: ["news", "student", "tool"],
-    imageUrl: "/images/snap-price-note.jpg",
+    imageUrl: "/images/shop-interior.jpg",
   },
   {
     id: "owner-retention",
@@ -356,7 +356,7 @@ export const posts: Post[] = [
     thanks: 92,
     comments: 14,
     accents: ["student", "haircut", "news"],
-    imageUrl: "/images/snap-salon-work.jpg",
+    imageUrl: "/images/shop-interior.jpg",
   },
   {
     id: "editor-weekly",
@@ -369,7 +369,7 @@ export const posts: Post[] = [
     thanks: 74,
     comments: 6,
     accents: ["seminar", "tool", "news"],
-    imageUrl: "/images/snap-editor-weekly.jpg",
+    imageUrl: "/images/shop-interior.jpg",
   },
   {
     id: "practice-report",
@@ -382,7 +382,7 @@ export const posts: Post[] = [
     thanks: 67,
     comments: 9,
     accents: ["seminar", "haircut", "tool"],
-    imageUrl: "/images/snap-practice-report.jpg",
+    imageUrl: "/images/fade-cut.jpg",
   },
 ];
 
@@ -420,15 +420,15 @@ export const qaItems: QaItem[] = [
 ];
 
 export const seminars: Seminar[] = [
-  { id: "seminar-fade", title: "福岡フェードセミナー 要点まとめ", category: "講習会", meta: "アーカイブ", accent: "seminar", imageUrl: "/images/seminar-fade-report.jpg" },
-  { id: "contest-style", title: "コンクール入賞スタイルの見どころ", category: "コンクール", meta: "解説", accent: "haircut", imageUrl: "/images/seminar-contest-style.jpg" },
-  { id: "online-gray", title: "白髪ぼかし提案 オンライン講習", category: "オンライン講習", meta: "後から視聴", accent: "news", imageUrl: "/images/seminar-gray-blending.jpg" },
+  { id: "seminar-fade", title: "福岡フェードセミナー 要点まとめ", category: "講習会", meta: "アーカイブ", accent: "seminar", imageUrl: "/images/fade-cut.jpg" },
+  { id: "contest-style", title: "コンクール入賞スタイルの見どころ", category: "コンクール", meta: "解説", accent: "haircut", imageUrl: "/images/fade-cut.jpg" },
+  { id: "online-gray", title: "白髪ぼかし提案 オンライン講習", category: "オンライン講習", meta: "後から視聴", accent: "news", imageUrl: "/images/fade-cut.jpg" },
 ];
 
 export const jobs: Job[] = [
-  { id: "job-student", title: "学生向けサロン見学の選び方", category: "学生", meta: "編集部まとめ", accent: "student", imageUrl: "/images/job-student-salon.jpg" },
-  { id: "job-salon", title: "個人店の魅力が伝わる求人票の作り方", category: "求人", meta: "求人掲載", accent: "news", imageUrl: "/images/job-salon-recruit.jpg" },
-  { id: "job-school", title: "学校向け掲載メニュー準備中", category: "学校", meta: "問い合わせ", accent: "seminar", imageUrl: "/images/job-school-info.jpg" },
+  { id: "job-student", title: "学生向けサロン見学の選び方", category: "学生", meta: "編集部まとめ", accent: "student", imageUrl: "/images/shop-interior.jpg" },
+  { id: "job-salon", title: "個人店の魅力が伝わる求人票の作り方", category: "求人", meta: "求人掲載", accent: "news", imageUrl: "/images/shop-interior.jpg" },
+  { id: "job-school", title: "学校向け掲載メニュー準備中", category: "学校", meta: "問い合わせ", accent: "seminar", imageUrl: "/images/shop-interior.jpg" },
 ];
 
 export const backyardPosts: BackyardPost[] = [
@@ -470,7 +470,7 @@ export const backyardPosts: BackyardPost[] = [
 export const products: Product[] = [
   {
     id: "quiet-clipper-pro",
-    imageUrl: "/images/product-quiet-clipper.jpg",
+    imageUrl: "/images/tools-stilllife.jpg",
     name: "静音プロクリッパー S1",
     maker: "メーカー情報",
     category: "バリカン",
@@ -486,7 +486,7 @@ export const products: Product[] = [
   },
   {
     id: "fade-brush-comb-set",
-    imageUrl: "/images/product-fade-brush.jpg",
+    imageUrl: "/images/tools-stilllife.jpg",
     name: "フェードブラシ & コームセット",
     maker: "ディーラーセレクト",
     category: "フェード道具",
@@ -501,7 +501,7 @@ export const products: Product[] = [
   },
   {
     id: "gray-blend-toner",
-    imageUrl: "/images/product-gray-toner.jpg",
+    imageUrl: "/images/tools-stilllife.jpg",
     name: "白髪ぼかし用グレイトナー",
     maker: "メーカー新商品",
     category: "カラー剤",
@@ -517,7 +517,7 @@ export const products: Product[] = [
   },
   {
     id: "scalp-care-starter",
-    imageUrl: "/images/product-scalp-care.jpg",
+    imageUrl: "/images/tools-stilllife.jpg",
     name: "頭皮ケア スターターセット",
     maker: "プロ向け商材",
     category: "スキャルプケア",
@@ -532,7 +532,7 @@ export const products: Product[] = [
   },
   {
     id: "review-request-card",
-    imageUrl: "/images/product-review-card.jpg",
+    imageUrl: "/images/tools-stilllife.jpg",
     name: "口コミ依頼カード テンプレート",
     maker: "BARBER HUB編集部",
     category: "集客ツール",

@@ -44,7 +44,7 @@ function profileIdForPick(pick: (typeof editorPickItems)[number]) {
 
 function imageForPick(pick: (typeof editorPickItems)[number]) {
   if ("imageUrl" in pick.item) return pick.item.imageUrl;
-  return "/images/editor-pick-qa.jpg";
+  return undefined;
 }
 
 function variantForPick(pick: (typeof editorPickItems)[number]) {
