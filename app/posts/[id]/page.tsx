@@ -2,6 +2,7 @@ import { Flag, MapPin, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
+import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
 import { VisualTile } from "@/components/VisualTile";
 import { findBackyardPost, findPost } from "@/lib/mockData";
@@ -42,7 +43,11 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-lg font-black text-ink">{author}</h1>
+              {post ? (
+                <ProfileMiniLink profileId={post.profileId} fallbackName={author} />
+              ) : (
+                <h1 className="text-lg font-black text-ink">{author}</h1>
+              )}
               <span className="rounded-full bg-blushSoft px-2 py-0.5 text-[0.64rem] font-black text-blush">
                 {category}
               </span>

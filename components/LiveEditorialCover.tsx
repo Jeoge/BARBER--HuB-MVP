@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { articles, news, posts, qaItems } from "@/lib/mockData";
 import { MagazineImage } from "./MagazineImage";
+import { ProfileMiniLink } from "./ProfileMiniLink";
 
 const editorPickItems = [
   { type: "article", tag: "FEATURE", item: articles[0], title: "仕上げ前の一言で、次回予約が変わる" },
@@ -34,6 +35,11 @@ function sourceForPick(pick: (typeof editorPickItems)[number]) {
   if ("authorLabel" in pick.item) return pick.item.authorLabel;
   if ("author" in pick.item) return pick.item.author;
   return "BARBER HUB EDIT";
+}
+
+function profileIdForPick(pick: (typeof editorPickItems)[number]) {
+  if ("profileId" in pick.item) return pick.item.profileId;
+  return "barber-hub-editor";
 }
 
 function imageForPick(pick: (typeof editorPickItems)[number]) {
@@ -75,26 +81,29 @@ export function LiveEditorialCover() {
 
       <div className="no-scrollbar mt-3 -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
         {[lead, ...highlights].map((pick, index) => (
-          <Link
+          <article
             key={`${pick.type}-${pick.item.id}`}
-            href={hrefForPick(pick)}
             className={(index === 0 ? "w-[74%]" : "w-[58%]") + " shrink-0 snap-start rounded-[7px] border border-line/60 bg-white p-2.5 shadow-[0_5px_14px_rgba(17,17,17,0.025)]"}
           >
-            <MagazineImage src={imageForPick(pick)} alt={pick.title} variant={variantForPick(pick)} className="aspect-[16/8.2]" />
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-blush">{pick.tag}</p>
-              {index === 0 ? (
-                <span className="inline-flex items-center gap-0.5 text-[0.62rem] font-semibold text-mute">
-                  READ
-                  <ChevronRight aria-hidden="true" size={12} />
-                </span>
-              ) : null}
-            </div>
-            <h3 className={(index === 0 ? "text-[0.94rem]" : "text-[0.78rem]") + " mt-1 line-clamp-2 font-extrabold leading-snug text-ink"}>
-              {pick.title}
-            </h3>
-            {index === 0 ? <p className="mt-1 truncate text-[0.68rem] font-medium text-mute">{sourceForPick(pick)}</p> : null}
-          </Link>
+            <Link href={hrefForPick(pick)} className="block">
+              <MagazineImage src={imageForPick(pick)} alt={pick.title} variant={variantForPick(pick)} className="aspect-[16/8.2]" />
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-blush">{pick.tag}</p>
+                {index === 0 ? (
+                  <span className="inline-flex items-center gap-0.5 text-[0.62rem] font-semibold text-mute">
+                    READ
+                    <ChevronRight aria-hidden="true" size={12} />
+                  </span>
+                ) : null}
+              </div>
+              <h3 className={(index === 0 ? "text-[0.94rem]" : "text-[0.78rem]") + " mt-1 line-clamp-2 font-extrabold leading-snug text-ink"}>
+                {pick.title}
+              </h3>
+            </Link>
+            {index === 0 ? (
+              <ProfileMiniLink profileId={profileIdForPick(pick)} fallbackName={sourceForPick(pick)} compact className="mt-2 max-w-full" />
+            ) : null}
+          </article>
         ))}
       </div>
 

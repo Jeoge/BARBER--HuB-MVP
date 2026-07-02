@@ -1,8 +1,9 @@
-import { CalendarDays, UserRound } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { ProductSection } from "@/components/ProductSection";
+import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
 import { articles, findArticle, getRelatedProducts } from "@/lib/mockData";
 
@@ -35,10 +36,7 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
         </span>
         <h1 className="mt-3 text-[1.55rem] font-black leading-tight text-ink">{article.title}</h1>
         <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-bold text-mute">
-          <span className="inline-flex items-center gap-1">
-            <UserRound aria-hidden="true" size={15} />
-            {article.author}
-          </span>
+          <ProfileMiniLink profileId={article.profileId} fallbackName={article.author} compact />
           <span className="inline-flex items-center gap-1">
             <CalendarDays aria-hidden="true" size={15} />
             {article.date}

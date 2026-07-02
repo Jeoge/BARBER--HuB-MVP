@@ -2,6 +2,7 @@ import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { posts } from "@/lib/mockData";
 import { MagazineImage } from "./MagazineImage";
+import { ProfileMiniLink } from "./ProfileMiniLink";
 import { ReactionBar } from "./ReactionBar";
 
 export function SnapSection() {
@@ -20,27 +21,22 @@ export function SnapSection() {
       <div className="grid gap-4 px-4">
         {posts.slice(0, 3).map((post) => (
           <article key={post.id} className="rounded-[8px] border border-line/80 bg-white p-3 shadow-[0_8px_22px_rgba(17,17,17,0.035)]">
-            <Link href={`/posts/${post.id}`} className="block">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="grid h-8 w-8 place-items-center rounded-full bg-ink text-[0.68rem] font-black text-white">
-                    {post.authorLabel.slice(0, 1)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-ink">{post.authorLabel}</p>
-                      <span className="rounded-full border border-line px-2 py-0.5 text-[0.6rem] font-semibold text-mute">
-                        {post.category}
-                      </span>
-                    </div>
-                    <p className="text-xs font-medium text-mute">{post.area}</p>
-                  </div>
-                </div>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="min-w-0">
+                <ProfileMiniLink profileId={post.profileId} fallbackName={post.authorLabel} />
+                <p className="ml-10 mt-0.5 text-xs font-medium text-mute">{post.area}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="rounded-full border border-line px-2 py-0.5 text-[0.6rem] font-semibold text-mute">
+                  {post.category}
+                </span>
                 <span className="grid h-8 w-8 place-items-center rounded-full" aria-label="スナップメニュー">
                   <MoreHorizontal aria-hidden="true" size={20} />
                 </span>
               </div>
+            </div>
 
+            <Link href={`/posts/${post.id}`} className="block">
               <p className="line-clamp-2 text-[0.86rem] font-medium leading-relaxed text-ink">{post.body}</p>
               <MagazineImage src={post.imageUrl} alt={post.body} variant={post.accents[0]} className="mt-3 aspect-[16/9]" />
             </Link>

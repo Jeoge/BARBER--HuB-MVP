@@ -2,6 +2,7 @@ import { CheckCircle2, MessageCircle, Users } from "lucide-react";
 import Link from "next/link";
 import { PageChrome } from "@/components/PageChrome";
 import { ProductSection } from "@/components/ProductSection";
+import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { findQaItem, getRelatedProducts } from "@/lib/mockData";
 
 export default async function QaDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -38,6 +39,9 @@ export default async function QaDetailPage({ params }: { params: Promise<{ id: s
           </span>
         </div>
         <h1 className="mt-3 text-[1.45rem] font-black leading-tight text-ink">{question.title}</h1>
+        <div className="mt-3">
+          <ProfileMiniLink profileId={question.profileId} fallbackName="相談者" />
+        </div>
         <p className="mt-4 rounded-[8px] border border-line bg-white p-4 text-[0.92rem] font-medium leading-relaxed text-ink shadow-sm">
           {question.body}
         </p>

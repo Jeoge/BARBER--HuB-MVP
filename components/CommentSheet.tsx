@@ -2,10 +2,12 @@
 
 import { Send, ThumbsUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ProfileMiniLink } from "./ProfileMiniLink";
 
 export type SheetComment = {
   id: string;
   author: string;
+  profileId?: string;
   date: string;
   body: string;
   likeCount: number;
@@ -22,6 +24,7 @@ const defaultComments: SheetComment[] = [
   {
     id: "editor-note",
     author: "BARBER HUB編集部",
+    profileId: "barber-hub-editor",
     date: "今日",
     body: "現場で試しやすい形に整理して、あとから見返せるようにしています。",
     likeCount: 18,
@@ -29,6 +32,7 @@ const defaultComments: SheetComment[] = [
   {
     id: "barber-voice",
     author: "個人理容師",
+    profileId: "fukuoka-barber",
     date: "2時間前",
     body: "自分の店でも応用できそうです。こういう実例があると助かります。",
     likeCount: 9,
@@ -36,6 +40,7 @@ const defaultComments: SheetComment[] = [
   {
     id: "owner-note",
     author: "個人店オーナー",
+    profileId: "barber-sample-fukuoka-nishi",
     date: "昨日",
     body: "明日の朝礼で共有してみます。",
     likeCount: 6,
@@ -48,12 +53,9 @@ function CommentItem({ comment }: { comment: SheetComment }) {
 
   return (
     <article className="flex gap-2.5 rounded-[8px] bg-neutral-50 p-3">
-      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink text-[0.66rem] font-black text-white">
-        {comment.author.slice(0, 1)}
-      </div>
+      <ProfileMiniLink profileId={comment.profileId} fallbackName={comment.author} compact className="self-start pr-0" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="text-xs font-black text-ink">{comment.author}</p>
           <p className="text-[0.64rem] font-bold text-mute">{comment.date}</p>
         </div>
         <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{comment.body}</p>

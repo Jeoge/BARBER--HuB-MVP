@@ -3,6 +3,7 @@ export type Article = {
   title: string;
   category: string;
   author: string;
+  profileId?: string;
   date: string;
   summary: string;
   body: string[];
@@ -34,6 +35,7 @@ export type NewsItem = {
 export type Post = {
   id: string;
   authorLabel: string;
+  profileId?: string;
   area: string;
   category: string;
   source: string;
@@ -51,6 +53,7 @@ export type Post = {
 export type QaItem = {
   id: string;
   title: string;
+  profileId?: string;
   category: string;
   status: string;
   body: string;
@@ -136,6 +139,7 @@ export function getReactionMetrics(item: CountableContent): ReactionMetrics {
 export const articles: Article[] = [
   {
     id: "rakuten-ai",
+    profileId: "barber-hub-editor",
     title: "AIで楽天ビューティー閲覧数1位になった話",
     category: "AI活用",
     author: "BARBER HUB編集部",
@@ -153,6 +157,7 @@ export const articles: Article[] = [
   },
   {
     id: "freee-api-cost",
+    profileId: "barber-sample-fukuoka-nishi",
     title: "freee APIで月2.5万円削減した話",
     category: "経営",
     author: "個人店オーナー",
@@ -170,6 +175,7 @@ export const articles: Article[] = [
   },
   {
     id: "cti-pos",
+    profileId: "barber-hub-editor",
     title: "CTI導入でPOSレジを解約した話",
     category: "経営",
     author: "BARBER HUB編集部",
@@ -187,6 +193,7 @@ export const articles: Article[] = [
   },
   {
     id: "gray-blending-40s-article",
+    profileId: "barber-hub-editor",
     title: "40代以上に刺さる白髪ぼかし提案",
     category: "技術",
     author: "BARBER HUB編集部",
@@ -204,6 +211,7 @@ export const articles: Article[] = [
   },
   {
     id: "google-review-growth",
+    profileId: "barber-sample-fukuoka-nishi",
     title: "Google口コミで新規予約を増やす方法",
     category: "集客",
     author: "BARBER HUB編集部",
@@ -221,6 +229,7 @@ export const articles: Article[] = [
   },
   {
     id: "silent-clipper",
+    profileId: "maker-tools-demo",
     title: "静音バリカン新商品レビュー",
     category: "メーカー新商品",
     author: "メーカー情報 / BARBER HUB編集部",
@@ -238,6 +247,7 @@ export const articles: Article[] = [
   },
   {
     id: "fukuoka-seminar",
+    profileId: "fukuoka-barber",
     title: "福岡フェードセミナー 要点まとめ",
     category: "講習会",
     author: "練習会レポート",
@@ -311,6 +321,7 @@ export const news: NewsItem[] = [
 export const posts: Post[] = [
   {
     id: "fade-voice",
+    profileId: "fukuoka-barber",
     authorLabel: "個人理容師",
     area: "東京",
     category: "技術",
@@ -323,6 +334,7 @@ export const posts: Post[] = [
   },
   {
     id: "price-change",
+    profileId: "anonymous-barber",
     authorLabel: "匿名理容師",
     area: "関西",
     category: "経営",
@@ -335,6 +347,7 @@ export const posts: Post[] = [
   },
   {
     id: "owner-retention",
+    profileId: "barber-sample-fukuoka-nishi",
     authorLabel: "個人店オーナー",
     area: "中部",
     category: "経営",
@@ -347,6 +360,7 @@ export const posts: Post[] = [
   },
   {
     id: "editor-weekly",
+    profileId: "barber-hub-editor",
     authorLabel: "BARBER HUB編集部",
     area: "編集部",
     category: "業界ニュース",
@@ -359,6 +373,7 @@ export const posts: Post[] = [
   },
   {
     id: "practice-report",
+    profileId: "fukuoka-barber",
     authorLabel: "練習会レポート",
     area: "オンライン",
     category: "講習会",
@@ -374,6 +389,7 @@ export const posts: Post[] = [
 export const qaItems: QaItem[] = [
   {
     id: "fade-blend",
+    profileId: "fukuoka-barber",
     title: "フェードのぼかしがつながらない",
     category: "技術",
     status: "みんなで解決中",
@@ -383,6 +399,7 @@ export const qaItems: QaItem[] = [
   },
   {
     id: "price-raise",
+    profileId: "anonymous-barber",
     title: "値上げの伝え方に悩んでいる",
     category: "価格改定",
     status: "ただ聞いてほしい",
@@ -392,6 +409,7 @@ export const qaItems: QaItem[] = [
   },
   {
     id: "google-review-request",
+    profileId: "barber-sample-fukuoka-nishi",
     title: "Google口コミを自然にお願いする方法",
     category: "集客",
     status: "みんなで解決中",

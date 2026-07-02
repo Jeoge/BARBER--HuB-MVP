@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
 import { posts } from "@/lib/mockData";
 
@@ -18,22 +19,22 @@ export default function SnapPage() {
         <div className="grid gap-3">
           {posts.map((post) => (
             <article key={post.id} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
-              <Link href={`/posts/${post.id}`} className="block">
-                <div className="mb-2.5 flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="text-sm font-black text-ink">{post.authorLabel}</p>
-                      <span className="rounded-full bg-blushSoft px-2 py-0.5 text-[0.6rem] font-black text-blush">
-                        {post.category}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-xs font-bold text-mute">{post.area}</p>
-                  </div>
+              <div className="mb-2.5 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <ProfileMiniLink profileId={post.profileId} fallbackName={post.authorLabel} />
+                  <p className="ml-10 mt-0.5 text-xs font-bold text-mute">{post.area}</p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <span className="rounded-full bg-blushSoft px-2 py-0.5 text-[0.6rem] font-black text-blush">
+                    {post.category}
+                  </span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-neutral-50 px-2 py-1 text-[0.58rem] font-black text-mute">
                     <ShieldCheck aria-hidden="true" size={12} className="text-blush" />
                     {post.source}
                   </span>
                 </div>
+              </div>
+              <Link href={`/posts/${post.id}`} className="block">
                 <p className="text-[0.86rem] font-medium leading-relaxed text-ink">{post.body}</p>
                 <MagazineImage src={post.imageUrl} alt={post.body} variant={post.accents[0]} className="mt-3 aspect-[16/9]" />
               </Link>
