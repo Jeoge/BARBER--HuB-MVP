@@ -1,7 +1,7 @@
 "use client";
 
 import { Bookmark, MessageCircle, Sparkles, ThumbsUp } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type MouseEvent, useEffect, useState } from "react";
 import { CommentSheet, type SheetComment } from "./CommentSheet";
 
 type ReactionBarProps = {
@@ -29,6 +29,11 @@ function storeReaction(contentId: string | undefined, kind: "good" | "thanks" | 
   window.localStorage.setItem(storageKey(contentId, kind), "1");
 }
 
+function stopCardNavigation(event: MouseEvent<HTMLButtonElement>) {
+  event.preventDefault();
+  event.stopPropagation();
+}
+
 export function ReactionBar({ contentId, commentTitle, comments, className = "", compact = false }: ReactionBarProps) {
   const [liked, setLiked] = useState(false);
   const [thanked, setThanked] = useState(false);
@@ -43,7 +48,8 @@ export function ReactionBar({ contentId, commentTitle, comments, className = "",
     setSaved(hasStoredReaction(contentId, "save"));
   }, [contentId]);
 
-  function pressGood() {
+  function pressGood(event: MouseEvent<HTMLButtonElement>) {
+    stopCardNavigation(event);
     if (!liked) {
       storeReaction(contentId, "good");
       setLiked(true);
@@ -52,7 +58,8 @@ export function ReactionBar({ contentId, commentTitle, comments, className = "",
     window.setTimeout(() => setLikePulse(false), 520);
   }
 
-  function pressThanks() {
+  function pressThanks(event: MouseEvent<HTMLButtonElement>) {
+    stopCardNavigation(event);
     if (!thanked) {
       storeReaction(contentId, "thanks");
       setThanked(true);
@@ -61,11 +68,17 @@ export function ReactionBar({ contentId, commentTitle, comments, className = "",
     window.setTimeout(() => setThanksPulse(false), 760);
   }
 
-  function pressSave() {
+  function pressSave(event: MouseEvent<HTMLButtonElement>) {
+    stopCardNavigation(event);
     if (!saved) {
       storeReaction(contentId, "save");
       setSaved(true);
     }
+  }
+
+  function openComments(event: MouseEvent<HTMLButtonElement>) {
+    stopCardNavigation(event);
+    setCommentOpen(true);
   }
 
   const labelClass = compact ? "sr-only" : "";
@@ -108,7 +121,7 @@ export function ReactionBar({ contentId, commentTitle, comments, className = "",
           ) : null}
         </button>
 
-        <button type="button" className={buttonBase + " hover:bg-neutral-50"} onClick={() => setCommentOpen(true)}>
+        <button type="button" className={buttonBase + " hover:bg-neutral-50"} onClick={openComments}>
           <MessageCircle aria-hidden="true" size={15} strokeWidth={1.9} />
           <span className={labelClass}>{"\u30b3\u30e1\u30f3\u30c8"}</span>
         </button>

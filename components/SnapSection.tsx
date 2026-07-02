@@ -45,7 +45,7 @@ export function SnapSection() {
               <MagazineImage src={post.imageUrl} alt={post.body} variant={post.accents[0]} className="mt-3 aspect-[16/9]" />
             </Link>
 
-            <ReactionBar contentId={`post:${post.id}`} commentTitle="スナップへのコメント" className="mt-3" />
+            <ReactionBar contentId={`post:${post.id}`} commentTitle={`${post.authorLabel}のコメント`} className="mt-3" />
             <p className="mt-2 text-[0.66rem] font-medium text-mute">記事じゃなくても大丈夫。小さな気づきが誰かのヒントに。</p>
           </article>
         ))}
