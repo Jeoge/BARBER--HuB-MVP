@@ -1,6 +1,5 @@
 import { CalendarDays, UserRound } from "lucide-react";
 import Link from "next/link";
-import { CommentPanel } from "@/components/CommentPanel";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { ProductSection } from "@/components/ProductSection";
@@ -46,7 +45,7 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
           </span>
         </div>
         <MagazineImage src={article.imageUrl} alt={article.title} variant={article.accent} className="mt-4 aspect-[16/10]" />
-        <ReactionBar commentHref="#comments" className="mt-4" />
+        <ReactionBar contentId={`article:${article.id}`} commentTitle="この記事へのコメント" className="mt-4" />
         <div className="mt-5 space-y-4 text-[0.92rem] font-medium leading-relaxed text-ink">
           <p className="font-bold text-mute">{article.summary}</p>
           {article.body.map((paragraph) => (
@@ -60,8 +59,6 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
         subtitle="記事の文脈に合う商品だけを、BARBER HUB編集部が整理します。"
         products={relatedProducts}
       />
-
-      <CommentPanel title="この記事へのコメント" placeholder="この記事で試したいこと、現場での経験を書く" />
 
       <section className="px-4 pt-7">
         <h2 className="text-base font-black text-ink">関連記事</h2>

@@ -10,6 +10,8 @@ const benefits = [
   "得意技術や地域に合わせて情報が届く",
 ];
 
+const signupBenefits = benefits.map((benefit, index) => (index === 1 ? "thanksポイントを貯めて商品と交換" : benefit));
+
 const memberTypes = ["理容師", "理容学生", "サロンオーナー", "メーカー・ディーラー", "学校関係者", "組合・団体関係者", "求人掲載希望"];
 const interests = ["経営", "集客", "AI", "技術", "道具", "Q&A", "講習会", "求人", "Backyard"];
 
@@ -38,7 +40,7 @@ export default function SignupPage() {
 
       <section className="px-4 pt-7">
         <div className="grid gap-2">
-          {benefits.map((benefit) => (
+          {signupBenefits.map((benefit) => (
             <div key={benefit} className="flex items-center gap-2 rounded-[8px] border border-line bg-white p-3 shadow-sm">
               <CheckCircle2 aria-hidden="true" size={18} className="shrink-0 text-blush" />
               <p className="text-sm font-black text-ink">{benefit}</p>

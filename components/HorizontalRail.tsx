@@ -49,7 +49,7 @@ export function HorizontalRail({ title, items, hrefPrefix = "/articles" }: Horiz
                   <ChevronRight aria-hidden="true" className="mt-1 shrink-0 text-mute" size={16} />
                 </div>
               </Link>
-              {showReactions ? <ReactionBar commentHref={`${href}#comments`} compact className="mt-3" /> : null}
+              {showReactions ? <ReactionBar contentId={`article:${item.id}`} commentTitle="記事へのコメント" compact className="mt-3" /> : null}
             </article>
           );
         })}

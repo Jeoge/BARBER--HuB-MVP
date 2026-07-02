@@ -1,6 +1,5 @@
 import { Flag, MapPin, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
-import { CommentPanel } from "@/components/CommentPanel";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { ReactionBar } from "@/components/ReactionBar";
@@ -76,15 +75,17 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           <MagazineImage src={imageUrl} alt={body} variant={accents[0]} className="mt-4 aspect-[16/9]" />
         )}
 
-        <ReactionBar commentHref="#comments" className="mt-4" />
+        <ReactionBar
+          contentId={isBackyard ? `backyard:${id}` : `post:${id}`}
+          commentTitle={isBackyard ? "Backyardコメント" : "スナップへのコメント"}
+          className="mt-4"
+        />
 
         <button className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute">
           <Flag aria-hidden="true" size={14} />
           通報
         </button>
       </article>
-
-      <CommentPanel title={isBackyard ? "Backyardコメント" : "スナップへのコメント"} placeholder="経験や気づきをコメントする" />
     </PageChrome>
   );
 }

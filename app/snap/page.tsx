@@ -37,7 +37,7 @@ export default function SnapPage() {
                 <p className="text-[0.86rem] font-medium leading-relaxed text-ink">{post.body}</p>
                 <MagazineImage src={post.imageUrl} alt={post.body} variant={post.accents[0]} className="mt-3 aspect-[16/9]" />
               </Link>
-              <ReactionBar commentHref={`/posts/${post.id}#comments`} className="mt-3" />
+              <ReactionBar contentId={`post:${post.id}`} commentTitle="スナップへのコメント" className="mt-3" />
             </article>
           ))}
         </div>
