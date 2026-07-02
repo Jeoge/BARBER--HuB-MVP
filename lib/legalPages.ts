@@ -13,7 +13,7 @@ export const legalLinks = [
   { label: "利用規約", href: "/terms" },
   { label: "プライバシーポリシー", href: "/privacy" },
   { label: "コミュニティガイドライン", href: "/community-guidelines" },
-  { label: "Backyard利用ルール", href: "/backyard-rules" },
+  { label: "Back Room Rules", href: "/backyard-rules" },
   { label: "広告・PRポリシー", href: "/ad-policy" },
 ];
 
@@ -28,7 +28,7 @@ export const legalPages: Record<string, LegalPage> = {
         heading: "サービスの目的",
         items: [
           "BARBER HUBは、理容師の経験・学び・情報共有のためのプラットフォームです。",
-          "記事、SNAP、Q&A、Backyard、講習会、商品導線を通じて、理容師が日々の営業に役立つ情報へアクセスできる場所を目指します。",
+          "記事、SNAP、Q&A、Back Room、講習会、商品導線を通じて、理容師が日々の営業に役立つ情報へアクセスできる場所を目指します。",
           "BARBER HUBは商品販売サイトではなく、情報と商品導線のプラットフォームです。",
         ],
       },
@@ -58,9 +58,9 @@ export const legalPages: Record<string, LegalPage> = {
       {
         heading: "取得する情報",
         items: [
-          "BARBER HUBでは、会員登録情報、投稿、Q&A、Backyard設定、問い合わせ内容を扱う前提でサービスを設計します。",
+          "BARBER HUBでは、会員登録情報、投稿、Q&A、Back Room設定、問い合わせ内容を扱う前提でサービスを設計します。",
           "登録情報には、名前または表示名、メールアドレス、地域、店舗名または所属、得意分野、興味カテゴリ、会員タイプなどが含まれる場合があります。",
-          "Backyardでは表のプロフィールとは別の匿名ニックネームを利用できますが、安全管理のため運営側では必要な範囲で投稿者を識別できる設計を想定します。",
+          "Back Roomでは表のプロフィールとは別のニックネームを利用できますが、安全管理のため運営側では必要な範囲で投稿者を識別できる設計を想定します。",
         ],
       },
       {
@@ -99,7 +99,7 @@ export const legalPages: Record<string, LegalPage> = {
         items: [
           "誹謗中傷、個人名・店舗名を出した晒し、攻撃的投稿は禁止します。",
           "差別的表現、個人情報の投稿、炎上目的の投稿、違法行為の助長は禁止します。",
-          "Backyardでも匿名だから何を書いてもいいわけではありません。",
+          "Back Roomでもニックネームだから何を書いてもいいわけではありません。",
         ],
       },
       {
@@ -113,30 +113,30 @@ export const legalPages: Record<string, LegalPage> = {
   },
   "backyard-rules": {
     slug: "backyard-rules",
-    eyebrow: "BACKYARD RULES",
-    title: "Backyard利用ルール",
-    body: "表では言いにくい本音を、安心して話すためのルールです。",
+    eyebrow: "BACK ROOM RULES",
+    title: "Back Room Rules",
+    body: "理容師同士が、仕事終わりに安心して話すためのルールです。",
     sections: [
       {
-        heading: "Backyardの立ち位置",
+        heading: "Back Roomの立ち位置",
         items: [
-          "Backyardは、表のプロフィールとは別の匿名ニックネームで利用できます。",
-          "本音を話せる場所ですが、荒れる場所にはしません。",
-          "表側のBARBER HUBでは経験・技術・経営を共有し、Backyardでは匿名で悩みや本音を話せる設計です。",
+          "Back Roomは、表のプロフィールとは別のニックネームで利用できます。",
+          "営業後にスレッドを立てて、技術・道具・経営・雑談を気軽に話せる場所です。",
+          "酒を飲みながら見るような軽い場所でも、礼儀は守ります。",
         ],
       },
       {
         heading: "歓迎する内容",
         items: [
-          "売上の不安、価格改定、スタッフ問題、一人営業の孤独、技術の不安、SNS疲れなどの悩み相談を歓迎します。",
-          "同じ経験をした人の声、解決のヒント、ただ聞いてほしい投稿も歓迎します。",
+          "技術の相談、道具の感想、経営のちょっとした悩み、求人や学生対応、今日あったことの雑談を歓迎します。",
+          "悩み、相談、経験共有、軽い雑談を歓迎します。",
         ],
       },
       {
         heading: "禁止する内容",
         items: [
           "個人名、店舗名、学校名、メーカー名を出した攻撃は禁止します。",
-          "匿名だから何を書いてもいいわけではありません。",
+          "ニックネームだから何を書いてもいいわけではありません。",
           "晒し、誹謗中傷、過度な攻撃、個人情報の投稿は禁止します。",
         ],
       },

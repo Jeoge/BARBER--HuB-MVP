@@ -8,7 +8,7 @@ const labels: Record<string, string> = {
   snap: "スナップ投稿",
   article: "記事を書く",
   question: "Q&Aで相談",
-  anonymous: "Backyardに匿名投稿",
+  anonymous: "Back Roomに投稿",
   report: "講習会レポート",
 };
 

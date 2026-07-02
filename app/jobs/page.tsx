@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
+import { SponsorSection } from "@/components/SponsorSection";
 import { citiesByPrefecture, jobListings, prefectures } from "@/lib/jobs";
+import { sponsorsForPlacement } from "@/lib/sponsors";
 
 export default function JobsPage() {
   const [selectedPrefecture, setSelectedPrefecture] = useState(prefectures[0]);
@@ -139,6 +141,14 @@ export default function JobsPage() {
           ))}
         </div>
       </section>
+
+      <SponsorSection
+        eyebrow="Sponsored Career"
+        title="求職者向け協賛情報"
+        subtitle="学校・地域・若手支援など、求人探しに近いお知らせです。"
+        items={sponsorsForPlacement("jobs")}
+        compact
+      />
 
       <section className="px-4 pt-6">
         <div className="rounded-[8px] border border-line bg-neutral-50 p-4">

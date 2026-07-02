@@ -14,7 +14,6 @@ const attributeTags = [
   "都市部サロン",
   "メンズ特化",
   "顔剃りあり",
-  "訪問理容",
   "経営に悩み中",
   "技術に悩み中",
 ];
@@ -30,17 +29,17 @@ export default function BackyardSetupPage() {
       </section>
 
       <PageHeaderBlock
-        eyebrow="BACKYARD SETUP"
-        title="Backyard匿名設定"
-        body="Backyardでは、表のプロフィールとは別の名前で投稿できます。"
+        eyebrow="BACK ROOM SETUP"
+        title="Back Room設定"
+        body="Back Roomでは、表プロフィールとは別のニックネームで参加できます。"
       />
 
       <section className="grid gap-4 px-4 pt-4">
         <label className="grid gap-2">
-          <span className="text-sm font-black text-ink">匿名ニックネーム</span>
+          <span className="text-sm font-black text-ink">Back Room用ニックネーム</span>
           <input
             className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none focus:border-blush"
-            placeholder="例：一人営業の理容師"
+            placeholder="例：営業後の理容師"
           />
         </label>
 
@@ -69,13 +68,13 @@ export default function BackyardSetupPage() {
           </div>
           <p className="mt-1.5 text-xs font-medium leading-relaxed text-mute">
             個人名・店舗名を出した攻撃や晒しは禁止です。
-            本音を話せる場所ですが、荒れる場所にはしません。
+            店名や本名を出さずに話せますが、荒れる場所にはしません。
           </p>
         </div>
 
         <Link href="/backyard" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
           <CheckCircle2 aria-hidden="true" size={18} />
-          設定後にBackyardへ進む
+          設定後にBack Roomへ進む
         </Link>
       </section>
     </PageChrome>

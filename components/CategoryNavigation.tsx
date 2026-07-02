@@ -16,7 +16,7 @@ const navItems = [
   { label: "Q&A", href: "/qa" },
   { label: "講習会", href: "/seminars" },
   { label: "求人", href: "/jobs" },
-  { label: "Backyard", href: "/backyard", auth: true },
+  { label: "Back Room", href: "/backyard", auth: true },
 ];
 
 export function CategoryNavigation() {

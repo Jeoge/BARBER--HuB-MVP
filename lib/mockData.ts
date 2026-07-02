@@ -84,11 +84,13 @@ export type BackyardPost = {
   anonymousName: string;
   attribute: string;
   category: string;
+  title?: string;
   body: string;
   empathy: number;
   comments: number;
   status: string;
   reaction: string;
+  latestCommentAt?: string;
 };
 
 export type Product = {
@@ -434,36 +436,42 @@ export const jobs: Job[] = [
 export const backyardPosts: BackyardPost[] = [
   {
     id: "backyard-price",
-    anonymousName: "匿名理容師",
+    anonymousName: "一人営業の理容師",
     attribute: "一人営業",
-    category: "価格改定",
-    body: "値上げを言い出せないまま数か月経っています。長年のお客様にどう伝えたらいいか悩んでいます。",
+    category: "経営",
+    title: "一人営業の予約、どこまで詰めてますか？",
+    body: "営業後にふと、予約を詰めすぎている気がしました。みなさんは余白をどれくらい残していますか？",
     empathy: 42,
     comments: 18,
-    status: "ただ聞いてほしい",
+    status: "相談中",
     reaction: "わかる",
+    latestCommentAt: "12分前",
   },
   {
     id: "backyard-lonely",
-    anonymousName: "個人店オーナー",
-    attribute: "一人営業",
-    category: "一人営業の孤独",
-    body: "営業後に相談できる相手が少なく、判断を全部ひとりで抱えている感じがあります。",
+    anonymousName: "40代オーナー",
+    attribute: "オーナー",
+    category: "道具",
+    title: "静音バリカンでおすすめありますか？",
+    body: "朝イチや子どもカットで使いやすいものを探しています。音と振動が少ないものが知りたいです。",
     empathy: 51,
     comments: 16,
-    status: "経験を聞きたい",
+    status: "経験募集",
     reaction: "経験あり",
+    latestCommentAt: "38分前",
   },
   {
     id: "backyard-sns-fatigue",
-    anonymousName: "匿名理容師",
-    attribute: "SNS疲れ",
-    category: "SNS・集客疲れ",
-    body: "投稿しなきゃと思うほど手が止まります。毎日見られている感じに少し疲れました。",
+    anonymousName: "営業後の理容師",
+    attribute: "スタッフ",
+    category: "今日の営業後",
+    title: "今日の営業後、何飲んでます？",
+    body: "忙しい一日でした。みなさんの仕事終わりルーティンをゆるく聞きたいです。",
     empathy: 58,
     comments: 21,
-    status: "共感募集中",
-    reaction: "応援",
+    status: "雑談中",
+    reaction: "それな",
+    latestCommentAt: "1時間前",
   },
 ];
 

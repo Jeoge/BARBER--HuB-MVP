@@ -1,8 +1,10 @@
 import {
   BadgeCheck,
+  Clock,
   Flag,
   LockKeyhole,
   MessageCircle,
+  Plus,
   ShieldCheck,
   Users,
 } from "lucide-react";
@@ -10,20 +12,18 @@ import Link from "next/link";
 import { backyardPosts } from "@/lib/mockData";
 
 const categories = [
-  "売上・経営",
-  "お客様トラブル",
-  "スタッフ",
-  "価格改定",
-  "業界の本音",
-  "技術の不安",
-  "独立・開業",
-  "一人営業",
-  "SNS疲れ",
+  "技術",
+  "道具",
+  "経営",
+  "集客",
+  "求人",
+  "学生",
+  "今日の営業後",
+  "ちょっと相談",
   "雑談",
-  "今日だけ聞いてほしい",
 ];
 
-const rules = ["理容師限定", "匿名相談OK", "個人名・店舗名の攻撃は禁止"];
+const rules = ["理容師限定", "ニックネーム参加", "個人攻撃は禁止"];
 
 export function BackyardSection() {
   return (
@@ -35,10 +35,10 @@ export function BackyardSection() {
               <LockKeyhole aria-hidden="true" size={12} />
               会員限定
             </div>
-            <h2 className="mt-2 text-[1.35rem] font-black leading-none text-ink">Backyard</h2>
-            <p className="mt-1 text-[0.78rem] font-black text-ink">理容師だけの本音コミュニティ</p>
+            <h2 className="mt-2 text-[1.35rem] font-black leading-none text-ink">Back Room</h2>
+            <p className="mt-1 text-[0.78rem] font-black text-ink">理容師だけの、仕事終わりのコミュニティ。</p>
             <p className="mt-2 text-[0.76rem] font-medium leading-relaxed text-mute">
-              表では言いにくい悩みや本音を、匿名で相談できる営業後の休憩室です。
+              技術も、道具も、経営も、今日あったことも。スレッドを立てて気軽に話せます。
             </p>
           </div>
           <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-blushSoft text-blush">
@@ -70,14 +70,22 @@ export function BackyardSection() {
 
         <div className="mt-3 grid gap-2">
           <Link href="/backyard/setup" className="inline-flex h-11 items-center justify-center rounded-[8px] bg-blush text-sm font-black text-white">
-            匿名ニックネームを設定して入る
+            Back Room用ニックネームを設定
           </Link>
           <Link href="/signup?next=/backyard/setup" className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-ink">
             未会員の方は無料登録
           </Link>
         </div>
 
-        <div className="mt-3 grid gap-2.5">
+        <div className="mt-3 flex items-center justify-between">
+          <p className="text-sm font-black text-ink">最近のスレッド</p>
+          <Link href="/post/backyard" className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[0.66rem] font-black text-ink">
+            <Plus aria-hidden="true" size={13} />
+            立てる
+          </Link>
+        </div>
+
+        <div className="mt-2 grid gap-2.5">
           {backyardPosts.map((post) => (
             <Link key={post.id} href={`/posts/${post.id}`} className="block rounded-[8px] border border-line bg-white p-3">
               <div className="flex items-start justify-between gap-3">
@@ -100,12 +108,13 @@ export function BackyardSection() {
                 </span>
               </div>
 
-              <p className="mt-2 text-[0.8rem] font-medium leading-relaxed text-ink">{post.body}</p>
+              <h3 className="mt-2 text-[0.9rem] font-black leading-snug text-ink">{post.title ?? post.body}</h3>
+              <p className="mt-1 line-clamp-2 text-[0.76rem] font-medium leading-relaxed text-mute">{post.body}</p>
 
               <div className="mt-3 flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <span className="rounded-full bg-blush px-3 py-1.5 text-[0.68rem] font-black text-white">
-                    {post.reaction} {post.empathy}
+                  <span className="rounded-full border border-line bg-neutral-50 px-2.5 py-1 text-[0.68rem] font-black text-ink">
+                    {post.reaction}
                   </span>
                   <span className="inline-flex items-center gap-1 text-[0.7rem] font-bold text-mute">
                     <MessageCircle aria-hidden="true" size={14} />
@@ -113,8 +122,8 @@ export function BackyardSection() {
                   </span>
                 </div>
                 <span className="inline-flex items-center gap-1 text-[0.64rem] font-black text-mute">
-                  <Users aria-hidden="true" size={13} />
-                  承認制
+                  <Clock aria-hidden="true" size={13} />
+                  {post.latestCommentAt ?? "さっき"}
                 </span>
               </div>
             </Link>
@@ -124,10 +133,10 @@ export function BackyardSection() {
         <div className="mt-3 rounded-[8px] border border-blush/20 bg-blushSoft p-3">
           <div className="flex items-center gap-2 text-[0.78rem] font-black text-ink">
             <BadgeCheck aria-hidden="true" size={17} className="text-blush" />
-            本音と信頼を両立します
+            軽く話せて、礼儀は守る
           </div>
           <p className="mt-1.5 text-[0.72rem] font-medium leading-relaxed text-mute">
-            Backyardの投稿は、個別投稿を勝手に表側へ転載しません。編集部は個人が特定されない形で、悩みの傾向だけを整理します。
+            表プロフィールとは別のニックネームで参加できます。店名や本名を出さずに話せますが、個人攻撃や晒しは禁止です。
           </p>
         </div>
       </div>

@@ -1,18 +1,18 @@
-import { Flag, LockKeyhole, MessageCircle, ShieldCheck, UserRoundPlus } from "lucide-react";
+import { Clock, Flag, LockKeyhole, MessageCircle, Plus, ShieldCheck, UserRoundPlus } from "lucide-react";
 import Link from "next/link";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { backyardPosts } from "@/lib/mockData";
 
-const categories = ["価格改定", "一人営業", "SNS疲れ", "スタッフ", "技術の不安", "今日だけ聞いてほしい"];
+const categories = ["技術", "道具", "経営", "集客", "求人", "学生", "今日の営業後", "ちょっと相談", "雑談"];
 
 export default function BackyardPage() {
   return (
     <PageChrome>
       <PageHeaderBlock
-        eyebrow="BARBER BACKYARD"
-        title="理容師だけのバックヤード。"
-        body="表では学び、裏では本音を話す。Backyardでは、表のプロフィールとは別の名前で投稿できます。"
+        eyebrow="BACK ROOM"
+        title="Back Room"
+        body="理容師だけの、仕事終わりのコミュニティ。営業後にスマホで開いて、技術・道具・経営・今日あったことを気軽に話せます。"
       />
 
       <section className="px-4 pt-4">
@@ -22,15 +22,15 @@ export default function BackyardPage() {
               <UserRoundPlus aria-hidden="true" size={22} />
             </div>
             <div>
-              <h2 className="text-base font-black text-ink">Backyard入口カード</h2>
+              <h2 className="text-base font-black text-ink">Back Roomに入る</h2>
               <p className="mt-1 text-sm font-medium leading-relaxed text-mute">
-                匿名ニックネームを設定すると、表の自分とは別の名前で本音を話せます。
+                表プロフィールとは別のニックネームで参加できます。店名や本名を出さずに、スレッドでゆるく話せます。
               </p>
             </div>
           </div>
           <div className="mt-4 grid gap-2">
             <Link href="/backyard/setup" className="inline-flex h-12 items-center justify-center rounded-[8px] bg-blush text-sm font-black text-white">
-              匿名ニックネームを設定して入る
+              Back Room用ニックネームを設定
             </Link>
             <Link href="/signup?next=/backyard/setup" className="inline-flex h-11 items-center justify-center rounded-[8px] border border-line bg-white text-sm font-black text-ink">
               未会員の方は無料登録
@@ -43,16 +43,16 @@ export default function BackyardPage() {
         <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-3">
           <div className="flex items-center gap-2 text-sm font-black text-ink">
             <ShieldCheck aria-hidden="true" size={18} className="text-blush" />
-            本音を話せる場所ですが、荒れる場所にはしません。
+            気軽に話せる場所ですが、荒れる場所にはしません。
           </div>
           <p className="mt-1.5 text-xs font-medium leading-relaxed text-mute">
-            個人名・店舗名を出した攻撃や晒しは禁止です。
+            店名や本名を出さずに話せますが、個人名・店舗名を出した攻撃や晒しは禁止です。
           </p>
         </div>
       </section>
 
       <section className="px-4 pt-5">
-        <h2 className="text-base font-black text-ink">匿名カテゴリ</h2>
+        <h2 className="text-base font-black text-ink">カテゴリ</h2>
         <div className="mt-3 no-scrollbar flex gap-2 overflow-x-auto pb-1">
           {categories.map((category) => (
             <span key={category} className="shrink-0 rounded-full border border-line bg-white px-3 py-2 text-xs font-black text-ink">
@@ -63,7 +63,13 @@ export default function BackyardPage() {
       </section>
 
       <section className="px-4 pt-5">
-        <h2 className="text-base font-black text-ink">匿名スレッドの雰囲気</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-black text-ink">スレッド</h2>
+          <Link href="/post/backyard" className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-ink px-3 text-xs font-black text-white">
+            <Plus aria-hidden="true" size={14} />
+            スレッドを立てる
+          </Link>
+        </div>
         <div className="mt-3 grid gap-2.5">
           {backyardPosts.map((post) => (
             <article key={post.id} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
@@ -81,15 +87,22 @@ export default function BackyardPage() {
                   <Flag aria-hidden="true" size={15} />
                 </button>
               </div>
-              <p className="mt-2 text-[0.82rem] font-medium leading-relaxed text-ink">{post.body}</p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="rounded-full bg-blush px-3 py-1.5 text-[0.68rem] font-black text-white">
-                  共感 {post.empathy}
+              <h3 className="mt-2 text-[0.96rem] font-black leading-snug text-ink">{post.title ?? post.body}</h3>
+              <p className="mt-1 text-[0.82rem] font-medium leading-relaxed text-mute">{post.body}</p>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <span className="rounded-full border border-line bg-neutral-50 px-2.5 py-1 text-[0.68rem] font-black text-ink">
+                  {post.reaction}
                 </span>
-                <span className="inline-flex items-center gap-1 text-[0.72rem] font-bold text-mute">
-                  <MessageCircle aria-hidden="true" size={14} />
-                  {post.comments}
-                </span>
+                <div className="flex items-center gap-3 text-[0.72rem] font-bold text-mute">
+                  <span className="inline-flex items-center gap-1">
+                    <MessageCircle aria-hidden="true" size={14} />
+                    {post.comments}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Clock aria-hidden="true" size={14} />
+                    {post.latestCommentAt ?? "さっき"}
+                  </span>
+                </div>
               </div>
             </article>
           ))}
@@ -100,10 +113,10 @@ export default function BackyardPage() {
         <div className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-black text-ink">
             <LockKeyhole aria-hidden="true" size={18} className="text-blush" />
-            表のプロフィールとは別物です
+            表プロフィールとは別のニックネームで参加できます
           </div>
           <p className="mt-2 text-xs font-medium leading-relaxed text-mute">
-            Backyardではプロフィール写真や表の名前を表示しません。匿名ニックネームと属性タグだけで参加します。
+            Back Roomではプロフィール写真や表の名前を表示しません。ニックネームと属性タグだけで参加できます。
           </p>
         </div>
       </section>

@@ -16,14 +16,14 @@ type Copy = {
 const copyMap: Record<GateKind, Copy> = {
   default: {
     title: "会員登録が必要です",
-    body: "この機能はBARBER HUB会員限定です。無料登録すると、投稿・THANKS・Backyard・求人登録が使えるようになります。",
+    body: "この機能はBARBER HUB会員限定です。無料登録すると、投稿・THANKS・Back Room・求人登録が使えるようになります。",
     cta: "無料で会員登録する",
     href: "/signup",
   },
   backyard: {
-    title: "Backyardは理容師限定です",
-    body: "普段言えない悩みや本音を、匿名で相談できる会員限定エリアです。安心して使える場所にするため、会員登録が必要です。",
-    cta: "会員登録して匿名設定へ",
+    title: "Back Roomは理容師限定です",
+    body: "仕事終わりに、技術・道具・経営・今日あったことを理容師同士で話せる会員限定エリアです。安心して使える場所にするため、会員登録が必要です。",
+    cta: "会員登録して設定へ",
     href: "/signup?next=/backyard/setup",
   },
   jobs: {

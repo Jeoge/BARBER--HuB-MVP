@@ -5,7 +5,9 @@ import { PageChrome } from "@/components/PageChrome";
 import { ProductSection } from "@/components/ProductSection";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
+import { SponsorSection } from "@/components/SponsorSection";
 import { articles, findArticle, getRelatedProducts } from "@/lib/mockData";
+import { sponsorsForPlacement } from "@/lib/sponsors";
 
 export default async function ArticleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -56,6 +58,14 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
         title="この記事に出てきた道具"
         subtitle="記事の文脈に合う商品だけを、BARBER HUB編集部が整理します。"
         products={relatedProducts}
+      />
+
+      <SponsorSection
+        eyebrow="PR / Partner"
+        title="この記事に関連する協賛情報"
+        subtitle="記事内容に近い道具・講習だけを表示します。"
+        items={sponsorsForPlacement("article")}
+        compact
       />
 
       <section className="px-4 pt-7">

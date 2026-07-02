@@ -70,8 +70,8 @@ export default function ExplorePage() {
             <ShieldCheck aria-hidden="true" size={20} />
           </span>
           <span>
-            <span className="block text-sm font-black text-ink">Backyard入口</span>
-            <span className="mt-0.5 block text-xs font-bold text-mute">理容師だけの本音コミュニティ</span>
+            <span className="block text-sm font-black text-ink">Back Room入口</span>
+            <span className="mt-0.5 block text-xs font-bold text-mute">理容師だけの仕事終わりコミュニティ</span>
           </span>
         </AuthGateLink>
       </section>

@@ -3,17 +3,17 @@ import { PostFormPage } from "@/components/PostFormPage";
 export default function BackyardPostPage() {
   return (
     <PostFormPage
-      title="Backyardに匿名投稿"
-      description="普段言えない悩みや本音を、理容師限定エリアで匿名投稿できます。"
-      phrase="本音はBackyardで。匿名でも、安心して話せる場所にします。"
+      title="Back Roomに投稿"
+      description="仕事終わりに、技術・道具・経営・今日あったことをスレッドで気軽に話せます。"
+      phrase="スレッドを立てて、理容師同士でゆるく話そう。"
       fields={[
-        { kind: "input", label: "匿名表示名", placeholder: "例：一人営業 / 30代オーナー / 九州の理容師" },
-        { kind: "select", label: "カテゴリー", options: ["売上・経営", "お客様トラブル", "スタッフ・人間関係", "価格改定", "一人営業の孤独", "SNS疲れ", "今日だけ聞いてほしい"] },
-        { kind: "textarea", label: "本文", placeholder: "普段言えない悩みや本音を書いてください。", rows: 7 },
-        { kind: "checks", label: "投稿の目的", options: ["ただ聞いてほしい", "経験を聞きたい"] },
+        { kind: "input", label: "ニックネーム表示", placeholder: "例：営業後の理容師 / 40代オーナー" },
+        { kind: "input", label: "タイトル", placeholder: "例：静音バリカンでおすすめありますか？" },
+        { kind: "select", label: "カテゴリー", options: ["技術", "道具", "経営", "集客", "求人", "学生", "今日の営業後", "ちょっと相談", "雑談"] },
+        { kind: "textarea", label: "本文", placeholder: "気軽に話したいことを書いてください。", rows: 7 },
         {
           kind: "note",
-          text: "個人名・店舗名を出した攻撃や晒しは禁止です。本音を言える場所ですが、荒れる場所にはしません。",
+          text: "店名や本名を出さずに話せますが、個人名・店舗名を出した攻撃や晒しは禁止です。",
         },
       ]}
       imageLabel="必要なら画像を追加"

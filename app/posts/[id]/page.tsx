@@ -18,7 +18,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         <section className="px-4 pt-8">
           <h1 className="text-2xl font-black text-ink">投稿が見つかりません</h1>
           <p className="mt-3 text-sm font-medium leading-relaxed text-mute">
-            指定されたスナップ、またはBackyard投稿はまだ登録されていません。
+            指定されたスナップ、またはBack Room投稿はまだ登録されていません。
           </p>
           <Link href="/snap" className="mt-5 inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
             SNAPへ戻る
@@ -35,7 +35,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   const body = post?.body ?? backyardPost?.body ?? "";
   const accents = post?.accents ?? ["news", "student", "tool"];
   const imageUrl = post?.imageUrl;
-  const source = post?.source ?? "Backyard匿名投稿";
+  const source = post?.source ?? "Back Room投稿";
 
   return (
     <PageChrome>
@@ -64,7 +64,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
         {isBackyard ? (
           <div className="mt-4 rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-[0.78rem] font-black text-ink">
-            Backyard投稿です。個別投稿を勝手に表側へ転載しません。
+            Back Room投稿です。個別投稿を勝手に表側へ転載しません。
           </div>
         ) : null}
 
@@ -82,7 +82,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
         <ReactionBar
           contentId={isBackyard ? `backyard:${id}` : `post:${id}`}
-          commentTitle={isBackyard ? "Backyardコメント" : "スナップへのコメント"}
+          commentTitle={isBackyard ? "Back Roomコメント" : "スナップへのコメント"}
           className="mt-4"
         />
 

@@ -5,7 +5,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 const benefits = [
   "毎朝3分で業界の動きがわかる",
   "経験を共有するとTHANKSが届く",
-  "スナップ投稿・Q&A・Backyardが使える",
+  "スナップ投稿・Q&A・Back Roomが使える",
   "求人や講習会情報を受け取れる",
   "得意技術や地域に合わせて情報が届く",
 ];
@@ -13,7 +13,7 @@ const benefits = [
 const signupBenefits = benefits.map((benefit, index) => (index === 1 ? "thanksポイントを貯めて商品と交換" : benefit));
 
 const memberTypes = ["理容師", "理容学生", "サロンオーナー", "メーカー・ディーラー", "学校関係者", "組合・団体関係者", "求人掲載希望"];
-const interests = ["経営", "集客", "AI", "技術", "道具", "Q&A", "講習会", "求人", "Backyard"];
+const interests = ["経営", "集客", "AI", "技術", "道具", "Q&A", "講習会", "求人", "Back Room"];
 
 export default function SignupPage() {
   return (
@@ -53,10 +53,10 @@ export default function SignupPage() {
         <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-4">
           <div className="flex items-center gap-2 text-sm font-black text-ink">
             <LockKeyhole aria-hidden="true" size={18} className="text-blush" />
-            Backyardは理容師だけの本音コミュニティです。
+            Back Roomは理容師だけの仕事終わりコミュニティです。
           </div>
           <p className="mt-2 text-[0.78rem] font-medium leading-relaxed text-mute">
-            Backyardは原則として理容師・理容学生のみ利用できます。安心して本音を話せる場所にするため、会員タイプを確認します。
+            Back Roomは原則として理容師・理容学生のみ利用できます。安心してスレッドで話せる場所にするため、会員タイプを確認します。
           </p>
         </div>
       </section>

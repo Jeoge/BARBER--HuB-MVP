@@ -10,8 +10,10 @@ import { LiveEditorialCover } from "@/components/LiveEditorialCover";
 import { MainFeature } from "@/components/MainFeature";
 import { QASection } from "@/components/QASection";
 import { SnapSection } from "@/components/SnapSection";
+import { SponsorSection } from "@/components/SponsorSection";
 import { ThanksRanking } from "@/components/ThanksRanking";
 import { articles, jobs, seminars } from "@/lib/mockData";
+import { sponsorsForPlacement } from "@/lib/sponsors";
 
 export default function Home() {
   return (
@@ -20,6 +22,12 @@ export default function Home() {
       <CategoryNavigation />
       <LiveEditorialCover />
       <SnapSection />
+      <SponsorSection
+        eyebrow="Sponsored"
+        title="今週の協賛パートナー"
+        subtitle="理容師に役立つ道具・講習・学校情報だけを、控えめに紹介。"
+        items={sponsorsForPlacement("home")}
+      />
       <BackyardSection />
       <HorizontalRail title="新着記事" items={articles.slice(0, 5)} />
       <ContributionSection />

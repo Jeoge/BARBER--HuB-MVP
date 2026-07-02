@@ -8,7 +8,7 @@ const postItems = [
   { label: "スナップ投稿", icon: Camera },
   { label: "経験記事を書く", icon: FilePenLine },
   { label: "Q&Aで相談する", icon: MessageSquare },
-  { label: "Backyardに匿名投稿", icon: ShieldCheck, kind: "backyard" as const },
+  { label: "Back Roomに投稿", icon: ShieldCheck, kind: "backyard" as const },
   { label: "講習会レポートを書く", icon: Video },
 ];
 
