@@ -153,7 +153,7 @@ export const todayNewsSets: Record<"morning" | "noon" | "evening" | "night", Tod
   ],
   evening: [
     {
-      title: "THANKSランキング",
+      title: "Thanksランキング",
       body: "今日伸びた投稿は、接客トークと白髪ぼかし提案。明日の朝礼候補に。",
     },
     {
@@ -227,7 +227,7 @@ export const newArticles: RailItem[] = [
   {
     tag: "集客",
     title: "インスタ集客で新規を増やす方法",
-    meta: "THANKS 88",
+    meta: "Thanks 88",
     accent: "student",
   },
   {
@@ -335,7 +335,7 @@ export const makerItems: RailItem[] = [
   {
     tag: "新商品",
     title: "静音バリカン PRO X1 レビュー",
-    meta: "THANKS 76",
+    meta: "Thanks 76",
     accent: "tool",
   },
   {

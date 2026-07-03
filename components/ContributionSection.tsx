@@ -2,14 +2,14 @@ import { Award, BadgeCheck, Gift, Star, Trophy } from "lucide-react";
 
 const contributionCards = [
   {
-    title: "THANKSが貯まる",
-    body: "投稿や回答が役に立つとTHANKSが届く。",
-    stat: "THANKS累計 12,458",
+    title: "Thanksが貯まる",
+    body: "投稿や回答が役に立つとThanksが届く。",
+    stat: "Thanks累計 12,458",
     icon: Star,
   },
   {
     title: "貢献ポイント",
-    body: "THANKS・投稿数・回答数に応じてポイントが貯まる。",
+    body: "Thanks・投稿数・回答数に応じてポイントが貯まる。",
     stat: "貢献ポイント 3,240pt",
     icon: BadgeCheck,
   },
@@ -41,7 +41,7 @@ export function ContributionSection() {
           Contribution
         </p>
         <h2 className="mt-1 text-[1.05rem] font-black leading-tight text-ink">
-          THANKSがあなたの信頼になる
+          Thanksがあなたの信頼になる
         </h2>
         <p className="mt-2 text-[0.8rem] font-medium leading-relaxed text-mute">
           人気より、貢献を。

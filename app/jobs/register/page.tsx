@@ -381,6 +381,17 @@ export default function JobsRegisterPage() {
           </p>
         </div>
 
+        <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <p className="text-xs font-medium leading-relaxed text-mute">
+            掲載する求人内容、応募者への連絡、面接対応、採用可否、労働条件の説明については、求人掲載サロンの責任で行ってください。
+            BARBER HUBは求人情報の掲載場所と応募導線を提供するプラットフォームです。
+          </p>
+          <label className="mt-3 flex items-start gap-2 text-sm font-black leading-relaxed text-ink">
+            <input type="checkbox" required className="mt-1 h-4 w-4 accent-blush" />
+            求人内容と応募者対応は、掲載サロンの責任で行うことを確認しました。
+          </label>
+        </div>
+
         <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink text-sm font-black text-white">
           <Send aria-hidden="true" size={17} />
           仮登録する

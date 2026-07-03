@@ -8,7 +8,7 @@ export default function NotificationsPage() {
       <PageHeaderBlock
         eyebrow="NOTIFICATIONS"
         title="通知"
-        body="THANKS、コメント、AI編集部の更新をまとめて確認できます。"
+        body="Thanks、コメント、AI編集部の更新をまとめて確認できます。"
       />
       <SignupRequiredCard />
     </PageChrome>

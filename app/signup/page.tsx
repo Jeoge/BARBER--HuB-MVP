@@ -4,13 +4,13 @@ import { BrandLogo } from "@/components/BrandLogo";
 
 const benefits = [
   "毎朝3分で業界の動きがわかる",
-  "経験を共有するとTHANKSが届く",
+  "経験を共有するとThanksが届く",
   "スナップ投稿・Q&A・Back Roomが使える",
   "求人や講習会情報を受け取れる",
   "得意技術や地域に合わせて情報が届く",
 ];
 
-const signupBenefits = benefits.map((benefit, index) => (index === 1 ? "thanksポイントを貯めて商品と交換" : benefit));
+const signupBenefits = benefits.map((benefit, index) => (index === 1 ? "Thanksポイントを貯めて商品と交換" : benefit));
 
 const memberTypes = ["理容師", "理容学生", "サロンオーナー", "メーカー・ディーラー", "学校関係者", "組合・団体関係者", "求人掲載希望"];
 const interests = ["経営", "集客", "AI", "技術", "道具", "Q&A", "講習会", "求人", "Back Room"];
@@ -25,7 +25,7 @@ export default function SignupPage() {
           <h1 className="mt-2 text-[2rem] font-black leading-tight text-ink">BARBER HUBに参加する</h1>
           <p className="mt-2 text-sm font-bold uppercase tracking-[0.12em] text-ink">One Success. Shared Success.</p>
           <p className="mt-4 text-[0.95rem] font-medium leading-relaxed text-mute">
-            経験を共有し、THANKSと信頼を積み上げよう。読むだけなら無料。参加すると、もっと広がる。
+            経験を共有し、Thanksと信頼を積み上げよう。読むだけなら無料。参加すると、もっと広がる。
           </p>
           <div className="mt-5 grid gap-2">
             <a href="#signup-form" className="inline-flex h-12 items-center justify-center rounded-[8px] bg-blush text-sm font-black text-white">

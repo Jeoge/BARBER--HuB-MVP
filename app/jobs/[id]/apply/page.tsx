@@ -40,7 +40,7 @@ export default async function JobApplyPage({
         </p>
       </section>
 
-      <section className="grid gap-4 px-4 pt-5">
+      <form className="grid gap-4 px-4 pt-5">
         <Input label="名前" placeholder="例：山田 太郎" />
         <Input label="年齢" placeholder="例：22" />
         <Input label="連絡先" placeholder="メールアドレスまたは電話番号" />
@@ -82,7 +82,18 @@ export default async function JobApplyPage({
           </p>
         </div>
 
-        <button className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+        <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <p className="text-xs font-medium leading-relaxed text-mute">
+            応募後の連絡、見学・面接の日程調整、採用可否、労働条件の説明は、求人掲載サロンが行います。
+            BARBER HUBは応募導線を提供するものであり、雇用契約の当事者ではありません。
+          </p>
+          <label className="mt-3 flex items-start gap-2 text-sm font-black leading-relaxed text-ink">
+            <input type="checkbox" required className="mt-1 h-4 w-4 accent-blush" />
+            上記の内容を確認し、求人掲載サロンへ申し込みます。
+          </label>
+        </div>
+
+        <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
           <Send aria-hidden="true" size={17} />
           申込内容を送信する
         </button>
@@ -93,7 +104,7 @@ export default async function JobApplyPage({
             これはMVP用の仮完了表示です。
           </p>
         </div>
-      </section>
+      </form>
     </PageChrome>
   );
 }

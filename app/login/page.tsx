@@ -9,7 +9,7 @@ export default function LoginPage() {
         <p className="text-[0.72rem] font-black uppercase tracking-[0.14em] text-blush">LOGIN</p>
         <h1 className="mt-2 text-[2rem] font-black leading-tight text-ink">ログイン</h1>
         <p className="mt-3 text-sm font-medium leading-relaxed text-mute">
-          会員になると、投稿・THANKS・Back Room・求人登録が使えるようになります。
+          会員になると、投稿・Thanks・Back Room・求人登録が使えるようになります。
         </p>
       </section>
 

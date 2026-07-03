@@ -16,7 +16,7 @@ type Copy = {
 const copyMap: Record<GateKind, Copy> = {
   default: {
     title: "会員登録が必要です",
-    body: "この機能はBARBER HUB会員限定です。無料登録すると、投稿・THANKS・Back Room・求人登録が使えるようになります。",
+    body: "この機能はBARBER HUB会員限定です。無料登録すると、投稿・Thanks・Back Room・求人登録が使えるようになります。",
     cta: "無料で会員登録する",
     href: "/signup",
   },

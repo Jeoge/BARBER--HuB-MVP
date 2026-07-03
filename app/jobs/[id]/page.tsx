@@ -99,6 +99,16 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           </p>
         </div>
       </section>
+
+      <section className="px-4 pt-6">
+        <div className="rounded-[8px] border border-line bg-neutral-50 p-4">
+          <h2 className="text-sm font-black text-ink">応募前にご確認ください</h2>
+          <p className="mt-2 text-xs font-medium leading-relaxed text-mute">
+            求人内容・連絡・面接・採用条件に関する責任は、求人掲載サロンにあります。
+            BARBER HUBは、求人情報と応募導線を提供するプラットフォームであり、雇用契約の当事者ではありません。
+          </p>
+        </div>
+      </section>
     </PageChrome>
   );
 }
