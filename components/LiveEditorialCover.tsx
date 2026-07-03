@@ -19,6 +19,8 @@ const newsTitles: Record<string, string> = {
   "scalp-care-rainy": "梅雨時期の頭皮ケア需要が増加中",
   "google-review-reply": "口コミ返信で新規予約率が変わる",
   "silent-clipper-news": "静音バリカンの新商品が話題",
+  "gray-blending-40s": "40代男性に白髪ぼかし提案が増加",
+  "heatstroke-smalltalk": "今日の時事メモ：熱中症対策を早めに",
 };
 
 function rotate<T>(items: T[], offset: number) {
@@ -70,60 +72,50 @@ export function LiveEditorialCover() {
   const highlights = state.picks.slice(1, 3);
 
   return (
-    <section className="px-4 pt-4">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-blush">EDITOR&apos;S PICK</p>
-          <h2 className="mt-1 text-[1.08rem] font-black leading-tight text-ink">今、見るべき情報</h2>
-        </div>
-        <p className="pb-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.08em] text-mute">{state.updatedAt} update</p>
+    <section className="px-4 pt-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[0.78rem] font-black uppercase tracking-[0.22em] text-blush">EDITOR&apos;S PICK</p>
+        <p className="text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-mute">{state.updatedAt} update</p>
       </div>
 
-      <div className="no-scrollbar mt-3 -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
+      <div className="no-scrollbar mt-2 -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
         {[lead, ...highlights].map((pick, index) => (
           <article
             key={`${pick.type}-${pick.item.id}`}
-            className={(index === 0 ? "w-[74%]" : "w-[58%]") + " shrink-0 snap-start rounded-[7px] border border-line/60 bg-white p-2.5 shadow-[0_5px_14px_rgba(17,17,17,0.025)]"}
+            className={(index === 0 ? "w-[72%]" : "w-[56%]") + " shrink-0 snap-start rounded-[7px] border border-line/60 bg-white p-2 shadow-[0_5px_14px_rgba(17,17,17,0.022)]"}
           >
             <Link href={hrefForPick(pick)} className="block">
-              <MagazineImage src={imageForPick(pick)} alt={pick.title} variant={variantForPick(pick)} className="aspect-[16/8.2]" />
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-blush">{pick.tag}</p>
+              <MagazineImage src={imageForPick(pick)} alt={pick.title} variant={variantForPick(pick)} className="aspect-[16/7.6]" />
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <p className="text-[0.54rem] font-semibold uppercase tracking-[0.13em] text-blush">{pick.tag}</p>
                 {index === 0 ? (
-                  <span className="inline-flex items-center gap-0.5 text-[0.62rem] font-semibold text-mute">
+                  <span className="inline-flex items-center gap-0.5 text-[0.58rem] font-semibold text-mute">
                     READ
-                    <ChevronRight aria-hidden="true" size={12} />
+                    <ChevronRight aria-hidden="true" size={11} />
                   </span>
                 ) : null}
               </div>
-              <h3 className={(index === 0 ? "text-[0.94rem]" : "text-[0.78rem]") + " mt-1 line-clamp-2 font-extrabold leading-snug text-ink"}>
+              <h3 className={(index === 0 ? "text-[0.88rem]" : "text-[0.74rem]") + " mt-0.5 line-clamp-2 font-extrabold leading-snug text-ink"}>
                 {pick.title}
               </h3>
             </Link>
-            {index === 0 ? (
-              <ProfileMiniLink profileId={profileIdForPick(pick)} fallbackName={sourceForPick(pick)} compact className="mt-2 max-w-full" />
-            ) : null}
+            {index === 0 ? <ProfileMiniLink profileId={profileIdForPick(pick)} fallbackName={sourceForPick(pick)} compact className="mt-1.5 max-w-full" /> : null}
           </article>
         ))}
       </div>
 
-      <div className="mt-3 rounded-[8px] border border-line/80 bg-white px-3.5 py-3 shadow-[0_6px_18px_rgba(17,17,17,0.03)]">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-blush">3 MIN NEWS</p>
-            <h3 className="mt-0.5 text-[0.94rem] font-black text-ink">今日の3分ニュース</h3>
-          </div>
+      <div className="mt-2.5 rounded-[8px] border border-line/80 bg-white px-3 py-2.5 shadow-[0_6px_18px_rgba(17,17,17,0.025)]">
+        <div className="mb-1.5 flex items-center justify-between gap-3">
+          <p className="text-[0.74rem] font-black uppercase tracking-[0.18em] text-blush">3MIN NEWS</p>
           <Link href={`/news/${news[0]?.id ?? ""}`} className="text-xs font-semibold text-blush">
             もっと読む
           </Link>
         </div>
-        <div className="grid gap-2">
-          {news.slice(0, 3).map((item) => (
-            <Link key={item.id} href={`/news/${item.id}`} className="flex items-center gap-2.5">
-              <Newspaper aria-hidden="true" size={13} className="shrink-0 text-mute" />
-              <p className="min-w-0 flex-1 truncate text-[0.78rem] font-semibold text-ink">
-                {newsTitles[item.id] ?? item.title}
-              </p>
+        <div className="grid gap-1.5">
+          {news.slice(0, 4).map((item) => (
+            <Link key={item.id} href={`/news/${item.id}`} className="flex items-center gap-2">
+              <Newspaper aria-hidden="true" size={12} className="shrink-0 text-mute" />
+              <p className="min-w-0 flex-1 truncate text-[0.76rem] font-semibold text-ink">{newsTitles[item.id] ?? item.title}</p>
             </Link>
           ))}
         </div>

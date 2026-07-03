@@ -7,11 +7,11 @@ import { ReactionBar } from "./ReactionBar";
 
 export function SnapSection() {
   return (
-    <section className="pt-8">
-      <div className="mb-3 flex items-end justify-between px-4 pr-16">
+    <section className="pt-4">
+      <div className="mb-2.5 flex items-end justify-between px-4 pr-16">
         <div>
           <p className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-blush">SNAP</p>
-          <h2 className="mt-1 text-[1rem] font-black text-ink">みんなのスナップ</h2>
+          <h2 className="mt-0.5 text-[1rem] font-black text-ink">みんなのスナップ</h2>
         </div>
         <Link href="/snap" className="text-xs font-semibold text-blush">
           SNAPを見る
@@ -27,9 +27,7 @@ export function SnapSection() {
                 <p className="ml-10 mt-0.5 text-xs font-medium text-mute">{post.area}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <span className="rounded-full border border-line px-2 py-0.5 text-[0.6rem] font-semibold text-mute">
-                  {post.category}
-                </span>
+                <span className="rounded-full border border-line px-2 py-0.5 text-[0.6rem] font-semibold text-mute">{post.category}</span>
                 <span className="grid h-8 w-8 place-items-center rounded-full" aria-label="スナップメニュー">
                   <MoreHorizontal aria-hidden="true" size={20} />
                 </span>
