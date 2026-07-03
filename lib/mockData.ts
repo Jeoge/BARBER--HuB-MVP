@@ -79,6 +79,12 @@ export type Job = {
   imageUrl?: string;
 };
 
+export type BackRoomVerificationStatus = "self-declared" | "barber-verified";
+
+// Future optional verification methods:
+// barber license, salon/store info, Google Business Profile, business card,
+// official SNS, association/school/salon confirmation, or manual operator review.
+// "barber-verified" maps to an optional public/private status like "理容師確認済み".
 export type BackyardPost = {
   id: string;
   anonymousName: string;
@@ -86,6 +92,7 @@ export type BackyardPost = {
   category: string;
   title?: string;
   body: string;
+  verificationStatus?: BackRoomVerificationStatus;
   empathy: number;
   comments: number;
   status: string;
@@ -441,6 +448,7 @@ export const backyardPosts: BackyardPost[] = [
     category: "経営",
     title: "一人営業の予約、どこまで詰めてますか？",
     body: "営業後にふと、予約を詰めすぎている気がしました。みなさんは余白をどれくらい残していますか？",
+    verificationStatus: "self-declared",
     empathy: 42,
     comments: 18,
     status: "相談中",
@@ -454,6 +462,7 @@ export const backyardPosts: BackyardPost[] = [
     category: "道具",
     title: "静音バリカンでおすすめありますか？",
     body: "朝イチや子どもカットで使いやすいものを探しています。音と振動が少ないものが知りたいです。",
+    verificationStatus: "self-declared",
     empathy: 51,
     comments: 16,
     status: "経験募集",
@@ -467,6 +476,7 @@ export const backyardPosts: BackyardPost[] = [
     category: "今日の営業後",
     title: "今日の営業後、何飲んでます？",
     body: "忙しい一日でした。みなさんの仕事終わりルーティンをゆるく聞きたいです。",
+    verificationStatus: "self-declared",
     empathy: 58,
     comments: 21,
     status: "雑談中",

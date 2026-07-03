@@ -10,7 +10,6 @@ export type SheetComment = {
   profileId?: string;
   date: string;
   body: string;
-  likeCount: number;
 };
 
 type CommentSheetProps = {
@@ -27,7 +26,6 @@ const defaultComments: SheetComment[] = [
     profileId: "barber-hub-editor",
     date: "今日",
     body: "現場で試しやすい形に整理しました。あとから見返せるように保存しておくのもおすすめです。",
-    likeCount: 18,
   },
   {
     id: "barber-voice",
@@ -35,7 +33,6 @@ const defaultComments: SheetComment[] = [
     profileId: "fukuoka-barber",
     date: "2時間前",
     body: "自分の店でも応用できそうです。こういう実例があると助かります。",
-    likeCount: 9,
   },
   {
     id: "owner-note",
@@ -43,13 +40,11 @@ const defaultComments: SheetComment[] = [
     profileId: "barber-sample-fukuoka-nishi",
     date: "昨日",
     body: "明日の朝礼で共有してみます。",
-    likeCount: 6,
   },
 ];
 
 function CommentItem({ comment }: { comment: SheetComment }) {
   const [liked, setLiked] = useState(false);
-  const likeCount = comment.likeCount + (liked ? 1 : 0);
 
   return (
     <article className="flex gap-2.5 rounded-[8px] bg-neutral-50 p-3">
@@ -65,7 +60,7 @@ function CommentItem({ comment }: { comment: SheetComment }) {
             onClick={() => setLiked((current) => !current)}
           >
             <ThumbsUp aria-hidden="true" size={12} strokeWidth={1.8} />
-            {likeCount}
+            いいね
           </button>
           <button type="button" className="hover:text-ink">
             返信

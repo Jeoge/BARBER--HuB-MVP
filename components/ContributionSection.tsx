@@ -1,16 +1,16 @@
-import { Award, BadgeCheck, Gift, Star, Trophy } from "lucide-react";
+import { Award, BadgeCheck, Gift, Star } from "lucide-react";
 
 const contributionCards = [
   {
     title: "Thanksが貯まる",
     body: "投稿や回答が役に立つとThanksが届く。",
-    stat: "Thanks累計 12,458",
+    stat: "貢献として記録",
     icon: Star,
   },
   {
     title: "貢献ポイント",
-    body: "Thanks・投稿数・回答数に応じてポイントが貯まる。",
-    stat: "貢献ポイント 3,240pt",
+    body: "Thanksや投稿の積み重ねを、本人だけが確認できる。",
+    stat: "ポイントは本人専用",
     icon: BadgeCheck,
   },
   {
@@ -20,10 +20,10 @@ const contributionCards = [
     icon: Award,
   },
   {
-    title: "ランキング掲載",
-    body: "今週のContributorとして紹介される。",
-    stat: "今週のContributor候補",
-    icon: Trophy,
+    title: "編集部セレクト",
+    body: "数字ではなく、現場で役立つ経験として紹介される。",
+    stat: "経験の共有を後押し",
+    icon: BadgeCheck,
   },
   {
     title: "将来の特典",
