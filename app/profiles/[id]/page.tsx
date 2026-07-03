@@ -1,26 +1,45 @@
 import { BadgeCheck, BriefcaseBusiness, ExternalLink, MapPin } from "lucide-react";
 import Link from "next/link";
+import { FollowButton } from "@/components/FollowButton";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { articles, posts } from "@/lib/mockData";
-import { findProfile, type ProfileLinkKey } from "@/lib/profiles";
+import { findPublicProfile, type ProfileLinkKey } from "@/lib/publicProfiles";
 
 const linkLabels: Record<ProfileLinkKey, string> = {
   instagram: "Instagram",
   x: "X",
   youtube: "YouTube",
   tiktok: "TikTok",
-  website: "Webサイト",
+  website: "公式サイト",
   map: "Googleマップ",
 };
 
+const postDisplay: Record<string, string> = {
+  "fade-voice": "仕上げ前の一言で、次回予約が変わる",
+  "practice-report": "フェード練習会で学んだ光の見方",
+  "owner-retention": "次回予約の声かけを施術中に変えた",
+  "editor-weekly": "今週の理容業界メモ",
+  "price-change": "価格改定の伝え方を変えてみた",
+};
+
+const articleDisplay: Record<string, string> = {
+  "rakuten-ai": "AIで楽天ビューティー閲覧数1位になった話",
+  "freee-api-cost": "freee APIで月2.5万円削減した話",
+  "google-review-growth": "Google口コミで新規予約を増やす方法",
+  "cti-pos": "CTI導入でPOSレジを解約した話",
+  "gray-blending-40s-article": "40代提案は“若返り”より“清潔感”",
+  "silent-clipper": "静音バリカン新商品レビュー",
+  "fukuoka-seminar": "福岡フェードセミナー要点まとめ",
+};
+
 function profileInitial(name: string) {
-  return name.slice(0, 1).toUpperCase();
+  return name.trim().slice(0, 1).toUpperCase();
 }
 
 export default async function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const profile = findProfile(id);
+  const profile = findPublicProfile(id);
 
   if (profile == null) {
     return (
@@ -51,7 +70,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
     <PageChrome>
       <section className="px-4 pt-4">
         <div className="relative overflow-hidden rounded-[10px] border border-line bg-white shadow-[0_10px_28px_rgba(17,17,17,0.045)]">
-          <MagazineImage src={profile.coverImageUrl} alt={profile.displayName} variant={profile.type === "maker" ? "tool" : "news"} className="aspect-[16/7]" />
+          <MagazineImage src={profile.coverImageUrl} alt={profile.displayName} variant={profile.type === "maker" || profile.type === "dealer" ? "tool" : "news"} className="aspect-[16/7]" />
           <div className="px-4 pb-4">
             <div className="-mt-8 flex items-end justify-between gap-3">
               <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-full border-4 border-white bg-ink text-lg font-black text-white shadow-sm">
@@ -90,14 +109,27 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
             </p>
             <p className="mt-3 text-[0.9rem] font-medium leading-relaxed text-ink">{profile.bio}</p>
 
-            {profile.isHiring && profile.jobId ? (
-              <Link
-                href={`/jobs/${profile.jobId}`}
-                className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink px-4 text-sm font-black text-white"
-              >
-                このサロンの求人を見る
-              </Link>
+            {profile.specialtyTags && profile.specialtyTags.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {profile.specialtyTags.map((tag) => (
+                  <span key={tag} className="rounded-full bg-neutral-50 px-2.5 py-1 text-[0.66rem] font-bold text-ink/70">
+                    {tag}
+                  </span>
+                ))}
+              </div>
             ) : null}
+
+            <div className="mt-4 grid gap-2">
+              <FollowButton profileId={profile.id} />
+              {profile.isHiring && profile.jobId ? (
+                <Link
+                  href={`/jobs/${profile.jobId}`}
+                  className="inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white"
+                >
+                  このサロンの求人を見る
+                </Link>
+              ) : null}
+            </div>
           </div>
         </div>
       </section>
@@ -140,7 +172,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
         <div className="flex items-end justify-between">
           <h2 className="text-base font-black text-ink">最近のSnap</h2>
           <Link href="/snap" className="text-xs font-semibold text-blush">
-            SNAPを見る
+            Snapを見る
           </Link>
         </div>
         <div className="mt-3 grid gap-2.5">
@@ -148,7 +180,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
             recentPosts.map((post) => (
               <Link key={post.id} href={`/posts/${post.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
                 <p className="text-[0.66rem] font-black text-blush">{post.category}</p>
-                <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-ink">{post.body}</p>
+                <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-ink">{postDisplay[post.id] ?? post.body}</p>
               </Link>
             ))
           ) : (
@@ -164,7 +196,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
             recentArticles.map((article) => (
               <Link key={article.id} href={`/articles/${article.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
                 <p className="text-[0.66rem] font-black text-blush">{article.category}</p>
-                <p className="mt-1 text-sm font-black leading-snug text-ink">{article.title}</p>
+                <p className="mt-1 text-sm font-black leading-snug text-ink">{articleDisplay[article.id] ?? article.title}</p>
               </Link>
             ))
           ) : (

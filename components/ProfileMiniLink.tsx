@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { type MouseEvent } from "react";
-import { findProfile, profileHref } from "@/lib/profiles";
+import { findPublicProfile, profileHref } from "@/lib/publicProfiles";
 
 type ProfileMiniLinkProps = {
   profileId?: string;
@@ -16,7 +16,7 @@ function initials(name: string) {
 }
 
 export function ProfileMiniLink({ profileId, fallbackName = "BARBER HUB", compact = false, className = "" }: ProfileMiniLinkProps) {
-  const profile = findProfile(profileId);
+  const profile = findPublicProfile(profileId);
   const name = profile?.displayName ?? fallbackName;
   const badge = profile?.badges?.[0];
 
