@@ -13,13 +13,10 @@ type RoleOption = {
 
 const roleOptions: RoleOption[] = [
   { label: "理容師", access: "full" },
-  { label: "アシスタント", access: "full" },
   { label: "サロンオーナー", access: "full" },
+  { label: "アシスタント", access: "full" },
+  { label: "スタイリスト", access: "full" },
   { label: "理容学生", access: "student" },
-  { label: "メーカー", access: "official" },
-  { label: "学校", access: "official" },
-  { label: "組合", access: "official" },
-  { label: "企業", access: "official" },
   { label: "その他理容業界関係者", access: "official" },
 ];
 
@@ -30,7 +27,7 @@ const areaOptions = [
   "中部",
   "北海道・東北",
   "中国・四国",
-  "オンライン中心",
+  "その他",
 ];
 
 const accessCopy: Record<RoleAccess, { title: string; body: string; href: string; cta: string }> = {
@@ -47,8 +44,8 @@ const accessCopy: Record<RoleAccess, { title: string; body: string; href: string
     cta: "学生カテゴリへ進む",
   },
   official: {
-    title: "通常のBack Roomには参加できません",
-    body: "メーカー・学校・組合・企業アカウントは、公式プロフィール、協賛枠、講習会情報、PR記事での参加を想定しています。",
+    title: "参加範囲を確認します",
+    body: "その他理容業界関係者は、通常カテゴリではなく公式プロフィールや協賛枠での参加を想定しています。MVPでは運営確認後の参加導線にします。",
     href: "/partners",
     cta: "公式参加の案内を見る",
   },
@@ -58,13 +55,22 @@ export function BackRoomSetupSheet() {
   const [role, setRole] = useState(roleOptions[0].label);
   const [industryChecked, setIndustryChecked] = useState(false);
   const [rulesChecked, setRulesChecked] = useState(false);
+  const [rulesReadChecked, setRulesReadChecked] = useState(false);
 
   const selectedRole = useMemo(() => roleOptions.find((option) => option.label === role) ?? roleOptions[0], [role]);
   const copy = accessCopy[selectedRole.access];
-  const canEnter = industryChecked && rulesChecked;
+  const canEnter = industryChecked && rulesChecked && rulesReadChecked;
 
   return (
     <section className="grid gap-4 px-4 pt-4">
+      <div className="rounded-[8px] border border-blush/20 bg-white p-4 shadow-sm">
+        <h2 className="text-lg font-black leading-tight text-ink">Back Roomに参加する</h2>
+        <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
+          Back Roomは、理容師・理容業界で働く人のための営業後コミュニティです。
+          表プロフィールとは別のニックネームで、技術・経営・地域・趣味の話をゆるくできます。
+        </p>
+      </div>
+
       <div className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
         <div className="grid gap-4">
           <label className="grid gap-2">
@@ -112,7 +118,7 @@ export function BackRoomSetupSheet() {
               onChange={(event) => setIndustryChecked(event.target.checked)}
               className="mt-0.5 h-4 w-4 shrink-0 accent-blush"
             />
-            理容師・理容業界関係者として参加します。
+            私は理容師、理容学生、または理容業界関係者です。
           </label>
           <label className="flex items-start gap-2 text-xs font-bold leading-relaxed text-ink">
             <input
@@ -122,6 +128,15 @@ export function BackRoomSetupSheet() {
               className="mt-0.5 h-4 w-4 shrink-0 accent-blush"
             />
             個人攻撃、晒し、誹謗中傷をしません。
+          </label>
+          <label className="flex items-start gap-2 text-xs font-bold leading-relaxed text-ink">
+            <input
+              type="checkbox"
+              checked={rulesReadChecked}
+              onChange={(event) => setRulesReadChecked(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-blush"
+            />
+            Back Room Rulesを確認しました。
           </label>
         </div>
         <Link href="/backyard-rules" className="mt-3 inline-flex text-xs font-black text-blush">
@@ -140,7 +155,7 @@ export function BackRoomSetupSheet() {
       {canEnter ? (
         <Link href={copy.href} className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
           <CheckCircle2 aria-hidden="true" size={18} />
-          {copy.cta}
+          {selectedRole.access === "full" ? "Back Roomに入る" : copy.cta}
         </Link>
       ) : (
         <button type="button" disabled className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-neutral-200 text-sm font-black text-mute">

@@ -1,5 +1,6 @@
 import { Flag, MapPin, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
+import { BackRoomThreadDetail } from "@/components/BackRoomThreadDetail";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
@@ -39,6 +40,14 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   const accents = post?.accents ?? ["news", "student", "tool"];
   const imageUrl = post?.imageUrl;
   const source = post?.source ?? "Back Room投稿";
+
+  if (backyardPost != null) {
+    return (
+      <PageChrome>
+        <BackRoomThreadDetail thread={backyardPost} />
+      </PageChrome>
+    );
+  }
 
   return (
     <PageChrome>
