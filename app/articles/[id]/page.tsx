@@ -8,11 +8,14 @@ import { ReactionBar } from "@/components/ReactionBar";
 import { SponsorSection } from "@/components/SponsorSection";
 import { articles, findArticle, getRelatedProducts } from "@/lib/mockData";
 import { sponsorsForPlacement } from "@/lib/sponsors";
+import { getPrimaryTopicSlug, getTopicBundle } from "@/lib/topics";
 
 export default async function ArticleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const article = findArticle(id);
   const relatedProducts = getRelatedProducts(id);
+  const topicSlug = article == null ? undefined : getPrimaryTopicSlug(article);
+  const topicBundle = topicSlug == null ? undefined : getTopicBundle(topicSlug);
 
   if (article == null) {
     return (
@@ -69,9 +72,9 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
       />
 
       <section className="px-4 pt-7">
-        <h2 className="text-base font-black text-ink">関連記事</h2>
+        <h2 className="text-base font-black text-ink">{topicBundle == null ? "関連記事" : `関連する${topicBundle.topic.label}情報`}</h2>
         <div className="mt-3 grid gap-2">
-          {articles
+          {(topicBundle?.articles ?? articles)
             .filter((item) => item.id !== article.id)
             .slice(0, 3)
             .map((item) => (
@@ -82,6 +85,26 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
             ))}
         </div>
       </section>
+
+      {topicBundle == null ? null : (
+        <section className="px-4 pt-5">
+          <div className="grid gap-2">
+            {topicBundle.backRoomThreads.slice(0, 2).map((thread) => (
+              <Link key={thread.id} href={`/backyard/setup?next=/posts/${thread.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
+                <p className="text-[0.68rem] font-black text-blush">Back Room</p>
+                <p className="mt-1 truncate text-sm font-black text-ink">{thread.title ?? thread.body}</p>
+                <p className="mt-1 text-xs font-bold text-mute">{thread.comments}コメント / {thread.latestCommentAt ?? "さっき"}</p>
+              </Link>
+            ))}
+            {topicBundle.seminars.slice(0, 1).map((seminar) => (
+              <Link key={seminar.id} href="/seminars" className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
+                <p className="text-[0.68rem] font-black text-blush">関連講習</p>
+                <p className="mt-1 text-sm font-black leading-snug text-ink">{seminar.title}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </PageChrome>
   );
 }

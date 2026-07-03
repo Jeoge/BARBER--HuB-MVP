@@ -2,6 +2,7 @@ export type Article = {
   id: string;
   title: string;
   category: string;
+  topicSlugs?: string[];
   author: string;
   profileId?: string;
   date: string;
@@ -38,6 +39,7 @@ export type Post = {
   profileId?: string;
   area: string;
   category: string;
+  topicSlugs?: string[];
   source: string;
   body: string;
   thanks: number;
@@ -55,6 +57,7 @@ export type QaItem = {
   title: string;
   profileId?: string;
   category: string;
+  topicSlugs?: string[];
   status: string;
   body: string;
   comments: number;
@@ -65,6 +68,7 @@ export type Seminar = {
   id: string;
   title: string;
   category: string;
+  topicSlugs?: string[];
   meta: string;
   accent: string;
   imageUrl?: string;
@@ -74,6 +78,7 @@ export type Job = {
   id: string;
   title: string;
   category: string;
+  topicSlugs?: string[];
   meta: string;
   accent: string;
   imageUrl?: string;
@@ -90,6 +95,7 @@ export type BackyardPost = {
   anonymousName: string;
   attribute: string;
   category: string;
+  topicSlugs?: string[];
   title?: string;
   body: string;
   verificationStatus?: BackRoomVerificationStatus;
@@ -151,6 +157,7 @@ export const articles: Article[] = [
     profileId: "barber-hub-editor",
     title: "AIで楽天ビューティー閲覧数1位になった話",
     category: "AI活用",
+    topicSlugs: ["ai", "marketing"],
     author: "BARBER HUB編集部",
     date: "2026.07.01",
     summary: "写真、説明文、口コミ返信をAI編集部が整理し、閲覧数を伸ばした実践メモ。",
@@ -169,6 +176,7 @@ export const articles: Article[] = [
     profileId: "barber-sample-fukuoka-nishi",
     title: "freee APIで月2.5万円削減した話",
     category: "経営",
+    topicSlugs: ["management", "ai"],
     author: "個人店オーナー",
     date: "2026.06.30",
     summary: "会計と予約まわりの手入力を減らし、固定費と作業時間を見直した記録。",
@@ -187,6 +195,7 @@ export const articles: Article[] = [
     profileId: "barber-hub-editor",
     title: "CTI導入でPOSレジを解約した話",
     category: "経営",
+    topicSlugs: ["management", "ai"],
     author: "BARBER HUB編集部",
     date: "2026.06.29",
     summary: "電話、顧客メモ、会計導線を見直し、店舗運営の無駄を減らしたケース。",
@@ -205,6 +214,7 @@ export const articles: Article[] = [
     profileId: "barber-hub-editor",
     title: "40代以上に刺さる白髪ぼかし提案",
     category: "技術",
+    topicSlugs: ["technique", "management"],
     author: "BARBER HUB編集部",
     date: "2026.06.28",
     summary: "若返りではなく清潔感を軸に伝える、白髪ぼかし提案の考え方。",
@@ -223,6 +233,7 @@ export const articles: Article[] = [
     profileId: "barber-sample-fukuoka-nishi",
     title: "Google口コミで新規予約を増やす方法",
     category: "集客",
+    topicSlugs: ["marketing", "management"],
     author: "BARBER HUB編集部",
     date: "2026.06.27",
     summary: "口コミ依頼と返信を自然に続けるための、現場向けテンプレート集。",
@@ -241,6 +252,7 @@ export const articles: Article[] = [
     profileId: "maker-tools-demo",
     title: "静音バリカン新商品レビュー",
     category: "メーカー新商品",
+    topicSlugs: ["tools", "technique"],
     author: "メーカー情報 / BARBER HUB編集部",
     date: "2026.06.26",
     summary: "音と振動を抑えたバリカンを、朝イチ施術や子どもカット目線で確認。",
@@ -259,6 +271,7 @@ export const articles: Article[] = [
     profileId: "fukuoka-barber",
     title: "福岡フェードセミナー 要点まとめ",
     category: "講習会",
+    topicSlugs: ["technique"],
     author: "練習会レポート",
     date: "2026.06.25",
     summary: "現地に行けなかった理容師にも届く、フェード講習の学びの整理。",
@@ -334,6 +347,7 @@ export const posts: Post[] = [
     authorLabel: "個人理容師",
     area: "東京",
     category: "技術",
+    topicSlugs: ["technique", "marketing"],
     source: "個人理容師",
     body: "今日のフェード、仕上げ前の声かけを変えたら次回予約が入りました。写真は0.8mmからのつなぎです。",
     thanks: 128,
@@ -347,6 +361,7 @@ export const posts: Post[] = [
     authorLabel: "匿名理容師",
     area: "関西",
     category: "経営",
+    topicSlugs: ["management", "marketing"],
     source: "匿名理容師",
     body: "価格改定の説明文を変えたら、思ったより自然に受け入れてもらえました。値上げより、安心して通える理由を伝えることが大事でした。",
     thanks: 86,
@@ -360,6 +375,7 @@ export const posts: Post[] = [
     authorLabel: "個人店オーナー",
     area: "中部",
     category: "経営",
+    topicSlugs: ["management", "marketing"],
     source: "個人店オーナー",
     body: "次回予約の声かけを最後ではなく施術中に変えたら、自然に予約が入りやすくなりました。",
     thanks: 92,
@@ -373,6 +389,7 @@ export const posts: Post[] = [
     authorLabel: "BARBER HUB編集部",
     area: "編集部",
     category: "業界ニュース",
+    topicSlugs: ["ai", "tools"],
     source: "BARBER HUB編集部",
     body: "今週は講習会アーカイブ、求人、メーカー新商品の動きが増えています。営業前に要点だけ整理しました。",
     thanks: 74,
@@ -386,6 +403,7 @@ export const posts: Post[] = [
     authorLabel: "練習会レポート",
     area: "オンライン",
     category: "講習会",
+    topicSlugs: ["technique"],
     source: "練習会レポート",
     body: "フェード練習会で、濃く残る場所は光と姿勢を変えて見るという話が印象に残りました。",
     thanks: 67,
@@ -401,6 +419,7 @@ export const qaItems: QaItem[] = [
     profileId: "fukuoka-barber",
     title: "フェードのぼかしがつながらない",
     category: "技術",
+    topicSlugs: ["technique", "tools"],
     status: "みんなで解決中",
     body: "0.8mmから上のつなぎで、片側だけ濃く残ることがあります。光の当たり方なのか、手順なのか、確認する順番を知りたいです。",
     comments: 24,
@@ -411,6 +430,7 @@ export const qaItems: QaItem[] = [
     profileId: "anonymous-barber",
     title: "値上げの伝え方に悩んでいる",
     category: "価格改定",
+    topicSlugs: ["management"],
     status: "ただ聞いてほしい",
     body: "長年通ってくださっているお客様ほど、価格改定の伝え方に悩みます。角が立たない一言を知りたいです。",
     comments: 18,
@@ -421,6 +441,7 @@ export const qaItems: QaItem[] = [
     profileId: "barber-sample-fukuoka-nishi",
     title: "Google口コミを自然にお願いする方法",
     category: "集客",
+    topicSlugs: ["marketing", "ai"],
     status: "みんなで解決中",
     body: "口コミをお願いしたいのですが、押し売りっぽくならない言い方を探しています。",
     comments: 16,
@@ -429,15 +450,16 @@ export const qaItems: QaItem[] = [
 ];
 
 export const seminars: Seminar[] = [
-  { id: "seminar-fade", title: "福岡フェードセミナー 要点まとめ", category: "講習会", meta: "アーカイブ", accent: "seminar", imageUrl: "/images/fade-cut.jpg" },
-  { id: "contest-style", title: "コンクール入賞スタイルの見どころ", category: "コンクール", meta: "解説", accent: "haircut", imageUrl: "/images/fade-cut.jpg" },
-  { id: "online-gray", title: "白髪ぼかし提案 オンライン講習", category: "オンライン講習", meta: "後から視聴", accent: "news", imageUrl: "/images/fade-cut.jpg" },
+  { id: "seminar-fade", title: "福岡フェードセミナー 要点まとめ", category: "講習会", topicSlugs: ["technique", "tools"], meta: "アーカイブ", accent: "seminar", imageUrl: "/images/fade-cut.jpg" },
+  { id: "contest-style", title: "コンクール入賞スタイルの見どころ", category: "コンクール", topicSlugs: ["technique"], meta: "解説", accent: "haircut", imageUrl: "/images/fade-cut.jpg" },
+  { id: "online-gray", title: "白髪ぼかし提案 オンライン講習", category: "オンライン講習", topicSlugs: ["technique", "management", "marketing"], meta: "後から視聴", accent: "news", imageUrl: "/images/fade-cut.jpg" },
+  { id: "ai-review-reply", title: "口コミ返信AIワークショップ", category: "AI講習", topicSlugs: ["ai", "marketing"], meta: "オンライン", accent: "tool", imageUrl: "/images/shop-interior.jpg" },
 ];
 
 export const jobs: Job[] = [
-  { id: "job-student", title: "学生向けサロン見学の選び方", category: "学生", meta: "編集部まとめ", accent: "student", imageUrl: "/images/shop-interior.jpg" },
-  { id: "job-salon", title: "個人店の魅力が伝わる求人票の作り方", category: "求人", meta: "求人掲載", accent: "news", imageUrl: "/images/shop-interior.jpg" },
-  { id: "job-school", title: "学校向け掲載メニュー準備中", category: "学校", meta: "問い合わせ", accent: "seminar", imageUrl: "/images/shop-interior.jpg" },
+  { id: "job-student", title: "学生向けサロン見学の選び方", category: "学生", topicSlugs: ["technique"], meta: "編集部まとめ", accent: "student", imageUrl: "/images/shop-interior.jpg" },
+  { id: "job-salon", title: "個人店の魅力が伝わる求人票の作り方", category: "求人", topicSlugs: ["management", "marketing"], meta: "求人掲載", accent: "news", imageUrl: "/images/shop-interior.jpg" },
+  { id: "job-school", title: "学校向け掲載メニュー準備中", category: "学校", topicSlugs: ["technique"], meta: "問い合わせ", accent: "seminar", imageUrl: "/images/shop-interior.jpg" },
 ];
 
 export const backyardPosts: BackyardPost[] = [
@@ -446,6 +468,7 @@ export const backyardPosts: BackyardPost[] = [
     anonymousName: "一人営業の理容師",
     attribute: "一人営業",
     category: "経営",
+    topicSlugs: ["management"],
     title: "一人営業の予約、どこまで詰めてますか？",
     body: "営業後にふと、予約を詰めすぎている気がしました。みなさんは余白をどれくらい残していますか？",
     verificationStatus: "self-declared",
@@ -460,6 +483,7 @@ export const backyardPosts: BackyardPost[] = [
     anonymousName: "40代オーナー",
     attribute: "オーナー",
     category: "道具",
+    topicSlugs: ["tools", "technique"],
     title: "静音バリカンでおすすめありますか？",
     body: "朝イチや子どもカットで使いやすいものを探しています。音と振動が少ないものが知りたいです。",
     verificationStatus: "self-declared",
@@ -474,6 +498,7 @@ export const backyardPosts: BackyardPost[] = [
     anonymousName: "営業後の理容師",
     attribute: "スタッフ",
     category: "今日の営業後",
+    topicSlugs: ["management"],
     title: "今日の営業後、何飲んでます？",
     body: "忙しい一日でした。みなさんの仕事終わりルーティンをゆるく聞きたいです。",
     verificationStatus: "self-declared",
@@ -482,6 +507,36 @@ export const backyardPosts: BackyardPost[] = [
     status: "雑談中",
     reaction: "それな",
     latestCommentAt: "1時間前",
+  },
+  {
+    id: "backyard-review-ai",
+    anonymousName: "口コミ返信を見直したい理容師",
+    attribute: "スタッフ",
+    category: "AI",
+    topicSlugs: ["ai", "marketing"],
+    title: "口コミ返信、AIで下書きしている人いますか？",
+    body: "短く自然に返したいのですが、AIの文章っぽさをどう直すか知りたいです。",
+    verificationStatus: "self-declared",
+    empathy: 36,
+    comments: 12,
+    status: "経験募集",
+    reaction: "知りたい",
+    latestCommentAt: "2時間前",
+  },
+  {
+    id: "backyard-referral-voice",
+    anonymousName: "紹介を増やしたいオーナー",
+    attribute: "オーナー",
+    category: "集客",
+    topicSlugs: ["marketing", "management"],
+    title: "紹介が増える声かけ、どんな言い方してますか？",
+    body: "押しつけにならずに、ご家族や友人を紹介してもらう流れを作りたいです。",
+    verificationStatus: "self-declared",
+    empathy: 44,
+    comments: 15,
+    status: "相談中",
+    reaction: "わかる",
+    latestCommentAt: "3時間前",
   },
 ];
 

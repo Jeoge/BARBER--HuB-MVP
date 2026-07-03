@@ -5,7 +5,8 @@ import { PageChrome } from "@/components/PageChrome";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
 import { VisualTile } from "@/components/VisualTile";
-import { findBackyardPost, findPost } from "@/lib/mockData";
+import { findBackyardPost, findPost, posts } from "@/lib/mockData";
+import { getPrimaryTopicSlug, getTopicBundle } from "@/lib/topics";
 
 export default async function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,6 +30,8 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   }
 
   const isBackyard = backyardPost != null;
+  const topicSlug = getPrimaryTopicSlug(post ?? backyardPost ?? {});
+  const topicBundle = topicSlug == null ? undefined : getTopicBundle(topicSlug);
   const author = post?.authorLabel ?? backyardPost?.anonymousName ?? "";
   const area = post?.area ?? backyardPost?.attribute ?? "";
   const category = post?.category ?? backyardPost?.category ?? "";
@@ -91,6 +94,43 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           通報
         </button>
       </article>
+
+      {topicBundle == null ? null : (
+        <section className="px-4 pt-7">
+          <h2 className="text-base font-black text-ink">この話題に近い投稿</h2>
+          <div className="mt-3 grid gap-2">
+            {(topicBundle.snaps.length > 0 ? topicBundle.snaps : posts)
+              .filter((item) => item.id !== id)
+              .slice(0, 2)
+              .map((item) => (
+                <Link key={item.id} href={`/posts/${item.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
+                  <p className="text-[0.68rem] font-black text-blush">{item.category}</p>
+                  <p className="mt-1 line-clamp-2 text-sm font-medium leading-relaxed text-ink">{item.body}</p>
+                </Link>
+              ))}
+          </div>
+        </section>
+      )}
+
+      {topicBundle == null ? null : (
+        <section className="px-4 pt-5">
+          <h2 className="text-base font-black text-ink">関連する記事</h2>
+          <div className="mt-3 grid gap-2">
+            {topicBundle.articles.slice(0, 2).map((article) => (
+              <Link key={article.id} href={`/articles/${article.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
+                <p className="text-[0.68rem] font-black text-blush">{article.category}</p>
+                <p className="mt-1 text-sm font-black leading-snug text-ink">{article.title}</p>
+              </Link>
+            ))}
+            {post ? (
+              <Link href={`/backyard/setup?next=/backyard`} className="rounded-[8px] border border-blush/20 bg-blushSoft p-3">
+                <p className="text-[0.68rem] font-black text-blush">Back Room</p>
+                <p className="mt-1 text-sm font-black leading-snug text-ink">この話題をBack Roomで話す</p>
+              </Link>
+            ) : null}
+          </div>
+        </section>
+      )}
     </PageChrome>
   );
 }
