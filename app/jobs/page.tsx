@@ -133,8 +133,8 @@ export default function JobsPage() {
                   <ShieldCheck aria-hidden="true" size={13} className="text-blush" />
                   見学歓迎
                 </span>
-                <Link href={`/jobs/${job.id}`} className="inline-flex h-9 items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
-                  詳細を見る
+                <Link href={`/profiles/${job.profileId}`} className="text-xs font-black text-blush">
+                  サロンプロフィールを見る
                 </Link>
               </div>
             </article>
@@ -145,7 +145,7 @@ export default function JobsPage() {
       <SponsorSection
         eyebrow="Sponsored Career"
         title="求職者向け協賛情報"
-        subtitle="学校・地域・若手支援など、求人探しに近いお知らせです。"
+        subtitle="学校・地域の若手支援など、求人探しに近いお知らせです。"
         items={sponsorsForPlacement("jobs")}
         compact
       />
@@ -154,10 +154,10 @@ export default function JobsPage() {
         <div className="rounded-[8px] border border-line bg-neutral-50 p-4">
           <p className="text-sm font-black text-ink">サロンの方へ</p>
           <p className="mt-1 text-xs font-medium leading-relaxed text-mute">
-            求人掲載は今後も基本無料で始められる設計です。将来的には地域上位表示、注目求人、PR求人枠などを用意する想定です。
+            求人掲載は今後も基本無料で始められる設計です。Snapや記事でお店の雰囲気を伝えることも、採用のきっかけになります。
           </p>
           <Link href="/jobs/register" className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-[8px] border border-line bg-white text-sm font-black text-ink">
-            求人掲載はこちら
+            求人を掲載する
           </Link>
         </div>
       </section>

@@ -34,11 +34,11 @@ export function FollowButton({ profileId }: FollowButtonProps) {
       onClick={toggleFollow}
       aria-pressed={following}
       className={
-        "inline-flex h-10 items-center justify-center gap-1.5 rounded-[8px] px-4 text-sm font-black transition " +
+        "inline-flex h-11 items-center justify-center gap-1.5 rounded-[8px] px-3 text-xs font-black transition " +
         (following ? "border border-line bg-white text-ink" : "bg-ink text-white")
       }
     >
-      {following ? <Check aria-hidden="true" size={16} /> : <Plus aria-hidden="true" size={16} />}
+      {following ? <Check aria-hidden="true" size={15} /> : <Plus aria-hidden="true" size={15} />}
       {following ? "フォロー中" : "フォローする"}
     </button>
   );

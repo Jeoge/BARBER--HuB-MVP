@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { findJobListing } from "@/lib/jobs";
+import { findPublicProfile } from "@/lib/publicProfiles";
 
 export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,6 +25,8 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
       </PageChrome>
     );
   }
+
+  const profile = findPublicProfile(job.profileId);
 
   return (
     <PageChrome>
@@ -48,6 +51,21 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           </Link>
         </div>
       </article>
+
+      {profile ? (
+        <section className="px-4 pt-5">
+          <div className="rounded-[10px] border border-line bg-white p-4 shadow-sm">
+            <p className="text-[0.66rem] font-black uppercase tracking-[0.12em] text-blush">PROFILE LINK</p>
+            <h2 className="mt-1 text-base font-black text-ink">条件だけでなく、投稿からサロンの雰囲気も確認できます。</h2>
+            <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
+              {profile.displayName}のプロフィールでは、最近のSnapや記事、SNSリンクも見られます。
+            </p>
+            <Link href={`/profiles/${job.profileId}`} className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-[8px] border border-line bg-white text-sm font-black text-ink">
+              サロンプロフィールを見る
+            </Link>
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-2 px-4 pt-5">
         <InfoRow icon={Briefcase} label="募集職種" value={job.roles.join(" / ")} />
@@ -95,8 +113,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ id: 
           <p className="text-[0.68rem] font-black uppercase tracking-[0.12em] text-white/60">SALON SNAP</p>
           <h2 className="mt-2 text-lg font-black">このサロンの雰囲気</h2>
           <p className="mt-2 text-sm font-medium leading-relaxed text-white/70">
-            MVPではダミー枠です。将来的に、このサロンのSnapや記事、スタッフの考え方が分かる投稿を表示します。
+            求人条件だけでなく、プロフィールやSnapから店内の空気、技術の方向性、働く人の考え方も確認できます。
           </p>
+          <Link href={`/profiles/${job.profileId}`} className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-white px-4 text-sm font-black text-ink">
+            このサロンの投稿を見る
+          </Link>
         </div>
       </section>
 

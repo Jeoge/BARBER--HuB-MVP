@@ -26,7 +26,7 @@ const defaultComments: SheetComment[] = [
     author: "BARBER HUB編集部",
     profileId: "barber-hub-editor",
     date: "今日",
-    body: "現場で試しやすい形に整理して、あとから見返せるようにしています。",
+    body: "現場で試しやすい形に整理しました。あとから見返せるように保存しておくのもおすすめです。",
     likeCount: 18,
   },
   {
@@ -55,9 +55,7 @@ function CommentItem({ comment }: { comment: SheetComment }) {
     <article className="flex gap-2.5 rounded-[8px] bg-neutral-50 p-3">
       <ProfileMiniLink profileId={comment.profileId} fallbackName={comment.author} compact className="self-start pr-0" />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="text-[0.64rem] font-bold text-mute">{comment.date}</p>
-        </div>
+        <p className="text-[0.64rem] font-bold text-mute">{comment.date}</p>
         <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{comment.body}</p>
         <div className="mt-2 flex items-center gap-3 text-[0.68rem] font-bold text-mute">
           <button

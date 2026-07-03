@@ -1,10 +1,20 @@
-import { BadgeCheck, BriefcaseBusiness, ExternalLink, MapPin } from "lucide-react";
+import {
+  BadgeCheck,
+  Bookmark,
+  BriefcaseBusiness,
+  Building2,
+  CalendarDays,
+  ExternalLink,
+  MapPin,
+  MessageSquareText,
+  NotebookPen,
+} from "lucide-react";
 import Link from "next/link";
 import { FollowButton } from "@/components/FollowButton";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { articles, posts } from "@/lib/mockData";
-import { findPublicProfile, type ProfileLinkKey } from "@/lib/publicProfiles";
+import { findPublicProfile, type ProfileLinkKey, type PublicProfile } from "@/lib/publicProfiles";
 
 const linkLabels: Record<ProfileLinkKey, string> = {
   instagram: "Instagram",
@@ -15,26 +25,25 @@ const linkLabels: Record<ProfileLinkKey, string> = {
   map: "Googleマップ",
 };
 
-const postDisplay: Record<string, string> = {
-  "fade-voice": "仕上げ前の一言で、次回予約が変わる",
-  "practice-report": "フェード練習会で学んだ光の見方",
-  "owner-retention": "次回予約の声かけを施術中に変えた",
-  "editor-weekly": "今週の理容業界メモ",
-  "price-change": "価格改定の伝え方を変えてみた",
-};
-
-const articleDisplay: Record<string, string> = {
-  "rakuten-ai": "AIで楽天ビューティー閲覧数1位になった話",
-  "freee-api-cost": "freee APIで月2.5万円削減した話",
-  "google-review-growth": "Google口コミで新規予約を増やす方法",
-  "cti-pos": "CTI導入でPOSレジを解約した話",
-  "gray-blending-40s-article": "40代提案は“若返り”より“清潔感”",
-  "silent-clipper": "静音バリカン新商品レビュー",
-  "fukuoka-seminar": "福岡フェードセミナー要点まとめ",
+const typeLabels: Record<PublicProfile["type"], string> = {
+  individual: "個人",
+  salon: "サロン",
+  school: "学校",
+  maker: "メーカー",
+  dealer: "ディーラー",
+  organization: "組合",
+  company: "企業",
+  editor: "編集部",
 };
 
 function profileInitial(name: string) {
   return name.trim().slice(0, 1).toUpperCase();
+}
+
+function profileImageVariant(type: PublicProfile["type"]) {
+  if (type === "maker" || type === "dealer") return "tool";
+  if (type === "school" || type === "organization") return "seminar";
+  return "news";
 }
 
 export default async function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -48,7 +57,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-blush">PROFILE</p>
           <h1 className="mt-2 text-2xl font-black text-ink">プロフィールが見つかりません</h1>
           <p className="mt-3 text-sm font-medium leading-relaxed text-mute">
-            指定されたプロフィールはまだ登録されていません。
+            指定されたプロフィールは、まだ登録されていない可能性があります。
           </p>
           <Link href="/" className="mt-5 inline-flex h-11 items-center justify-center rounded-[8px] bg-ink px-4 text-sm font-black text-white">
             ホームへ戻る
@@ -65,22 +74,19 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
     .filter((article) => profile.recentArticleIds?.includes(article.id) || article.profileId === profile.id)
     .slice(0, 4);
   const links = Object.entries(profile.links ?? {}) as [ProfileLinkKey, string][];
+  const isHiringSalon = profile.type === "salon" && profile.isHiring && profile.jobId;
 
   return (
     <PageChrome>
       <section className="px-4 pt-4">
         <div className="relative overflow-hidden rounded-[10px] border border-line bg-white shadow-[0_10px_28px_rgba(17,17,17,0.045)]">
-          <MagazineImage src={profile.coverImageUrl} alt={profile.displayName} variant={profile.type === "maker" || profile.type === "dealer" ? "tool" : "news"} className="aspect-[16/7]" />
+          <MagazineImage src={profile.coverImageUrl} alt={profile.displayName} variant={profileImageVariant(profile.type)} className="aspect-[16/7]" />
           <div className="px-4 pb-4">
             <div className="-mt-8 flex items-end justify-between gap-3">
               <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-full border-4 border-white bg-ink text-lg font-black text-white shadow-sm">
-                {profile.avatarUrl ? (
-                  <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  profileInitial(profile.displayName)
-                )}
+                {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : profileInitial(profile.displayName)}
               </div>
-              {profile.isHiring ? (
+              {isHiringSalon ? (
                 <span className="mb-1 inline-flex items-center gap-1 rounded-full border border-blush/20 bg-blushSoft px-2.5 py-1 text-[0.66rem] font-black text-blush">
                   <BriefcaseBusiness aria-hidden="true" size={13} />
                   求人中
@@ -89,16 +95,22 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-line bg-neutral-50 px-2.5 py-1 text-[0.66rem] font-semibold text-ink/78">
+                {typeLabels[profile.type]}
+              </span>
               {profile.badges.map((badge) => (
                 <span key={badge} className="rounded-full border border-line bg-white px-2.5 py-1 text-[0.66rem] font-semibold text-ink/78">
                   {badge}
                 </span>
               ))}
               {profile.verified ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-line bg-neutral-50 px-2.5 py-1 text-[0.66rem] font-semibold text-mute">
+                <span className="inline-flex items-center gap-1 rounded-full border border-line bg-white px-2.5 py-1 text-[0.66rem] font-semibold text-mute">
                   <BadgeCheck aria-hidden="true" size={13} className="text-blush" />
                   認証済み
                 </span>
+              ) : null}
+              {profile.pr ? (
+                <span className="rounded-full border border-line bg-white px-2.5 py-1 text-[0.66rem] font-semibold text-mute">PR</span>
               ) : null}
             </div>
 
@@ -119,20 +131,45 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
               </div>
             ) : null}
 
-            <div className="mt-4 grid gap-2">
+            <div className="mt-4 grid grid-cols-3 gap-2">
               <FollowButton profileId={profile.id} />
-              {profile.isHiring && profile.jobId ? (
-                <Link
-                  href={`/jobs/${profile.jobId}`}
-                  className="inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white"
-                >
-                  このサロンの求人を見る
-                </Link>
-              ) : null}
+              <button type="button" className="inline-flex h-11 items-center justify-center gap-1.5 rounded-[8px] border border-line bg-white px-2 text-xs font-black text-ink">
+                <Bookmark aria-hidden="true" size={15} />
+                保存
+              </button>
+              <button type="button" className="inline-flex h-11 items-center justify-center gap-1.5 rounded-[8px] border border-line bg-white px-2 text-xs font-black text-ink">
+                <NotebookPen aria-hidden="true" size={15} />
+                メモ
+              </button>
             </div>
           </div>
         </div>
       </section>
+
+      {isHiringSalon ? (
+        <section className="px-4 pt-5">
+          <div className="rounded-[10px] border border-blush/20 bg-white p-4 shadow-[0_10px_24px_rgba(17,17,17,0.04)]">
+            <p className="text-[0.66rem] font-black uppercase tracking-[0.12em] text-blush">HIRING</p>
+            <h2 className="mt-1 text-lg font-black text-ink">このサロンは見学・応募を受付中</h2>
+            <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
+              投稿やSnapでお店の雰囲気を見て、気になったら見学へ。
+            </p>
+            <div className="mt-3 grid gap-2">
+              <Link href={`/jobs/${profile.jobId}`} className="inline-flex h-11 items-center justify-center rounded-[8px] bg-ink px-3 text-sm font-black text-white">
+                このサロンの求人を見る
+              </Link>
+              <div className="grid grid-cols-2 gap-2">
+                <Link href={`/jobs/${profile.jobId}/apply?type=tour`} className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
+                  見学を申し込む
+                </Link>
+                <Link href={`/jobs/${profile.jobId}/apply?type=interview`} className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
+                  面接を申し込む
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {links.length > 0 ? (
         <section className="px-4 pt-6">
@@ -168,6 +205,19 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
         </section>
       ) : null}
 
+      {profile.type === "salon" ? (
+        <section className="px-4 pt-7">
+          <div className="rounded-[10px] border border-line bg-white p-4">
+            <p className="text-[0.66rem] font-black uppercase tracking-[0.12em] text-blush">SALON MOOD</p>
+            <h2 className="mt-1 text-base font-black text-ink">このサロンの雰囲気</h2>
+            <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
+              求人票だけでなく、Snapや記事から店の空気感、技術の方向性、オーナーの考え方を確認できます。
+            </p>
+            <MagazineImage src={profile.coverImageUrl} alt={`${profile.displayName}の雰囲気`} variant="news" className="mt-3 aspect-[16/8]" />
+          </div>
+        </section>
+      ) : null}
+
       <section className="px-4 pt-7">
         <div className="flex items-end justify-between">
           <h2 className="text-base font-black text-ink">最近のSnap</h2>
@@ -180,7 +230,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
             recentPosts.map((post) => (
               <Link key={post.id} href={`/posts/${post.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
                 <p className="text-[0.66rem] font-black text-blush">{post.category}</p>
-                <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-ink">{postDisplay[post.id] ?? post.body}</p>
+                <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-ink">{post.body}</p>
               </Link>
             ))
           ) : (
@@ -196,7 +246,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
             recentArticles.map((article) => (
               <Link key={article.id} href={`/articles/${article.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
                 <p className="text-[0.66rem] font-black text-blush">{article.category}</p>
-                <p className="mt-1 text-sm font-black leading-snug text-ink">{articleDisplay[article.id] ?? article.title}</p>
+                <p className="mt-1 text-sm font-black leading-snug text-ink">{article.title}</p>
               </Link>
             ))
           ) : (
@@ -204,6 +254,41 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
           )}
         </div>
       </section>
+
+      <section className="px-4 pt-7">
+        <h2 className="text-base font-black text-ink">予定・イベント</h2>
+        <div className="mt-3 grid gap-2.5">
+          {(profile.eventItems ?? []).length > 0 ? (
+            profile.eventItems?.map((event) => (
+              <Link key={event.title} href={event.href} className="flex items-start gap-3 rounded-[8px] border border-line bg-white p-3 shadow-sm">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-neutral-50 text-blush">
+                  <CalendarDays aria-hidden="true" size={17} />
+                </span>
+                <span>
+                  <span className="block text-sm font-black text-ink">{event.title}</span>
+                  <span className="mt-0.5 block text-xs font-bold text-mute">{event.meta}</span>
+                </span>
+              </Link>
+            ))
+          ) : (
+            <p className="rounded-[8px] border border-line bg-white p-4 text-sm font-medium text-mute">予定・イベントは準備中です。</p>
+          )}
+        </div>
+      </section>
+
+      {profile.type !== "individual" && profile.type !== "salon" ? (
+        <section className="px-4 pt-7">
+          <div className="rounded-[10px] border border-line bg-neutral-50 p-4">
+            <div className="flex items-center gap-2 text-sm font-black text-ink">
+              {profile.type === "maker" || profile.type === "dealer" ? <Building2 aria-hidden="true" size={17} /> : <MessageSquareText aria-hidden="true" size={17} />}
+              {typeLabels[profile.type]}プロフィール
+            </div>
+            <p className="mt-2 text-xs font-medium leading-relaxed text-mute">
+              学校、メーカー、ディーラー、組合の情報は、イベント・商品・講習会・支援情報として整理して表示します。
+            </p>
+          </div>
+        </section>
+      ) : null}
     </PageChrome>
   );
 }

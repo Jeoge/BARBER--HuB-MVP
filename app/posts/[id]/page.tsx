@@ -64,7 +64,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
         {isBackyard ? (
           <div className="mt-4 rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-[0.78rem] font-black text-ink">
-            Back Room投稿です。個別投稿を勝手に表側へ転載しません。
+            Back Room投稿です。匿名投稿を勝手に表側へ転載しません。
           </div>
         ) : null}
 
@@ -81,7 +81,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
         )}
 
         <ReactionBar
-          contentId={isBackyard ? `backyard:${id}` : `post:${id}`}
+          contentId={isBackyard ? `backroom:${id}` : `post:${id}`}
           commentTitle={isBackyard ? "Back Roomコメント" : "スナップへのコメント"}
           className="mt-4"
         />

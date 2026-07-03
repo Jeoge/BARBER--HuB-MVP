@@ -2,6 +2,12 @@ export type PublicProfileType = "individual" | "salon" | "school" | "maker" | "d
 
 export type ProfileLinkKey = "instagram" | "x" | "youtube" | "tiktok" | "website" | "map";
 
+export type ProfileEventItem = {
+  title: string;
+  meta: string;
+  href: string;
+};
+
 export type PublicProfile = {
   id: string;
   displayName: string;
@@ -18,6 +24,7 @@ export type PublicProfile = {
   jobId?: string;
   recentPostIds?: string[];
   recentArticleIds?: string[];
+  eventItems?: ProfileEventItem[];
   detailRows?: { label: string; value: string }[];
   pr?: boolean;
 };
@@ -41,6 +48,7 @@ export const publicProfiles: PublicProfile[] = [
     },
     recentPostIds: ["fade-voice", "practice-report"],
     recentArticleIds: ["fukuoka-seminar"],
+    eventItems: [{ title: "福岡フェード練習会レポート", meta: "講習会参加投稿", href: "/articles/fukuoka-seminar" }],
   },
   {
     id: "barber-sample-fukuoka-nishi",
@@ -61,6 +69,10 @@ export const publicProfiles: PublicProfile[] = [
     jobId: "barber-sample-fukuoka-nishi",
     recentPostIds: ["owner-retention"],
     recentArticleIds: ["freee-api-cost", "google-review-growth"],
+    eventItems: [
+      { title: "サロン見学受付中", meta: "求人 / 見学", href: "/jobs/barber-sample-fukuoka-nishi/apply?type=tour" },
+      { title: "営業後の技術練習を公開予定", meta: "Snap連動", href: "/snap" },
+    ],
     detailRows: [
       { label: "営業時間", value: "9:00 - 19:00" },
       { label: "定休日", value: "月曜 / 不定休" },
@@ -84,6 +96,7 @@ export const publicProfiles: PublicProfile[] = [
     },
     recentPostIds: ["editor-weekly"],
     recentArticleIds: ["rakuten-ai", "cti-pos", "gray-blending-40s-article"],
+    eventItems: [{ title: "今週の理容業界まとめ", meta: "編集部更新", href: "/" }],
   },
   {
     id: "anonymous-barber",
@@ -109,9 +122,13 @@ export const publicProfiles: PublicProfile[] = [
       website: "https://example.com",
       instagram: "https://example.com",
     },
+    eventItems: [
+      { title: "オープンキャンパス案内", meta: "学校イベント", href: "/seminars" },
+      { title: "学生向け就職相談", meta: "就職支援", href: "/jobs" },
+    ],
     detailRows: [
       { label: "所在地", value: "東京都" },
-      { label: "将来枠", value: "オープンキャンパス情報を掲載予定" },
+      { label: "案内", value: "オープンキャンパス情報を掲載予定" },
     ],
   },
   {
@@ -130,6 +147,10 @@ export const publicProfiles: PublicProfile[] = [
       youtube: "https://example.com",
     },
     recentArticleIds: ["silent-clipper"],
+    eventItems: [
+      { title: "静音バリカン体験会", meta: "メーカー講習", href: "/seminars" },
+      { title: "商品情報を見る", meta: "プロ向け商品", href: "/partners" },
+    ],
   },
   {
     id: "dealer-west-demo",
@@ -144,6 +165,7 @@ export const publicProfiles: PublicProfile[] = [
     links: {
       website: "https://example.com",
     },
+    eventItems: [{ title: "取り扱い商品と講習会情報", meta: "ディーラー情報", href: "/partners" }],
   },
   {
     id: "regional-union-demo",
@@ -154,10 +176,14 @@ export const publicProfiles: PublicProfile[] = [
     avatarUrl: "/images/shop-interior.jpg",
     coverImageUrl: "/images/shop-interior.jpg",
     bio: "地域講習会や理容業界の支援情報を発信する、組合向けのサンプルプロフィールです。",
-    specialtyTags: ["地域支援", "講習会", "お知らせ"],
+    specialtyTags: ["地域支援", "講習会", "共済案内", "若手支援"],
     links: {
       website: "https://example.com",
     },
+    eventItems: [
+      { title: "地域講習会のお知らせ", meta: "組合イベント", href: "/seminars" },
+      { title: "若手理容師支援", meta: "支援情報", href: "/jobs" },
+    ],
   },
 ];
 

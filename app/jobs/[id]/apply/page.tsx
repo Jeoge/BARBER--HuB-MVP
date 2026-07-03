@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PageChrome } from "@/components/PageChrome";
 import { findJobListing } from "@/lib/jobs";
 
-const positions = ["理容専門学生", "アシスタント", "スタイリスト", "ブランクあり", "転職検討中", "その他"];
+const positions = ["理容学生", "アシスタント", "スタイリスト", "ブランクあり", "転職検討中", "その他"];
 
 export default async function JobApplyPage({
   params,
@@ -38,6 +38,9 @@ export default async function JobApplyPage({
         <p className="mt-2 text-[0.86rem] font-medium leading-relaxed text-mute">
           {job.salonName}への{applicationType}申込です。MVPでは送信後の仮完了表示のみ行います。
         </p>
+        <Link href={`/profiles/${job.profileId}`} className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-[8px] border border-line bg-white text-sm font-black text-ink">
+          応募前にサロンプロフィールを確認する
+        </Link>
       </section>
 
       <form className="grid gap-4 px-4 pt-5">
@@ -59,7 +62,7 @@ export default async function JobApplyPage({
           <Input label="スタイリスト歴" placeholder="例：3年" />
         </div>
 
-        <Input label={`希望内容（${applicationType}）`} placeholder={`${applicationType}で相談したいこと`} />
+        <Input label={`${applicationType}で相談したいこと`} placeholder={`${applicationType}で確認したいこと`} />
         <Input label="希望勤務エリア" placeholder="例：福岡市内、通勤30分以内" />
         <Input label={`${applicationType}希望日`} placeholder="例：平日の午前、来週火曜など" />
 

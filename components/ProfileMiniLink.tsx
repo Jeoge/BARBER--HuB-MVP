@@ -18,7 +18,7 @@ function initials(name: string) {
 export function ProfileMiniLink({ profileId, fallbackName = "BARBER HUB", compact = false, className = "" }: ProfileMiniLinkProps) {
   const profile = findPublicProfile(profileId);
   const name = profile?.displayName ?? fallbackName;
-  const badge = profile?.badges?.[0];
+  const badge = profile?.isHiring ? "求人中" : profile?.badges?.[0];
 
   function stopParentNavigation(event: MouseEvent<HTMLAnchorElement>) {
     event.stopPropagation();
