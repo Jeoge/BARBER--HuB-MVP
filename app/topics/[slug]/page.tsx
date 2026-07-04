@@ -1,8 +1,10 @@
-import { ChevronRight, Clock, MessageCircle } from "lucide-react";
+import { ChevronRight, Clock, ExternalLink, MapPin, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
+import { ToolActionLinks } from "@/components/ToolActionLinks";
+import { toolPartners, type ToolPartner } from "@/lib/tool-partners";
 import { getTopicBundle, topics, type TopicBundle } from "@/lib/topics";
 
 export function generateStaticParams() {
@@ -54,12 +56,136 @@ function EditorsPick({ bundle }: { bundle: TopicBundle }) {
   );
 }
 
+function ToolPartnerCard({ partner }: { partner: ToolPartner }) {
+  const actionLabel =
+    partner.type === "online-store"
+      ? "見る"
+      : partner.type === "regional-dealer" || partner.type === "dealer"
+        ? "相談する"
+        : partner.type === "seminar"
+          ? "講習を見る"
+          : "見る";
+  const card = (
+    <article className="h-full rounded-[8px] border border-line bg-white p-3 shadow-[0_8px_20px_rgba(17,17,17,0.035)]">
+      <MagazineImage src={partner.imageUrl} alt={partner.name} variant={partner.type === "seminar" ? "seminar" : "tool"} className="aspect-[16/8]" />
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <span className="rounded-full border border-line bg-neutral-50 px-2 py-0.5 text-[0.58rem] font-black text-mute">{partner.label}</span>
+        <span className="inline-flex items-center gap-1 text-[0.62rem] font-bold text-mute">
+          <MapPin aria-hidden="true" size={12} />
+          {partner.area}
+        </span>
+      </div>
+      <h3 className="mt-2 text-sm font-black leading-snug text-ink">{partner.name}</h3>
+      <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{partner.description}</p>
+      <p className="mt-2 inline-flex items-center gap-1 text-xs font-black text-blush">
+        {actionLabel}
+        {partner.external ? <ExternalLink aria-hidden="true" size={12} /> : null}
+      </p>
+    </article>
+  );
+
+  if (partner.external) {
+    return (
+      <a href={partner.href} target="_blank" rel="noreferrer" className="block h-full">
+        {card}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={partner.href} className="block h-full">
+      {card}
+    </Link>
+  );
+}
+
+function ToolsTopicPage({ bundle }: { bundle: TopicBundle }) {
+  const articleList = bundle.articles.slice(0, 6);
+  const onlinePartners = toolPartners.filter((partner) => partner.type === "online-store");
+  const consultPartners = toolPartners.filter((partner) => partner.type === "dealer" || partner.type === "regional-dealer");
+  const learningPartners = toolPartners.filter((partner) => partner.type === "manufacturer" || partner.type === "seminar");
+
+  return (
+    <PageChrome>
+      <section className="px-4 pt-5">
+        <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-blush">TOOLS</p>
+        <h1 className="mt-1 text-[1.65rem] font-black leading-tight text-ink">道具</h1>
+        <p className="mt-2 text-[0.86rem] font-medium leading-relaxed text-mute">
+          バリカン、トリマー、コーム、整髪料、クロス。現場で使う道具を、記事・Snap・レビューから探す。
+        </p>
+        <div className="mt-3 rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-medium leading-relaxed text-mute">
+          BARBER HUBでは商品の販売、決済、配送、返品対応は行いません。気になる道具は、オンライン購入先・メーカー・ディーラー・地域ディーラーへ進めます。
+        </div>
+      </section>
+
+      <EditorsPick bundle={bundle} />
+
+      <section className="px-4 pt-7">
+        <SectionHeader title="道具記事" />
+        <div className="grid gap-2.5">
+          {articleList.map((article) => (
+            <CompactLinkCard key={article.id} href={`/articles/${article.id}`} label={article.category} title={article.title} meta={article.summary} />
+          ))}
+        </div>
+      </section>
+
+      <section className="px-4 pt-7">
+        <SectionHeader title="現場のSnap" actionHref="/snap" />
+        <div className="grid gap-2.5">
+          {bundle.snaps.slice(0, 3).map((snap) => (
+            <Link key={snap.id} href={`/posts/${snap.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
+              <p className="text-[0.64rem] font-black text-blush">{snap.category}</p>
+              <p className="mt-1 line-clamp-2 text-sm font-medium leading-relaxed text-ink">{snap.body}</p>
+              <p className="mt-2 text-xs font-bold text-mute">{snap.authorLabel} / {snap.area}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="px-4 pt-7">
+        <SectionHeader title="道具を探す・相談する" actionHref="/partners/dealers" />
+        <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
+          {toolPartners.slice(0, 5).map((partner) => (
+            <div key={partner.id} className="w-[76%] shrink-0">
+              <ToolPartnerCard partner={partner} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="px-4 pt-7">
+        <SectionHeader title="購入する / 相談する / 学ぶ" />
+        <div className="grid gap-2.5">
+          {onlinePartners.map((partner) => <ToolPartnerCard key={partner.id} partner={partner} />)}
+          {consultPartners.slice(0, 2).map((partner) => <ToolPartnerCard key={partner.id} partner={partner} />)}
+          {learningPartners.slice(0, 2).map((partner) => <ToolPartnerCard key={partner.id} partner={partner} />)}
+        </div>
+      </section>
+
+      <ToolActionLinks />
+
+      <section className="px-4 pt-7">
+        <SectionHeader title="関連講習" actionHref="/seminars" />
+        <div className="grid gap-2.5">
+          {bundle.seminars.slice(0, 3).map((seminar) => (
+            <CompactLinkCard key={seminar.id} href="/seminars" label={seminar.category} title={seminar.title} meta={seminar.meta} />
+          ))}
+        </div>
+      </section>
+    </PageChrome>
+  );
+}
+
 export default async function TopicPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const bundle = getTopicBundle(slug);
 
   if (bundle == null) {
     notFound();
+  }
+
+  if (bundle.topic.slug === "tools") {
+    return <ToolsTopicPage bundle={bundle} />;
   }
 
   const articleList = bundle.articles.length > 1 ? bundle.articles.slice(1, 5) : bundle.articles.slice(0, 1);

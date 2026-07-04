@@ -30,7 +30,10 @@ const typeLabels: Record<PublicProfile["type"], string> = {
   salon: "サロン",
   school: "学校",
   maker: "メーカー",
+  manufacturer: "メーカー",
   dealer: "ディーラー",
+  "regional-dealer": "地域ディーラー",
+  "online-store": "オンライン購入先",
   organization: "組合",
   company: "企業",
   editor: "編集部",
@@ -41,7 +44,7 @@ function profileInitial(name: string) {
 }
 
 function profileImageVariant(type: PublicProfile["type"]) {
-  if (type === "maker" || type === "dealer") return "tool";
+  if (type === "maker" || type === "manufacturer" || type === "dealer" || type === "regional-dealer" || type === "online-store") return "tool";
   if (type === "school" || type === "organization") return "seminar";
   return "news";
 }
@@ -280,11 +283,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
         <section className="px-4 pt-7">
           <div className="rounded-[10px] border border-line bg-neutral-50 p-4">
             <div className="flex items-center gap-2 text-sm font-black text-ink">
-              {profile.type === "maker" || profile.type === "dealer" ? <Building2 aria-hidden="true" size={17} /> : <MessageSquareText aria-hidden="true" size={17} />}
+              {profile.type === "maker" || profile.type === "manufacturer" || profile.type === "dealer" || profile.type === "regional-dealer" || profile.type === "online-store" ? <Building2 aria-hidden="true" size={17} /> : <MessageSquareText aria-hidden="true" size={17} />}
               {typeLabels[profile.type]}プロフィール
             </div>
             <p className="mt-2 text-xs font-medium leading-relaxed text-mute">
-              学校、メーカー、ディーラー、組合の情報は、イベント・商品・講習会・支援情報として整理して表示します。
+              学校、メーカー、ディーラー、オンライン購入先、組合の情報は、イベント・商品・講習会・支援情報として整理して表示します。
             </p>
           </div>
         </section>

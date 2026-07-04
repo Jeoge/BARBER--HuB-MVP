@@ -1,4 +1,4 @@
-export type PublicProfileType = "individual" | "salon" | "school" | "maker" | "dealer" | "organization" | "company" | "editor";
+export type PublicProfileType = "individual" | "salon" | "school" | "maker" | "manufacturer" | "dealer" | "regional-dealer" | "online-store" | "organization" | "company" | "editor";
 
 export type ProfileLinkKey = "instagram" | "x" | "youtube" | "tiktok" | "website" | "map";
 
@@ -183,6 +183,90 @@ export const publicProfiles: PublicProfile[] = [
     eventItems: [
       { title: "地域講習会のお知らせ", meta: "組合イベント", href: "/seminars" },
       { title: "若手理容師支援", meta: "支援情報", href: "/jobs" },
+    ],
+  },
+  {
+    id: "beauty-garage-sample",
+    displayName: "BEAUTY GARAGE（サンプル導線）",
+    type: "online-store",
+    badges: ["PR", "オンライン購入先", "サンプル"],
+    pr: true,
+    area: "全国",
+    avatarUrl: "/images/tools-stilllife.jpg",
+    coverImageUrl: "/images/tools-stilllife.jpg",
+    bio: "プロ向け理美容器具・用品をオンラインで確認できる購入導線のサンプルプロフィールです。正式提携を示すものではありません。",
+    specialtyTags: ["バリカン", "トリマー", "コーム", "店販"],
+    links: {
+      website: "https://example.com/beauty-garage-sample",
+    },
+    recentArticleIds: ["tools-silent-clipper", "tools-fade-comb"],
+    detailRows: [
+      { label: "種別", value: "オンライン購入先" },
+      { label: "注意", value: "購入・在庫・価格・配送・返品は外部サイトで確認" },
+    ],
+  },
+  {
+    id: "sample-maker-clipper",
+    displayName: "サンプルクリッパーメーカー",
+    type: "manufacturer",
+    badges: ["Sponsored", "メーカー", "講習"],
+    pr: true,
+    area: "全国",
+    avatarUrl: "/images/tools-stilllife.jpg",
+    coverImageUrl: "/images/tools-stilllife.jpg",
+    bio: "バリカン・トリマーの使い方や商品説明、講習情報を発信するメーカー枠のサンプルです。",
+    specialtyTags: ["バリカン", "トリマー", "講習", "商品説明"],
+    links: {
+      website: "https://example.com",
+      youtube: "https://example.com",
+    },
+    recentArticleIds: ["tools-silent-clipper", "tools-styling-products"],
+    eventItems: [{ title: "静音バリカン講習", meta: "メーカー講習", href: "/seminars" }],
+    detailRows: [
+      { label: "取扱", value: "バリカン、トリマー、講習" },
+      { label: "掲載", value: "Sponsored / PR想定" },
+    ],
+  },
+  {
+    id: "sample-dealer-national",
+    displayName: "全国サンプルディーラー",
+    type: "dealer",
+    badges: ["協賛", "ディーラー"],
+    pr: true,
+    area: "全国",
+    avatarUrl: "/images/shop-interior.jpg",
+    coverImageUrl: "/images/shop-interior.jpg",
+    bio: "複数メーカーの比較相談、講習、開業準備を相談できる全国ディーラー枠のサンプルです。",
+    specialtyTags: ["開業", "比較相談", "講習", "店販"],
+    links: {
+      website: "https://example.com",
+    },
+    recentArticleIds: ["tools-opening-checklist", "tools-fade-comb"],
+    eventItems: [{ title: "開業準備 道具相談会", meta: "ディーラー相談", href: "/seminars" }],
+    detailRows: [
+      { label: "取扱", value: "バリカン、カラー、パーマ、店販、開業相談" },
+      { label: "エリア", value: "全国" },
+    ],
+  },
+  {
+    id: "sample-dealer-kyushu",
+    displayName: "九州サンプルディーラー",
+    type: "regional-dealer",
+    badges: ["Partner", "地域ディーラー"],
+    area: "九州・沖縄",
+    avatarUrl: "/images/shop-interior.jpg",
+    coverImageUrl: "/images/shop-interior.jpg",
+    bio: "九州・沖縄エリアのサロンに合わせた道具相談、講習会、導入相談ができる地域ディーラー枠です。",
+    specialtyTags: ["地域相談", "講習", "開業", "替刃", "店販"],
+    links: {
+      website: "https://example.com",
+      map: "https://example.com",
+    },
+    recentArticleIds: ["tools-blade-maintenance", "tools-opening-checklist"],
+    eventItems: [{ title: "九州・沖縄 道具相談日", meta: "地域ディーラー相談", href: "/seminars" }],
+    detailRows: [
+      { label: "対応", value: "九州・沖縄" },
+      { label: "取扱", value: "バリカン、カラー、パーマ、店販、開業相談" },
     ],
   },
 ];

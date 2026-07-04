@@ -6,6 +6,7 @@ import { ProductSection } from "@/components/ProductSection";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
 import { SponsorSection } from "@/components/SponsorSection";
+import { ToolActionLinks } from "@/components/ToolActionLinks";
 import { articles, findArticle, getRelatedProducts } from "@/lib/mockData";
 import { sponsorsForPlacement } from "@/lib/sponsors";
 import { getPrimaryTopicSlug, getTopicBundle } from "@/lib/topics";
@@ -16,6 +17,7 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
   const relatedProducts = getRelatedProducts(id);
   const topicSlug = article == null ? undefined : getPrimaryTopicSlug(article);
   const topicBundle = topicSlug == null ? undefined : getTopicBundle(topicSlug);
+  const isToolArticle = article?.topicSlugs?.includes("tools") ?? false;
 
   if (article == null) {
     return (
@@ -62,6 +64,8 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
         subtitle="記事の文脈に合う商品だけを、BARBER HUB編集部が整理します。"
         products={relatedProducts}
       />
+
+      {isToolArticle ? <ToolActionLinks /> : null}
 
       <SponsorSection
         eyebrow="PR / Partner"
