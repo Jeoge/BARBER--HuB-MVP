@@ -76,6 +76,9 @@ export function BackRoomThreadDetail({ thread }: { thread: BackyardPost }) {
         <h1 className="mt-3 text-[1.45rem] font-black leading-tight text-ink">{thread.title ?? thread.body}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-mute">
           <span>{thread.anonymousName}</span>
+          {thread.roleLabel ? (
+            <span className="rounded-full border border-line bg-neutral-50 px-2 py-0.5 text-[0.58rem] font-black text-mute">{thread.roleLabel}</span>
+          ) : null}
           <span>{thread.createdAt ?? "今日"}</span>
           <span>{thread.comments}コメント</span>
         </div>

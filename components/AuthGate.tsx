@@ -21,8 +21,8 @@ const copyMap: Record<GateKind, Copy> = {
     href: "/signup",
   },
   backyard: {
-    title: "Back Roomは理容師限定です",
-    body: "仕事終わりに、技術・道具・経営・今日あったことを理容師同士で話せる会員限定エリアです。安心して使える場所にするため、会員登録が必要です。",
+    title: "Back Roomは理美容業界向けです",
+    body: "理容師を中心に、理美容業界の人が仕事終わりに技術・道具・経営・今日あったことを話せる会員限定エリアです。安心して使える場所にするため、会員登録が必要です。",
     cta: "会員登録して設定へ",
     href: "/signup?next=/backyard/setup",
   },

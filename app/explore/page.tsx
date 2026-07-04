@@ -71,7 +71,7 @@ export default function ExplorePage() {
           </span>
           <span>
             <span className="block text-sm font-black text-ink">Back Room入口</span>
-            <span className="mt-0.5 block text-xs font-bold text-mute">理容師だけの仕事終わりコミュニティ</span>
+            <span className="mt-0.5 block text-xs font-bold text-mute">理容師を中心に、理美容業界の人が話せる営業後コミュニティ</span>
           </span>
         </AuthGateLink>
       </section>

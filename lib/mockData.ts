@@ -94,6 +94,7 @@ export type BackyardPost = {
   id: string;
   anonymousName: string;
   attribute: string;
+  roleLabel?: string;
   category: string;
   topicSlugs?: string[];
   roomId?: string;
@@ -471,6 +472,7 @@ export const backyardPosts: BackyardPost[] = [
     id: "backyard-price",
     anonymousName: "一人営業の理容師",
     attribute: "一人営業",
+    roleLabel: "理容師",
     category: "経営",
     topicSlugs: ["management"],
     roomId: "management",
@@ -490,6 +492,7 @@ export const backyardPosts: BackyardPost[] = [
     id: "backyard-lonely",
     anonymousName: "40代オーナー",
     attribute: "オーナー",
+    roleLabel: "サロンオーナー",
     category: "道具",
     topicSlugs: ["tools", "technique"],
     roomId: "tools",
@@ -509,6 +512,7 @@ export const backyardPosts: BackyardPost[] = [
     id: "backyard-sns-fatigue",
     anonymousName: "営業後の理容師",
     attribute: "スタッフ",
+    roleLabel: "理容師",
     category: "今日の営業後",
     topicSlugs: ["management"],
     roomId: "hobby",
@@ -526,8 +530,9 @@ export const backyardPosts: BackyardPost[] = [
   },
   {
     id: "backyard-review-ai",
-    anonymousName: "口コミ返信を見直したい理容師",
+    anonymousName: "口コミ返信を見直したい美容師",
     attribute: "スタッフ",
+    roleLabel: "美容師",
     category: "AI",
     topicSlugs: ["ai", "marketing"],
     roomId: "management",
@@ -547,6 +552,7 @@ export const backyardPosts: BackyardPost[] = [
     id: "backyard-referral-voice",
     anonymousName: "紹介を増やしたいオーナー",
     attribute: "オーナー",
+    roleLabel: "サロンオーナー",
     category: "集客",
     topicSlugs: ["marketing", "management"],
     roomId: "management",
@@ -566,6 +572,7 @@ export const backyardPosts: BackyardPost[] = [
     id: "backyard-rules-update",
     anonymousName: "BARBER HUB運営",
     attribute: "運営",
+    roleLabel: "運営",
     category: "運営からのお知らせ",
     topicSlugs: ["management"],
     roomId: "notice",

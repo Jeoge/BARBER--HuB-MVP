@@ -25,7 +25,7 @@ export function BackyardSection() {
               会員限定
             </div>
             <h2 className="mt-2 text-[1.28rem] font-black leading-none text-ink">Back Room</h2>
-            <p className="mt-1 text-[0.78rem] font-black text-ink">理容師だけの、営業後コミュニティ。</p>
+            <p className="mt-1 text-[0.78rem] font-black text-ink">理容師を中心に、理美容業界の人が話せる営業後コミュニティ。</p>
           </div>
           <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blushSoft text-blush">
             <MessageCircle aria-hidden="true" size={21} />

@@ -12,7 +12,7 @@ const benefits = [
 
 const signupBenefits = benefits.map((benefit, index) => (index === 1 ? "Thanksポイントを貯めて商品と交換" : benefit));
 
-const memberTypes = ["理容師", "理容学生", "サロンオーナー", "メーカー・ディーラー", "学校関係者", "組合・団体関係者", "求人掲載希望"];
+const memberTypes = ["理容師", "美容師", "理容学生", "美容学生", "理美容アシスタント", "サロンオーナー", "メーカー・ディーラー", "学校関係者", "組合・団体関係者", "求人掲載希望"];
 const interests = ["経営", "集客", "AI", "技術", "道具", "Q&A", "講習会", "求人", "Back Room"];
 
 export default function SignupPage() {
@@ -53,10 +53,10 @@ export default function SignupPage() {
         <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-4">
           <div className="flex items-center gap-2 text-sm font-black text-ink">
             <LockKeyhole aria-hidden="true" size={18} className="text-blush" />
-            Back Roomは理容師だけの仕事終わりコミュニティです。
+            Back Roomは理容師を中心に、理美容業界の人が話せる営業後コミュニティです。
           </div>
           <p className="mt-2 text-[0.78rem] font-medium leading-relaxed text-mute">
-            Back Roomは原則として理容師・理容学生のみ利用できます。安心してスレッドで話せる場所にするため、会員タイプを確認します。
+            Back Roomは理容師・美容師・理美容学生などが自然に交流できる場所です。安心してスレッドで話せるように、会員タイプを確認します。
           </p>
         </div>
       </section>

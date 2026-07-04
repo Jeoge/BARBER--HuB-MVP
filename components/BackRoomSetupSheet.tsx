@@ -17,7 +17,10 @@ const roleOptions: RoleOption[] = [
   { label: "アシスタント", access: "full" },
   { label: "スタイリスト", access: "full" },
   { label: "理容学生", access: "student" },
-  { label: "その他理容業界関係者", access: "official" },
+  { label: "美容師", access: "full" },
+  { label: "美容学生", access: "student" },
+  { label: "理美容アシスタント", access: "full" },
+  { label: "その他理美容業界関係者", access: "official" },
 ];
 
 const areaOptions = [
@@ -33,23 +36,29 @@ const areaOptions = [
 const accessCopy: Record<RoleAccess, { title: string; body: string; href: string; cta: string }> = {
   full: {
     title: "通常のBack Roomに参加できます",
-    body: "地域・経営・独立・技術・道具など、通常カテゴリのスレッドに参加できます。",
+    body: "地域・経営・独立・技術・道具など、職種で部屋を分けずにテーマ別のスレッドへ参加できます。",
     href: "/backyard",
     cta: "Back Roomへ進む",
   },
   student: {
-    title: "学生系カテゴリに参加できます",
-    body: "理容学生は、学生・練習・進路相談などのカテゴリから参加できます。通常カテゴリへの参加範囲は段階的に広げます。",
+    title: "理美容学生として参加できます",
+    body: "理美容学生は、はじめての部屋や技術・道具、地域の話題から自然に参加できます。職種別の部屋は作りません。",
     href: "/backyard?access=student",
-    cta: "学生カテゴリへ進む",
+    cta: "Back Roomへ進む",
   },
   official: {
     title: "参加範囲を確認します",
-    body: "その他理容業界関係者は、通常カテゴリではなく公式プロフィールや協賛枠での参加を想定しています。MVPでは運営確認後の参加導線にします。",
+    body: "その他理美容業界関係者は、通常カテゴリではなく公式プロフィールや協賛枠での参加も想定しています。MVPでは運営確認後の参加導線にします。",
     href: "/partners",
     cta: "公式参加の案内を見る",
   },
 };
+
+// Future platform note:
+// BARBER HUB stays barber-led. A future Beauty Hub can become the beauty-led
+// service while sharing account/profile foundations across both products.
+// Do not add "美容師部屋" or matching/dating features here; keep Back Room as
+// natural industry conversation for now, with room for events or regional meetups later.
 
 export function BackRoomSetupSheet() {
   const [role, setRole] = useState(roleOptions[0].label);
@@ -66,8 +75,8 @@ export function BackRoomSetupSheet() {
       <div className="rounded-[8px] border border-blush/20 bg-white p-4 shadow-sm">
         <h2 className="text-lg font-black leading-tight text-ink">Back Roomに参加する</h2>
         <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
-          Back Roomは、理容師・理容業界で働く人のための営業後コミュニティです。
-          表プロフィールとは別のニックネームで、技術・経営・地域・趣味の話をゆるくできます。
+          Back Roomは、理容師を中心に、理美容業界の人が営業後にゆるく話せるコミュニティです。
+          表プロフィールとは別のニックネームで、技術・経営・地域・趣味の話を重ねられます。
         </p>
       </div>
 
@@ -118,7 +127,7 @@ export function BackRoomSetupSheet() {
               onChange={(event) => setIndustryChecked(event.target.checked)}
               className="mt-0.5 h-4 w-4 shrink-0 accent-blush"
             />
-            私は理容師、理容学生、または理容業界関係者です。
+            私は理容師・美容師・理美容学生、または理美容業界関係者です。
           </label>
           <label className="flex items-start gap-2 text-xs font-bold leading-relaxed text-ink">
             <input

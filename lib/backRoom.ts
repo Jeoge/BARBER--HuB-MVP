@@ -36,6 +36,7 @@ export const backRoomRooms: BackRoomRoom[] = [
   { id: "chugoku-shikoku", label: "中国・四国", description: "地域サロン、講習、求人の相談。", threadCount: 6, latestActivity: "1時間前" },
   { id: "management", label: "経営", description: "一人営業、単価、予約、スタッフの話。", threadCount: 18, latestActivity: "8分前" },
   { id: "independence", label: "独立", description: "開業前後のお金、物件、準備の話。", threadCount: 10, latestActivity: "18分前" },
+  { id: "assistant", label: "アシスタント", description: "練習、接客、先輩への相談、デビュー前後の話。", threadCount: 8, latestActivity: "19分前", beginnerFriendly: true },
   { id: "tools", label: "技術・道具", description: "フェード、顔剃り、バリカン、コームの話。", threadCount: 16, latestActivity: "25分前" },
   { id: "staffing", label: "求人・スタッフ", description: "採用、教育、スタッフとの向き合い方。", threadCount: 9, latestActivity: "41分前" },
   {

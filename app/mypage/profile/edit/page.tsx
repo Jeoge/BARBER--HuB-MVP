@@ -4,7 +4,7 @@ import { PageChrome } from "@/components/PageChrome";
 import { currentUser } from "@/lib/userDashboard";
 import { findPublicProfile } from "@/lib/publicProfiles";
 
-const profileTypes = ["個人理容師", "サロン", "理容学校", "メーカー", "ディーラー", "組合"];
+const profileTypes = ["理容師", "美容師", "理容学生", "美容学生", "理美容アシスタント", "サロン", "理容学校", "美容学校", "メーカー", "ディーラー", "組合"];
 
 function Field({ label, placeholder, defaultValue }: { label: string; placeholder?: string; defaultValue?: string }) {
   return (

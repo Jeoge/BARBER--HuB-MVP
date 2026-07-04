@@ -32,7 +32,7 @@ export default async function BackyardPage({ searchParams }: BackRoomPageProps) 
       <PageHeaderBlock
         eyebrow="BACK ROOM"
         title="Back Room"
-        body="理容師のための、営業後コミュニティ。仕事終わりに、技術・経営・地域・趣味の話をゆるく重ねる場所です。"
+        body="理容師を中心に、理容師・美容師・理美容学生が仕事終わりに技術・経営・地域・趣味の話を重ねる場所です。"
       />
 
       <section className="px-4 pt-4">
@@ -181,6 +181,11 @@ export default async function BackyardPage({ searchParams }: BackRoomPageProps) 
                     </div>
                     <h3 className="mt-2 line-clamp-2 text-[0.96rem] font-black leading-snug text-ink">{thread.title ?? thread.body}</h3>
                     <p className="mt-1 text-xs font-bold text-mute">{thread.anonymousName}</p>
+                    {thread.roleLabel ? (
+                      <span className="mt-1 inline-flex rounded-full border border-line bg-neutral-50 px-2 py-0.5 text-[0.58rem] font-black text-mute">
+                        {thread.roleLabel}
+                      </span>
+                    ) : null}
                   </div>
                   <button aria-label="不適切" className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-neutral-50 text-mute">
                     <Flag aria-hidden="true" size={15} />
