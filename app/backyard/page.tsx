@@ -1,4 +1,4 @@
-import { Clock, Flag, LockKeyhole, MessageCircle, Plus, ShieldCheck, UserRoundPlus } from "lucide-react";
+import { Building2, Clock, Flag, LockKeyhole, MessageCircle, Plus, ShieldCheck, UserRoundPlus } from "lucide-react";
 import Link from "next/link";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
@@ -109,6 +109,18 @@ export default async function BackyardPage({ searchParams }: BackRoomPageProps) 
             </Link>
           ))}
         </div>
+      </section>
+
+      <section className="px-4 pt-6">
+        <Link href="/salon-transition" className="flex items-center gap-3 rounded-[8px] border border-line bg-white p-4 shadow-sm">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blushSoft text-blush">
+            <Building2 aria-hidden="true" size={19} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-black text-ink">独立前に見ておきたい開業情報</span>
+            <span className="mt-0.5 block text-xs font-bold leading-relaxed text-mute">居抜き、承継、備品譲渡はBack Roomで話す前の整理にも使えます。</span>
+          </span>
+        </Link>
       </section>
 
       <section className="px-4 pt-6">

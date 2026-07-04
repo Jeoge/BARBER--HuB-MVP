@@ -12,6 +12,7 @@ const navItems = [
   { label: "Back Room", href: "/backyard" },
   { label: "技術", href: "/topics/technique" },
   { label: "求人", href: "/jobs" },
+  { label: "開業・承継", href: "/salon-transition" },
   { label: "講習", href: "/seminars" },
   { label: "道具", href: "/topics/tools" },
 ];

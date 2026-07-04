@@ -194,6 +194,18 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
         </section>
       ) : null}
 
+      <section className="px-4 pt-6">
+        <Link href="/salon-transition" className="flex items-center gap-3 rounded-[8px] border border-line bg-white p-4 shadow-sm">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blushSoft text-blush">
+            <Building2 aria-hidden="true" size={19} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-black text-ink">開業・承継の情報を見る</span>
+            <span className="mt-0.5 block text-xs font-bold leading-relaxed text-mute">居抜き、事業承継、備品譲渡、独立準備を情報掲載として確認できます。</span>
+          </span>
+        </Link>
+      </section>
+
       {profile.detailRows && profile.detailRows.length > 0 ? (
         <section className="px-4 pt-6">
           <h2 className="text-sm font-black text-ink">基本情報</h2>

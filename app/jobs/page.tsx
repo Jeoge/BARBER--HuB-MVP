@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Building2, MapPin, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { MagazineImage } from "@/components/MagazineImage";
@@ -149,6 +149,18 @@ export default function JobsPage() {
         items={sponsorsForPlacement("jobs")}
         compact
       />
+
+      <section className="px-4 pt-6">
+        <Link href="/salon-transition" className="flex items-center gap-3 rounded-[8px] border border-line bg-white p-4 shadow-sm">
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-blushSoft text-blush">
+            <Building2 aria-hidden="true" size={19} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-black text-ink">居抜きで開業したい方へ</span>
+            <span className="mt-0.5 block text-xs font-bold leading-relaxed text-mute">求人だけでなく、承継・備品譲渡・独立準備の情報も確認できます。</span>
+          </span>
+        </Link>
+      </section>
 
       <section className="px-4 pt-6">
         <div className="rounded-[8px] border border-line bg-neutral-50 p-4">

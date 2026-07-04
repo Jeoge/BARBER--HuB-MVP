@@ -1,4 +1,4 @@
-import { ChevronRight, Clock, ExternalLink, MapPin, MessageCircle } from "lucide-react";
+import { Building2, ChevronRight, Clock, ExternalLink, MapPin, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MagazineImage } from "@/components/MagazineImage";
@@ -51,6 +51,22 @@ function EditorsPick({ bundle }: { bundle: TopicBundle }) {
         <p className="mt-3 text-[0.68rem] font-black text-blush">{pick.category}</p>
         <h2 className="mt-1 text-lg font-black leading-tight text-ink">{pick.title}</h2>
         <p className="mt-2 line-clamp-2 text-sm font-medium leading-relaxed text-mute">{pick.summary}</p>
+      </Link>
+    </section>
+  );
+}
+
+function SalonTransitionLinkCard({ title, body }: { title: string; body: string }) {
+  return (
+    <section className="px-4 pt-6">
+      <Link href="/salon-transition" className="flex items-center gap-3 rounded-[8px] border border-line bg-white p-4 shadow-sm">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blushSoft text-blush">
+          <Building2 aria-hidden="true" size={19} />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-black text-ink">{title}</span>
+          <span className="mt-0.5 block text-xs font-bold leading-relaxed text-mute">{body}</span>
+        </span>
       </Link>
     </section>
   );
@@ -119,6 +135,11 @@ function ToolsTopicPage({ bundle }: { bundle: TopicBundle }) {
       </section>
 
       <EditorsPick bundle={bundle} />
+
+      <SalonTransitionLinkCard
+        title="開業前に見ておきたい情報"
+        body="開業準備、居抜き、備品譲渡、地域ディーラー相談をまとめて確認できます。"
+      />
 
       <section className="px-4 pt-7">
         <SectionHeader title="道具記事" />
@@ -206,6 +227,13 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
       </section>
 
       <EditorsPick bundle={bundle} />
+
+      {bundle.topic.slug === "management" ? (
+        <SalonTransitionLinkCard
+          title="事業承継を考えるサロンへ"
+          body="閉店、引退、居抜き、備品譲渡を、情報掲載と問い合わせ導線として整理します。"
+        />
+      ) : null}
 
       <section className="px-4 pt-7">
         <SectionHeader title="関連記事" />
