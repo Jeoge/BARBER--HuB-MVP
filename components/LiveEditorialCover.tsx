@@ -74,11 +74,11 @@ export function LiveEditorialCover() {
   return (
     <section className="px-4 pt-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[0.78rem] font-black uppercase tracking-[0.22em] text-blush">EDITOR&apos;S PICK</p>
-        <p className="text-[0.62rem] font-semibold uppercase tracking-[0.08em] text-mute">{state.updatedAt} update</p>
+        <p className="editorial-label text-[0.86rem] uppercase text-blush">EDITOR&apos;S PICK</p>
+        <p className="text-[0.62rem] font-medium uppercase tracking-[0.12em] text-mute">{state.updatedAt} update</p>
       </div>
 
-      <div className="no-scrollbar mt-2 -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
+      <div className="no-scrollbar mt-2.5 -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
         {[lead, ...highlights].map((pick, index) => (
           <article
             key={`${pick.type}-${pick.item.id}`}
@@ -95,7 +95,7 @@ export function LiveEditorialCover() {
                   </span>
                 ) : null}
               </div>
-              <h3 className={(index === 0 ? "text-[0.88rem]" : "text-[0.74rem]") + " mt-0.5 line-clamp-2 font-extrabold leading-snug text-ink"}>
+              <h3 className={(index === 0 ? "text-[0.9rem]" : "text-[0.76rem]") + " editorial-serif mt-1 line-clamp-2 leading-snug text-ink"}>
                 {pick.title}
               </h3>
             </Link>
@@ -106,8 +106,8 @@ export function LiveEditorialCover() {
 
       <div className="mt-2.5 rounded-[8px] border border-line/80 bg-white px-3 py-2.5 shadow-[0_6px_18px_rgba(17,17,17,0.025)]">
         <div className="mb-1.5 flex items-center justify-between gap-3">
-          <p className="text-[0.74rem] font-black uppercase tracking-[0.18em] text-blush">3MIN NEWS</p>
-          <Link href={`/news/${news[0]?.id ?? ""}`} className="text-xs font-semibold text-blush">
+          <p className="editorial-label text-[0.82rem] uppercase text-blush">3MIN NEWS</p>
+          <Link href={`/news/${news[0]?.id ?? ""}`} className="text-xs font-medium text-blush">
             もっと読む
           </Link>
         </div>

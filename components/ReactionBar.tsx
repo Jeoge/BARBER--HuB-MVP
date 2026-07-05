@@ -10,6 +10,7 @@ type ReactionBarProps = {
   comments?: SheetComment[];
   className?: string;
   compact?: boolean;
+  goodIconOnly?: boolean;
 };
 
 const buttonBase =
@@ -34,7 +35,7 @@ function stopCardNavigation(event: MouseEvent<HTMLButtonElement>) {
   event.stopPropagation();
 }
 
-export function ReactionBar({ contentId, commentTitle, comments, className = "", compact = false }: ReactionBarProps) {
+export function ReactionBar({ contentId, commentTitle, comments, className = "", compact = false, goodIconOnly = false }: ReactionBarProps) {
   const [liked, setLiked] = useState(false);
   const [thanked, setThanked] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -82,6 +83,7 @@ export function ReactionBar({ contentId, commentTitle, comments, className = "",
   }
 
   const labelClass = compact ? "sr-only" : "";
+  const goodLabelClass = compact || goodIconOnly ? "sr-only" : "";
 
   return (
     <>
@@ -94,7 +96,7 @@ export function ReactionBar({ contentId, commentTitle, comments, className = "",
         >
           <span aria-hidden="true" className={likePulse ? "absolute inset-0 rounded-full ring-4 ring-ink/10" : ""} />
           <ThumbsUp aria-hidden="true" size={15} strokeWidth={1.9} fill={liked ? "currentColor" : "none"} />
-          <span className={labelClass}>{"\u30b0\u30c3\u30c9"}</span>
+          <span className={goodLabelClass}>{"\u30b0\u30c3\u30c9"}</span>
         </button>
 
         <button

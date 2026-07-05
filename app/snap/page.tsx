@@ -36,9 +36,15 @@ export default function SnapPage() {
               </div>
               <Link href={`/posts/${post.id}`} className="block">
                 <p className="text-[0.86rem] font-medium leading-relaxed text-ink">{post.body}</p>
-                <MagazineImage src={post.imageUrl} alt={post.body} variant={post.accents[0]} className="mt-3 aspect-[16/9]" />
+                <MagazineImage
+                  src={post.imageUrl}
+                  alt={post.body}
+                  variant={post.accents[0]}
+                  className="mt-3 aspect-[4/5]"
+                  imageClassName="object-[center_38%]"
+                />
               </Link>
-              <ReactionBar contentId={`post:${post.id}`} commentTitle={`${post.authorLabel}のコメント`} className="mt-3" />
+              <ReactionBar contentId={`post:${post.id}`} commentTitle={`${post.authorLabel}のコメント`} className="mt-3" goodIconOnly />
             </article>
           ))}
         </div>

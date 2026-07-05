@@ -89,13 +89,14 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             ))}
           </div>
         ) : (
-          <MagazineImage src={imageUrl} alt={body} variant={accents[0]} className="mt-4 aspect-[16/9]" />
+          <MagazineImage src={imageUrl} alt={body} variant={accents[0]} className="mt-4 aspect-[4/5]" imageClassName="object-[center_38%]" />
         )}
 
         <ReactionBar
           contentId={isBackyard ? `backroom:${id}` : `post:${id}`}
           commentTitle={isBackyard ? "Back Roomコメント" : "スナップへのコメント"}
           className="mt-4"
+          goodIconOnly={!isBackyard}
         />
 
         <button className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute">
