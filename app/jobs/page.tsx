@@ -1,9 +1,10 @@
 "use client";
 
-import { Building2, MapPin, Search, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Building2, MapPin, Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { MagazineImage } from "@/components/MagazineImage";
+import { MagazineFeaturedCard, MagazinePageHeader, MagazineSectionHeading } from "@/components/MagazineListLayout";
 import { PageChrome } from "@/components/PageChrome";
 import { SponsorSection } from "@/components/SponsorSection";
 import { citiesByPrefecture, jobListings, prefectures } from "@/lib/jobs";
@@ -19,16 +20,30 @@ export default function JobsPage() {
     if (selectedCity !== "すべて" && job.city !== selectedCity) return false;
     return true;
   });
+  const featuredJob = jobListings.find((job) => job.featured) ?? jobListings[0];
 
   return (
     <PageChrome>
-      <section className="px-4 pt-5">
-        <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-blush">BARBER JOBS</p>
-        <h1 className="mt-1 text-[1.55rem] font-black leading-tight text-ink">理容師の求人を探す</h1>
-        <p className="mt-2 text-[0.86rem] font-medium leading-relaxed text-mute">
-          地域、働き方、店の雰囲気から、見学したいサロンを見つける。求人の閲覧は無料です。
-        </p>
-      </section>
+      <MagazinePageHeader
+        eyebrow="BARBER JOBS"
+        title="理容師の求人を探す"
+        description="地域、働き方、店の雰囲気から、見学したいサロンを見つける。"
+        tags={["見学歓迎", "学生歓迎", "フェード", "少人数サロン"]}
+      />
+
+      {featuredJob ? (
+        <MagazineFeaturedCard
+          eyebrow="EDITOR'S JOB"
+          item={{
+            href: `/jobs/${featuredJob.id}`,
+            label: featuredJob.featured ? "FEATURED JOB" : "JOB",
+            title: featuredJob.salonName,
+            description: featuredJob.description,
+            imageUrl: featuredJob.imageUrl,
+            variant: "student",
+          }}
+        />
+      ) : null}
 
       <section className="px-4 pt-4">
         <div className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
@@ -87,25 +102,17 @@ export default function JobsPage() {
       </section>
 
       <section className="px-4 pt-5">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[0.66rem] font-black uppercase tracking-[0.12em] text-blush">JOB LIST</p>
-            <h2 className="mt-1 text-lg font-black text-ink">{selectedPrefecture}の求人</h2>
-          </div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-neutral-50 px-2.5 py-1 text-[0.68rem] font-black text-mute">
-            <SlidersHorizontal aria-hidden="true" size={13} />
-            {visibleJobs.length}件
-          </span>
-        </div>
+        <MagazineSectionHeading eyebrow="JOB LIST" title={`${selectedPrefecture}の求人`} />
 
         <div className="grid gap-3">
           {visibleJobs.map((job) => (
-            <article key={job.id} className="rounded-[8px] border border-line bg-white p-3 shadow-[0_8px_22px_rgba(17,17,17,0.035)]">
+            <article key={job.id} className="rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
               <Link href={`/jobs/${job.id}`} className="block">
                 <MagazineImage src={job.imageUrl} alt={job.salonName} variant="student" className="aspect-[16/8.5]" />
                 <div className="mt-3 flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-[1rem] font-black leading-snug text-ink">{job.salonName}</h3>
+                    <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-blush">JOB</p>
+                    <h3 className="mt-1 text-[1.02rem] font-black leading-snug text-ink">{job.salonName}</h3>
                     <p className="mt-1 flex items-center gap-1 text-xs font-bold text-mute">
                       <MapPin aria-hidden="true" size={13} />
                       {job.areaLabel}

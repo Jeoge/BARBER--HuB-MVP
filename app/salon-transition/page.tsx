@@ -1,8 +1,8 @@
 import { ArrowRight, Building2, CheckCircle2, Handshake, MapPin, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { MagazineImage } from "@/components/MagazineImage";
+import { MagazineFeaturedCard, MagazinePageHeader, MagazineSectionHeading } from "@/components/MagazineListLayout";
 import { PageChrome } from "@/components/PageChrome";
-import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { SalonTransitionNotice } from "@/components/SalonTransitionNotice";
 import {
   salonTransitionListings,
@@ -60,10 +60,23 @@ function ListingCard({ listing }: { listing: (typeof salonTransitionListings)[nu
 export default function SalonTransitionPage() {
   return (
     <PageChrome>
-      <PageHeaderBlock
+      <MagazinePageHeader
         eyebrow="OPENING / SUCCESSION"
         title="開業・承継"
-        body="理容室を引き継ぎたい人、居抜きで開業したい人、備品を譲りたい人をつなぐ入口。"
+        description="理容室を引き継ぎたい人、居抜きで開業したい人、備品を譲りたい人をつなぐ入口。"
+        tags={["居抜き", "事業承継", "備品譲渡", "独立希望"]}
+      />
+
+      <MagazineFeaturedCard
+        eyebrow="FEATURED"
+        item={{
+          href: `/salon-transition/${salonTransitionListings[0].id}`,
+          label: salonTransitionListings[0].typeLabel,
+          title: salonTransitionListings[0].title,
+          description: salonTransitionListings[0].summary,
+          imageUrl: salonTransitionListings[0].imageUrl,
+          variant: "news",
+        }}
       />
 
       <section className="px-4 pt-4">
@@ -84,7 +97,7 @@ export default function SalonTransitionPage() {
       </section>
 
       <section className="px-4 pt-6">
-        <h2 className="text-base font-black text-ink">カテゴリ</h2>
+        <MagazineSectionHeading eyebrow="CATEGORIES" title="カテゴリ" />
         <div className="mt-3 grid gap-2.5">
           {transitionCategories.map((category) => (
             <article key={category.id} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
@@ -104,13 +117,7 @@ export default function SalonTransitionPage() {
       </section>
 
       <section id="listings" className="px-4 pt-7">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[0.66rem] font-black uppercase tracking-[0.12em] text-blush">MOCK LISTINGS</p>
-            <h2 className="mt-1 text-lg font-black text-ink">開業・承継の情報</h2>
-          </div>
-          <span className="rounded-full bg-neutral-50 px-2.5 py-1 text-[0.68rem] font-black text-mute">{salonTransitionListings.length}件</span>
-        </div>
+        <MagazineSectionHeading eyebrow="LISTINGS" title="開業・承継の情報" />
         <div className="grid gap-3">
           {salonTransitionListings.map((listing) => (
             <ListingCard key={listing.id} listing={listing} />
@@ -119,7 +126,7 @@ export default function SalonTransitionPage() {
       </section>
 
       <section className="px-4 pt-7">
-        <h2 className="text-base font-black text-ink">開業前チェックリスト</h2>
+        <MagazineSectionHeading eyebrow="CHECKLIST" title="開業前チェックリスト" />
         <div className="mt-3 grid gap-2">
           {checklist.map((item) => (
             <div key={item} className="flex items-center gap-2 rounded-[8px] border border-line bg-white p-3 text-xs font-black text-ink shadow-sm">
@@ -131,7 +138,7 @@ export default function SalonTransitionPage() {
       </section>
 
       <section className="px-4 pt-7">
-        <h2 className="text-base font-black text-ink">開業・承継を相談できるパートナー</h2>
+        <MagazineSectionHeading eyebrow="PARTNER" title="開業・承継を相談できるパートナー" />
         <div className="mt-3 grid gap-2.5">
           {salonTransitionPartners.map((partner) => (
             <Link key={partner.id} href={partner.href} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">

@@ -1,7 +1,15 @@
-import { Building2, ChevronRight, Clock, ExternalLink, MapPin, MessageCircle } from "lucide-react";
+import { Building2, Clock, ExternalLink, MapPin } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MagazineImage } from "@/components/MagazineImage";
+import {
+  MagazineCompactList,
+  MagazineFeaturedCard,
+  MagazinePageHeader,
+  MagazineRail,
+  MagazineSectionHeading,
+  type MagazineListItem,
+} from "@/components/MagazineListLayout";
 import { PageChrome } from "@/components/PageChrome";
 import { ToolActionLinks } from "@/components/ToolActionLinks";
 import { toolPartners, type ToolPartner } from "@/lib/tool-partners";
@@ -14,7 +22,7 @@ export function generateStaticParams() {
 function SectionHeader({ title, actionHref }: { title: string; actionHref?: string }) {
   return (
     <div className="mb-3 flex items-end justify-between gap-3">
-      <h2 className="text-base font-black text-ink">{title}</h2>
+      <h2 className="editorial-serif text-[1.14rem] leading-tight text-ink">{title}</h2>
       {actionHref ? (
         <Link href={actionHref} className="text-xs font-black text-blush">
           すべて見る
@@ -24,36 +32,34 @@ function SectionHeader({ title, actionHref }: { title: string; actionHref?: stri
   );
 }
 
-function CompactLinkCard({ href, label, title, meta }: { href: string; label: string; title: string; meta?: string }) {
-  return (
-    <Link href={href} className="block rounded-[8px] border border-line bg-white p-3 shadow-[0_8px_20px_rgba(17,17,17,0.03)]">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[0.64rem] font-black text-blush">{label}</p>
-          <h3 className="mt-1 line-clamp-2 text-sm font-black leading-snug text-ink">{title}</h3>
-          {meta ? <p className="mt-1 text-xs font-bold text-mute">{meta}</p> : null}
-        </div>
-        <ChevronRight aria-hidden="true" size={16} className="mt-1 shrink-0 text-mute" />
-      </div>
-    </Link>
-  );
+function articleItem(article: TopicBundle["articles"][number]): MagazineListItem {
+  return {
+    href: `/articles/${article.id}`,
+    label: article.category,
+    title: article.title,
+    description: article.summary,
+    imageUrl: article.imageUrl,
+    variant: article.accent,
+  };
+}
+
+function snapItem(snap: TopicBundle["snaps"][number]): MagazineListItem {
+  return {
+    href: `/posts/${snap.id}`,
+    label: "SNAP",
+    title: snap.body,
+    description: `${snap.authorLabel} / ${snap.area}`,
+    imageUrl: snap.imageUrl,
+    variant: snap.accents[0],
+    imageClassName: "object-[center_38%]",
+  };
 }
 
 function EditorsPick({ bundle }: { bundle: TopicBundle }) {
   const pick = bundle.articles[0];
   if (pick == null) return null;
 
-  return (
-    <section className="px-4 pt-5">
-      <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-blush">EDITOR'S PICK</p>
-      <Link href={`/articles/${pick.id}`} className="mt-3 block rounded-[8px] border border-line bg-white p-3 shadow-[0_12px_30px_rgba(17,17,17,0.045)]">
-        <MagazineImage src={pick.imageUrl} alt={pick.title} variant={pick.accent} className="aspect-[16/9]" />
-        <p className="mt-3 text-[0.68rem] font-black text-blush">{pick.category}</p>
-        <h2 className="mt-1 text-lg font-black leading-tight text-ink">{pick.title}</h2>
-        <p className="mt-2 line-clamp-2 text-sm font-medium leading-relaxed text-mute">{pick.summary}</p>
-      </Link>
-    </section>
-  );
+  return <MagazineFeaturedCard item={articleItem(pick)} />;
 }
 
 function SalonTransitionLinkCard({ title, body }: { title: string; body: string }) {
@@ -123,12 +129,13 @@ function ToolsTopicPage({ bundle }: { bundle: TopicBundle }) {
 
   return (
     <PageChrome>
-      <section className="px-4 pt-5">
-        <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-blush">TOOLS</p>
-        <h1 className="mt-1 text-[1.65rem] font-black leading-tight text-ink">道具</h1>
-        <p className="mt-2 text-[0.86rem] font-medium leading-relaxed text-mute">
-          バリカン、トリマー、コーム、整髪料、クロス。現場で使う道具を、記事・Snap・レビューから探す。
-        </p>
+      <MagazinePageHeader
+        eyebrow="TOOLS"
+        title="道具"
+        description="バリカン、トリマー、コーム、整髪料。現場で使う道具を、記事・Snap・レビューから探す。"
+        tags={["バリカン", "トリマー", "コーム", "店販", "ディーラー相談"]}
+      />
+      <section className="px-4 pt-4">
         <div className="mt-3 rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-medium leading-relaxed text-mute">
           BARBER HUBでは商品の販売、決済、配送、返品対応は行いません。気になる道具は、オンライン購入先・メーカー・ディーラー・地域ディーラーへ進めます。
         </div>
@@ -141,27 +148,9 @@ function ToolsTopicPage({ bundle }: { bundle: TopicBundle }) {
         body="開業準備、居抜き、備品譲渡、地域ディーラー相談をまとめて確認できます。"
       />
 
-      <section className="px-4 pt-7">
-        <SectionHeader title="道具記事" />
-        <div className="grid gap-2.5">
-          {articleList.map((article) => (
-            <CompactLinkCard key={article.id} href={`/articles/${article.id}`} label={article.category} title={article.title} meta={article.summary} />
-          ))}
-        </div>
-      </section>
+      <MagazineRail title="道具記事" eyebrow="FEATURES" items={articleList.slice(1, 5).map(articleItem)} />
 
-      <section className="px-4 pt-7">
-        <SectionHeader title="現場のSnap" actionHref="/snap" />
-        <div className="grid gap-2.5">
-          {bundle.snaps.slice(0, 3).map((snap) => (
-            <Link key={snap.id} href={`/posts/${snap.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
-              <p className="text-[0.64rem] font-black text-blush">{snap.category}</p>
-              <p className="mt-1 line-clamp-2 text-sm font-medium leading-relaxed text-ink">{snap.body}</p>
-              <p className="mt-2 text-xs font-bold text-mute">{snap.authorLabel} / {snap.area}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <MagazineRail title="現場のSnap" eyebrow="SNAP" items={bundle.snaps.slice(0, 3).map(snapItem)} portrait />
 
       <section className="px-4 pt-7">
         <SectionHeader title="道具を探す・相談する" actionHref="/partners/dealers" />
@@ -175,7 +164,7 @@ function ToolsTopicPage({ bundle }: { bundle: TopicBundle }) {
       </section>
 
       <section className="px-4 pt-7">
-        <SectionHeader title="購入する / 相談する / 学ぶ" />
+        <MagazineSectionHeading title="購入する / 相談する / 学ぶ" eyebrow="GUIDE" />
         <div className="grid gap-2.5">
           {onlinePartners.map((partner) => <ToolPartnerCard key={partner.id} partner={partner} />)}
           {consultPartners.slice(0, 2).map((partner) => <ToolPartnerCard key={partner.id} partner={partner} />)}
@@ -185,14 +174,17 @@ function ToolsTopicPage({ bundle }: { bundle: TopicBundle }) {
 
       <ToolActionLinks />
 
-      <section className="px-4 pt-7">
-        <SectionHeader title="関連講習" actionHref="/seminars" />
-        <div className="grid gap-2.5">
-          {bundle.seminars.slice(0, 3).map((seminar) => (
-            <CompactLinkCard key={seminar.id} href="/seminars" label={seminar.category} title={seminar.title} meta={seminar.meta} />
-          ))}
-        </div>
-      </section>
+      <MagazineCompactList
+        title="関連講習"
+        eyebrow="SEMINAR"
+        actionHref="/seminars"
+        items={bundle.seminars.slice(0, 3).map((seminar) => ({
+          href: "/seminars",
+          label: seminar.category,
+          title: seminar.title,
+          description: seminar.meta,
+        }))}
+      />
     </PageChrome>
   );
 }
@@ -213,18 +205,12 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
 
   return (
     <PageChrome>
-      <section className="px-4 pt-5">
-        <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-blush">TOPIC</p>
-        <h1 className="mt-1 text-[1.65rem] font-black leading-tight text-ink">{bundle.topic.label}</h1>
-        <p className="mt-2 text-[0.86rem] font-medium leading-relaxed text-mute">{bundle.topic.description}</p>
-        <div className="mt-3 no-scrollbar flex gap-1.5 overflow-x-auto pb-1">
-          {bundle.topic.tags.map((tag) => (
-            <span key={tag} className="shrink-0 rounded-full border border-line bg-white px-3 py-1.5 text-[0.68rem] font-black text-ink">
-              {tag}
-            </span>
-          ))}
-        </div>
-      </section>
+      <MagazinePageHeader
+        eyebrow={bundle.topic.slug.toUpperCase()}
+        title={bundle.topic.label}
+        description={bundle.topic.description}
+        tags={bundle.topic.tags}
+      />
 
       <EditorsPick bundle={bundle} />
 
@@ -235,39 +221,25 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
         />
       ) : null}
 
-      <section className="px-4 pt-7">
-        <SectionHeader title="関連記事" />
-        <div className="grid gap-2.5">
-          {articleList.map((article) => (
-            <CompactLinkCard key={article.id} href={`/articles/${article.id}`} label={article.category} title={article.title} meta={article.summary} />
-          ))}
-        </div>
-      </section>
+      <MagazineRail title="関連記事" eyebrow="FEATURES" items={articleList.map(articleItem)} />
+
+      <MagazineRail title="関連Snap" eyebrow="SNAP" items={bundle.snaps.slice(0, 3).map(snapItem)} portrait />
+
+      <MagazineCompactList
+        title="関連Q&A"
+        eyebrow="Q&A"
+        actionHref="/qa"
+        items={bundle.qa.slice(0, 3).map((item) => ({
+          href: `/qa/${item.id}`,
+          label: item.category,
+          title: item.title,
+          description: item.body,
+          meta: item.status,
+        }))}
+      />
 
       <section className="px-4 pt-7">
-        <SectionHeader title="関連Snap" actionHref="/snap" />
-        <div className="grid gap-2.5">
-          {bundle.snaps.slice(0, 3).map((snap) => (
-            <Link key={snap.id} href={`/posts/${snap.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
-              <p className="text-[0.64rem] font-black text-blush">{snap.category}</p>
-              <p className="mt-1 line-clamp-2 text-sm font-medium leading-relaxed text-ink">{snap.body}</p>
-              <p className="mt-2 text-xs font-bold text-mute">{snap.authorLabel} / {snap.area}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="px-4 pt-7">
-        <SectionHeader title="関連Q&A" actionHref="/qa" />
-        <div className="grid gap-2.5">
-          {bundle.qa.slice(0, 3).map((item) => (
-            <CompactLinkCard key={item.id} href={`/qa/${item.id}`} label={item.category} title={item.title} meta={item.status} />
-          ))}
-        </div>
-      </section>
-
-      <section className="px-4 pt-7">
-        <SectionHeader title="Back Room最近の話題" actionHref="/backyard/setup?next=/backyard" />
+        <MagazineSectionHeading title="Back Room最近の話題" eyebrow="BACK ROOM" actionHref="/backyard/setup?next=/backyard" />
         <div className="grid gap-2">
           {bundle.backRoomThreads.slice(0, 3).map((thread) => (
             <Link key={thread.id} href={`/backyard/setup?next=/posts/${thread.id}`} className="rounded-[8px] border border-line bg-white px-3 py-2.5 shadow-sm">
@@ -276,10 +248,6 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
                 <h3 className="min-w-0 flex-1 truncate text-[0.84rem] font-black text-ink">{thread.title ?? thread.body}</h3>
               </div>
               <div className="mt-1.5 flex items-center gap-3 text-[0.68rem] font-bold text-mute">
-                <span className="inline-flex items-center gap-1">
-                  <MessageCircle aria-hidden="true" size={13} />
-                  {thread.comments}コメント
-                </span>
                 <span className="inline-flex items-center gap-1">
                   <Clock aria-hidden="true" size={13} />
                   {thread.latestCommentAt ?? "さっき"}
@@ -290,20 +258,27 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
         </div>
       </section>
 
-      <section className="px-4 pt-7">
-        <SectionHeader title="講習・求人" />
-        <div className="grid gap-2.5">
-          {bundle.seminars.slice(0, 2).map((seminar) => (
-            <CompactLinkCard key={seminar.id} href="/seminars" label={seminar.category} title={seminar.title} meta={seminar.meta} />
-          ))}
-          {bundle.jobs.slice(0, 2).map((job) => (
-            <CompactLinkCard key={job.id} href="/jobs" label={job.category} title={job.title} meta={job.meta} />
-          ))}
-        </div>
-      </section>
+      <MagazineCompactList
+        title="講習・求人"
+        eyebrow="NEXT"
+        items={[
+          ...bundle.seminars.slice(0, 2).map((seminar) => ({
+            href: "/seminars",
+            label: seminar.category,
+            title: seminar.title,
+            description: seminar.meta,
+          })),
+          ...bundle.jobs.slice(0, 2).map((job) => ({
+            href: "/jobs",
+            label: job.category,
+            title: job.title,
+            description: job.meta,
+          })),
+        ]}
+      />
 
       <section className="px-4 pt-7">
-        <SectionHeader title="協賛・パートナー" />
+        <MagazineSectionHeading title="協賛・パートナー" eyebrow="PARTNER" />
         <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
           {bundle.sponsors.slice(0, 3).map((sponsor) => (
             <Link key={sponsor.id} href={sponsor.href} className="w-[74%] shrink-0 rounded-[8px] border border-line bg-white p-3 shadow-[0_8px_20px_rgba(17,17,17,0.035)]">

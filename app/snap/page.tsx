@@ -1,8 +1,8 @@
 import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { MagazineImage } from "@/components/MagazineImage";
+import { MagazinePageHeader, MagazineRail, MagazineSectionHeading } from "@/components/MagazineListLayout";
 import { PageChrome } from "@/components/PageChrome";
-import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
 import { posts } from "@/lib/mockData";
@@ -10,15 +10,33 @@ import { posts } from "@/lib/mockData";
 export default function SnapPage() {
   return (
     <PageChrome>
-      <PageHeaderBlock
+      <MagazinePageHeader
         eyebrow="SNAP"
         title="SNAP"
-        body="理容師の日常と気づきを切り取る。記事にするほどではない小さな発見や営業メモを、気軽に共有できます。"
+        description="理容師の日常と気づきを切り取る。写真から、技術・道具・営業の空気が見えてくる。"
+        tags={["技術", "道具", "営業メモ", "日常", "編集部へ共有"]}
       />
-      <section className="px-4 pt-4">
+
+      <MagazineRail
+        title="今日の一枚"
+        eyebrow="PICK"
+        portrait
+        items={posts.slice(0, 3).map((post) => ({
+          href: `/posts/${post.id}`,
+          label: post.category,
+          title: post.body,
+          description: `${post.authorLabel} / ${post.area}`,
+          imageUrl: post.imageUrl,
+          variant: post.accents[0],
+          imageClassName: "object-[center_38%]",
+        }))}
+      />
+
+      <section className="px-4 pt-7">
+        <MagazineSectionHeading eyebrow="LATEST" title="新着Snap" />
         <div className="grid gap-3">
           {posts.map((post) => (
-            <article key={post.id} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
+            <article key={post.id} className="rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
               <div className="mb-2.5 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <ProfileMiniLink profileId={post.profileId} fallbackName={post.authorLabel} />
@@ -35,7 +53,6 @@ export default function SnapPage() {
                 </div>
               </div>
               <Link href={`/posts/${post.id}`} className="block">
-                <p className="text-[0.86rem] font-medium leading-relaxed text-ink">{post.body}</p>
                 <MagazineImage
                   src={post.imageUrl}
                   alt={post.body}
@@ -43,6 +60,7 @@ export default function SnapPage() {
                   className="mt-3 aspect-[4/5]"
                   imageClassName="object-[center_38%]"
                 />
+                <p className="mt-3 line-clamp-2 text-[0.9rem] font-medium leading-relaxed text-ink">{post.body}</p>
               </Link>
               <ReactionBar contentId={`post:${post.id}`} commentTitle={`${post.authorLabel}のコメント`} className="mt-3" goodIconOnly />
             </article>
