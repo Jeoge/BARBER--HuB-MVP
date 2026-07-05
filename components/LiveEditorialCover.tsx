@@ -74,7 +74,7 @@ export function LiveEditorialCover() {
   return (
     <section className="px-4 pt-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="editorial-label text-[0.86rem] uppercase text-blush">EDITOR&apos;S PICK</p>
+        <p className="editorial-label text-[1.02rem] uppercase leading-none text-blush">EDITOR&apos;S PICK</p>
         <p className="text-[0.62rem] font-medium uppercase tracking-[0.12em] text-mute">{state.updatedAt} update</p>
       </div>
 

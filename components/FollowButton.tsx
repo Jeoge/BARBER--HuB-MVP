@@ -10,7 +10,7 @@ type FollowButtonProps = {
   currentUserId?: string;
   followerId?: string;
   followingUserId?: string;
-  variant?: "profile" | "snapOverlay" | "snapInline";
+  variant?: "profile" | "snapInline";
   className?: string;
   onFollowToggle?: (payload: {
     followerId: string;
@@ -77,12 +77,9 @@ export function FollowButton({
     "inline-flex h-11 items-center justify-center gap-1.5 rounded-[8px] px-3 text-xs font-black transition " +
     (isFollowing ? "border border-line bg-white text-ink" : "bg-ink text-white");
   const snapClass =
-    "inline-flex h-8 items-center justify-center rounded-full px-2.5 text-[0.68rem] font-black leading-none shadow-[0_6px_14px_rgba(17,17,17,0.08)] backdrop-blur-sm transition " +
-    (isFollowing ? "border border-line/80 bg-white/90 text-ink/60" : "border border-white/80 bg-white/95 text-blush");
-  const variantClass =
-    variant === "profile"
-      ? profileClass
-      : (variant === "snapOverlay" ? "absolute right-2 top-2 z-10 " : "") + snapClass;
+    "inline-flex h-8 shrink-0 items-center justify-center rounded-full border px-2.5 text-[0.68rem] font-black leading-none transition " +
+    (isFollowing ? "border-line/80 bg-white text-ink/60" : "border-line/80 bg-white text-blush");
+  const variantClass = variant === "profile" ? profileClass : snapClass;
 
   return (
     <button

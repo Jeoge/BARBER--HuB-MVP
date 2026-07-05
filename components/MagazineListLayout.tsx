@@ -2,7 +2,6 @@
 
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { FollowButton } from "./FollowButton";
 import { MagazineImage } from "./MagazineImage";
 
 export type MagazineListItem = {
@@ -15,7 +14,6 @@ export type MagazineListItem = {
   variant?: string;
   imageClassName?: string;
   tags?: string[];
-  authorId?: string;
 };
 
 export function MagazinePageHeader({
@@ -97,43 +95,18 @@ export function MagazineRail({ title, eyebrow, items, portrait = false }: { titl
       <MagazineSectionHeading eyebrow={eyebrow} title={title} />
       <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
         {items.map((item) => (
-          item.authorId ? (
-            <article key={`${item.href}-${item.title}`} className="w-[72%] shrink-0 rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
-              <div className="relative">
-                <Link href={item.href} className="block">
-                  <MagazineImage
-                    src={item.imageUrl}
-                    alt={item.title}
-                    variant={item.variant}
-                    className={portrait ? "aspect-[4/5]" : "aspect-[16/8.5]"}
-                    imageClassName={item.imageClassName}
-                  />
-                </Link>
-                {item.imageUrl ? <FollowButton authorId={item.authorId} variant="snapOverlay" /> : null}
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <p className="min-w-0 truncate text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-blush">{item.label}</p>
-                {!item.imageUrl ? <FollowButton authorId={item.authorId} variant="snapInline" /> : null}
-              </div>
-              <Link href={item.href} className="block">
-                <h3 className="mt-1 line-clamp-2 break-words text-[0.98rem] font-black leading-snug text-ink">{item.title}</h3>
-                {item.description ? <p className="mt-1.5 line-clamp-2 break-words text-xs font-medium leading-relaxed text-mute">{item.description}</p> : null}
-              </Link>
-            </article>
-          ) : (
-            <Link key={`${item.href}-${item.title}`} href={item.href} className="w-[72%] shrink-0 rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
-              <MagazineImage
-                src={item.imageUrl}
-                alt={item.title}
-                variant={item.variant}
-                className={portrait ? "aspect-[4/5]" : "aspect-[16/8.5]"}
-                imageClassName={item.imageClassName}
-              />
-              <p className="mt-3 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-blush">{item.label}</p>
-              <h3 className="mt-1 line-clamp-2 text-[0.98rem] font-black leading-snug text-ink">{item.title}</h3>
-              {item.description ? <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{item.description}</p> : null}
-            </Link>
-          )
+          <Link key={`${item.href}-${item.title}`} href={item.href} className="w-[72%] shrink-0 rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
+            <MagazineImage
+              src={item.imageUrl}
+              alt={item.title}
+              variant={item.variant}
+              className={portrait ? "aspect-[4/5]" : "aspect-[16/8.5]"}
+              imageClassName={item.imageClassName}
+            />
+            <p className="mt-3 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-blush">{item.label}</p>
+            <h3 className="mt-1 line-clamp-2 text-[0.98rem] font-black leading-snug text-ink">{item.title}</h3>
+            {item.description ? <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{item.description}</p> : null}
+          </Link>
         ))}
       </div>
     </section>

@@ -40,7 +40,6 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   const body = post?.body ?? backyardPost?.body ?? "";
   const accents = post?.accents ?? ["news", "student", "tool"];
   const imageUrl = post?.imageUrl;
-  const hasImage = imageUrl != null && imageUrl.length > 0;
   const source = post?.source ?? "Back Room投稿";
 
   if (backyardPost != null) {
@@ -65,7 +64,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               <span className="rounded-full bg-blushSoft px-2 py-0.5 text-[0.64rem] font-black text-blush">
                 {category}
               </span>
-              {!hasImage && post?.profileId ? <FollowButton authorId={post.profileId} variant="snapInline" /> : null}
+              {post?.profileId ? <FollowButton authorId={post.profileId} variant="snapInline" /> : null}
             </div>
             <p className="mt-1 flex items-center gap-1 text-xs font-bold text-mute">
               <MapPin aria-hidden="true" size={14} />
@@ -92,10 +91,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             ))}
           </div>
         ) : (
-          <div className="relative mt-4">
-            <MagazineImage src={imageUrl} alt={body} variant={accents[0]} className="aspect-[4/5]" imageClassName="object-[center_38%]" />
-            {hasImage && post?.profileId ? <FollowButton authorId={post.profileId} variant="snapOverlay" /> : null}
-          </div>
+          <MagazineImage src={imageUrl} alt={body} variant={accents[0]} className="mt-4 aspect-[4/5]" imageClassName="object-[center_38%]" />
         )}
 
         <ReactionBar
