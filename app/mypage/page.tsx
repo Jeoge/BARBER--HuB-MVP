@@ -7,6 +7,7 @@ import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { findPublicProfile } from "@/lib/publicProfiles";
+import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import {
   currentUser,
@@ -21,13 +22,21 @@ import {
 
 const testDisplayNote = "現在はテスト表示です。投稿保存は次のPhaseで対応予定です。";
 
-function profileNameFromMetadata(metadata: Record<string, unknown>) {
-  const displayName = metadata.display_name ?? metadata.full_name ?? metadata.name;
-  return typeof displayName === "string" && displayName.trim().length > 0 ? displayName.trim() : undefined;
-}
-
 function accountInitial(nameOrEmail: string | undefined) {
   return (nameOrEmail?.trim().slice(0, 1) || "B").toUpperCase();
+}
+
+function textOrUnset(value: string | null | undefined) {
+  return value && value.trim().length > 0 ? value : "未設定";
+}
+
+function ProfileRow({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="grid grid-cols-[4.5rem_1fr] gap-3 rounded-[8px] bg-neutral-50 px-3 py-2.5 text-sm">
+      <span className="font-bold text-mute">{label}</span>
+      <span className="font-semibold text-ink">{textOrUnset(value)}</span>
+    </div>
+  );
 }
 
 function SectionCard({
@@ -70,7 +79,12 @@ function DashboardLinkList({ items }: { items: { id: string; title: string; meta
   );
 }
 
-export default async function MyPage() {
+type MyPageProps = {
+  searchParams?: Promise<{ profile?: string }>;
+};
+
+export default async function MyPage({ searchParams }: MyPageProps) {
+  const params = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -85,9 +99,11 @@ export default async function MyPage() {
     );
   }
 
-  const authDisplayName = profileNameFromMetadata(user.user_metadata);
-  const profileDisplayName = authDisplayName ?? "プロフィール未設定";
+  const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+  const profileDisplayName = profile?.display_name?.trim() || "プロフィール未設定";
   const loginEmail = user.email ?? "メールアドレス未取得";
+  const hasProfile = profile != null;
+  const showSalonAdmin = Boolean(profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
   const followedProfiles = currentUser.followedProfileIds
     .map((profileId) => findPublicProfile(profileId))
     .filter((profile): profile is NonNullable<typeof profile> => profile != null);
@@ -103,9 +119,14 @@ export default async function MyPage() {
       <section className="px-4 pt-5">
         <div className="rounded-[10px] bg-ink p-4 text-white">
           <p className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-white/55">ONLY YOU</p>
+          {params?.profile === "updated" ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              プロフィールを保存しました。
+            </p>
+          ) : null}
           <div className="mt-3 flex items-center gap-3">
             <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-full border border-white/20 bg-white/10 text-lg font-black">
-              {accountInitial(authDisplayName ?? loginEmail)}
+              {accountInitial(profile?.display_name ?? loginEmail)}
             </div>
             <div className="min-w-0">
               <h2 className="truncate text-lg font-black">{profileDisplayName}</h2>
@@ -113,6 +134,11 @@ export default async function MyPage() {
               <p className="mt-1 break-words text-xs font-semibold text-white/65">ログイン中: {loginEmail}</p>
             </div>
           </div>
+          {profileError ? (
+            <p className="mt-3 rounded-[8px] border border-white/10 bg-white/5 px-3 py-2 text-[0.7rem] font-semibold leading-relaxed text-white/62">
+              プロフィール情報を取得できませんでした。時間をおいて再読み込みしてください。
+            </p>
+          ) : null}
           <div className="mt-4 grid grid-cols-3 gap-2">
             <Link href="/mypage/profile/edit" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white text-xs font-black text-ink">
               <Pencil aria-hidden="true" size={14} />
@@ -127,9 +153,6 @@ export default async function MyPage() {
               求人
             </Link>
           </div>
-          <p className="mt-3 rounded-[8px] border border-white/10 bg-white/5 px-3 py-2 text-[0.7rem] font-semibold leading-relaxed text-white/62">
-            プロフィール設定は次のPhaseで保存対応します。
-          </p>
           <form action={logoutAction} className="mt-3">
             <button type="submit" className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[8px] border border-white/15 bg-white/5 text-xs font-black text-white">
               <LogOut aria-hidden="true" size={14} />
@@ -138,6 +161,31 @@ export default async function MyPage() {
           </form>
         </div>
       </section>
+
+      <SectionCard eyebrow="PROFILE" title="プロフィール">
+        {hasProfile ? (
+          <div className="grid gap-2.5">
+            <ProfileRow label="表示名" value={profile.display_name} />
+            <ProfileRow label="職種" value={profile.job_type} />
+            <ProfileRow label="サロン" value={profile.salon_name} />
+            <ProfileRow label="地域" value={profile.region} />
+            <div className="rounded-[8px] bg-neutral-50 px-3 py-3">
+              <p className="text-xs font-bold text-mute">自己紹介</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm font-medium leading-relaxed text-ink">{textOrUnset(profile.bio)}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
+            <p className="text-sm font-black text-ink">プロフィール未設定</p>
+            <p className="mt-1 text-xs font-medium leading-relaxed text-mute">
+              表示名、職種、サロン名、地域、自己紹介を設定すると、ここに表示されます。
+            </p>
+            <Link href="/mypage/profile/edit" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+              プロフィールを設定する
+            </Link>
+          </div>
+        )}
+      </SectionCard>
 
       <SectionCard eyebrow="SAVED" title="保存したもの" testNote={testDisplayNote}>
         <div className="grid gap-4">
@@ -270,7 +318,7 @@ export default async function MyPage() {
         </p>
       </SectionCard>
 
-      {currentUser.role === "salon" ? (
+      {showSalonAdmin ? (
         <SectionCard eyebrow="SALON ADMIN" title="求人掲載管理" testNote={testDisplayNote}>
           <div className="grid gap-2">
             {salonJobAdminItems.map((item) => (

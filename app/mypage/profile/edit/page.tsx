@@ -1,20 +1,33 @@
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
-import { SignupRequiredCard } from "@/components/AuthGate";
 import { PageChrome } from "@/components/PageChrome";
-import { currentUser } from "@/lib/userDashboard";
-import { findPublicProfile } from "@/lib/publicProfiles";
+import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { pathWithParams } from "@/lib/auth/redirects";
+import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { saveProfileAction } from "./actions";
 
 const profileTypes = ["理容師", "美容師", "理容学生", "美容学生", "理美容アシスタント", "サロン", "理容学校", "美容学校", "メーカー", "ディーラー", "組合"];
 
-function Field({ label, placeholder, defaultValue }: { label: string; placeholder?: string; defaultValue?: string }) {
+function Field({
+  label,
+  name,
+  placeholder,
+  defaultValue,
+}: {
+  label: string;
+  name: string;
+  placeholder?: string;
+  defaultValue?: string | null;
+}) {
   return (
     <label className="grid gap-2">
       <span className="text-sm font-black text-ink">{label}</span>
       <input
+        name={name}
         type="text"
-        defaultValue={defaultValue}
+        defaultValue={defaultValue ?? ""}
         placeholder={placeholder}
         className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush"
       />
@@ -22,27 +35,27 @@ function Field({ label, placeholder, defaultValue }: { label: string; placeholde
   );
 }
 
-export default async function ProfileEditPage() {
+type ProfileEditPageProps = {
+  searchParams?: Promise<{ error?: string }>;
+};
+
+export default async function ProfileEditPage({ searchParams }: ProfileEditPageProps) {
+  const params = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (user == null) {
-    return (
-      <PageChrome>
-        <section className="px-4 pt-5">
-          <Link href="/mypage" className="inline-flex items-center gap-1 text-sm font-black text-ink">
-            <ArrowLeft aria-hidden="true" size={17} />
-            戻る
-          </Link>
-        </section>
-        <SignupRequiredCard />
-      </PageChrome>
+    redirect(
+      pathWithParams("/login", {
+        next: "/mypage/profile/edit",
+        message: "プロフィールを編集するにはログインしてください。",
+      })
     );
   }
 
-  const profile = findPublicProfile(currentUser.profileId);
+  const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
 
   return (
     <PageChrome>
@@ -54,41 +67,66 @@ export default async function ProfileEditPage() {
         <p className="mt-6 text-[0.68rem] font-black uppercase tracking-[0.14em] text-blush">PROFILE EDIT</p>
         <h1 className="mt-1 text-[1.55rem] font-black leading-tight text-ink">プロフィールを編集</h1>
         <p className="mt-2 text-[0.86rem] font-medium leading-relaxed text-mute">
-          公開プロフィールに表示する情報を整えます。MVPでは保存処理はまだ仮です。
+          ログイン中のアカウントに紐づくプロフィール情報を保存します。
         </p>
       </section>
 
-      <section className="grid gap-4 px-4 pt-5">
-        <Field label="表示名" defaultValue={profile?.displayName} placeholder="例：福岡の理容師" />
-        <Field label="プロフィール画像URL" defaultValue={profile?.avatarUrl} placeholder="/images/fade-cut.jpg" />
+      <PageHeaderBlock
+        eyebrow="ACCOUNT"
+        title="保存される項目"
+        body="メールアドレスはSupabase Authのログイン情報として扱い、profilesテーブルには保存しません。"
+      />
+
+      <form action={saveProfileAction} className="grid gap-4 px-4 pt-5">
+        {params?.error ? (
+          <div className="rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
+            {params.error}
+          </div>
+        ) : null}
+        {profileError ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            既存プロフィールを読み込めませんでした。保存すると、入力内容でプロフィールを作成または更新します。
+          </div>
+        ) : null}
+
+        <Field name="display_name" label="表示名" defaultValue={profile?.display_name} placeholder="例：福岡の理容師" />
         <label className="grid gap-2">
-          <span className="text-sm font-black text-ink">自己紹介</span>
-          <textarea
-            rows={5}
-            defaultValue={profile?.bio}
-            className="resize-none rounded-[8px] border border-line bg-white px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
-          />
-        </label>
-        <Field label="活動エリア" defaultValue={profile?.area} placeholder="例：福岡県 福岡市" />
-        <Field label="Instagram URL" defaultValue={profile?.links?.instagram} placeholder="https://instagram.com/..." />
-        <Field label="公式サイトURL" defaultValue={profile?.links?.website} placeholder="https://..." />
-        <label className="grid gap-2">
-          <span className="text-sm font-black text-ink">種別</span>
-          <select className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none focus:border-blush" defaultValue={profile?.badges[0] ?? "サロン"}>
+          <span className="text-sm font-black text-ink">職種</span>
+          <select
+            name="job_type"
+            className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none focus:border-blush"
+            defaultValue={profile?.job_type ?? ""}
+          >
+            <option value="">未設定</option>
             {profileTypes.map((type) => (
-              <option key={type}>{type}</option>
+              <option key={type} value={type}>
+                {type}
+              </option>
             ))}
           </select>
         </label>
-        <label className="flex items-start gap-2 rounded-[8px] bg-neutral-50 p-3 text-sm font-bold leading-relaxed text-ink">
-          <input type="checkbox" defaultChecked={profile?.isHiring} className="mt-1 h-4 w-4 accent-blush" />
-          求人中として表示する
+        <Field name="salon_name" label="サロン名" defaultValue={profile?.salon_name} placeholder="例：BARBER HUB SALON" />
+        <Field name="region" label="地域" defaultValue={profile?.region} placeholder="例：福岡県 福岡市" />
+        <label className="grid gap-2">
+          <span className="text-sm font-black text-ink">自己紹介</span>
+          <textarea
+            name="bio"
+            rows={5}
+            defaultValue={profile?.bio ?? ""}
+            className="resize-none rounded-[8px] border border-line bg-white px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
+            placeholder="得意技術、働き方、発信したいことなどを書いてください。"
+          />
         </label>
-        <button type="button" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink text-sm font-black text-white">
+
+        <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-[0.74rem] font-semibold leading-relaxed text-mute">
+          アイコン画像アップロードは今回は未実装です。avatar_urlは今後のPhaseで対応します。
+        </div>
+
+        <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink text-sm font-black text-white">
           <Save aria-hidden="true" size={17} />
-          仮保存する
+          保存する
         </button>
-      </section>
+      </form>
     </PageChrome>
   );
 }

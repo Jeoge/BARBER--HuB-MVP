@@ -1,171 +1,74 @@
-import { CheckCircle2, ImagePlus, LockKeyhole, Sparkles } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
-import { signUpAction } from "./actions";
-
-const benefits = [
-  "毎朝3分で業界の動きがわかる",
-  "経験を共有するとThanksが届く",
-  "スナップ投稿・Q&A・Back Roomが使える",
-  "求人や講習会情報を受け取れる",
-  "得意技術や地域に合わせて情報が届く",
-];
-
-const signupBenefits = benefits.map((benefit, index) => (index === 1 ? "Thanksポイントを貯めて商品と交換" : benefit));
-
-const memberTypes = ["理容師", "美容師", "理容学生", "美容学生", "理美容アシスタント", "サロンオーナー", "メーカー・ディーラー", "学校関係者", "組合・団体関係者", "求人掲載希望"];
-const interests = ["経営", "集客", "AI", "技術", "道具", "Q&A", "講習会", "求人", "Back Room"];
+import { createClient } from "@/lib/supabase/server";
+import { SignupForm } from "./SignupForm";
 
 type SignupPageProps = {
   searchParams?: Promise<{ error?: string; message?: string; next?: string }>;
 };
 
+function SuccessCard() {
+  return (
+    <div className="rounded-[10px] border border-blush/20 bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.04)]">
+      <div className="grid h-11 w-11 place-items-center rounded-full bg-blushSoft text-blush">
+        <CheckCircle2 aria-hidden="true" size={22} />
+      </div>
+      <h2 className="mt-4 text-xl font-black leading-tight text-ink">会員登録を受け付けました。</h2>
+      <div className="mt-3 grid gap-2 text-sm font-medium leading-relaxed text-mute">
+        <p>確認メールを送信しました。</p>
+        <p>メール内のリンクを押してからログインしてください。</p>
+        <p>メールが届かない場合は、迷惑メールフォルダをご確認ください。</p>
+      </div>
+      <Link href="/login" className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
+        ログインページへ進む
+      </Link>
+    </div>
+  );
+}
+
+function LoggedInCard() {
+  return (
+    <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.04)]">
+      <h2 className="text-xl font-black leading-tight text-ink">すでにログインしています。</h2>
+      <p className="mt-2 text-sm font-medium leading-relaxed text-mute">会員登録フォームは表示せず、マイページへ進めます。</p>
+      <Link href="/mypage" className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
+        マイページへ進む
+      </Link>
+    </div>
+  );
+}
+
 export default async function SignupPage({ searchParams }: SignupPageProps) {
   const params = await searchParams;
   const next = params?.next ?? "/mypage";
+  const isSuccess = params?.message === "signup-sent";
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   return (
-    <main className="mx-auto min-h-screen max-w-[430px] bg-white pb-12 shadow-[0_0_80px_rgba(17,17,17,0.08)]">
-      <section className="px-4 pt-6">
-        <BrandLogo />
-        <div className="mt-8">
-          <p className="text-[0.74rem] font-black uppercase tracking-[0.14em] text-blush">成功を共有しよう。</p>
-          <h1 className="mt-2 text-[2rem] font-black leading-tight text-ink">BARBER HUBに参加する</h1>
-          <p className="mt-2 text-sm font-bold uppercase tracking-[0.12em] text-ink">One Success. Shared Success.</p>
-          <p className="mt-4 text-[0.95rem] font-medium leading-relaxed text-mute">
-            経験を共有し、Thanksと信頼を積み上げよう。読むだけなら無料。参加すると、もっと広がる。
-          </p>
-          <div className="mt-5 grid gap-2">
-            <a href="#signup-form" className="inline-flex h-12 items-center justify-center rounded-[8px] bg-blush text-sm font-black text-white">
-              無料で会員登録する
-            </a>
-            <Link href="/login" className="inline-flex h-11 items-center justify-center rounded-[8px] border border-line text-sm font-black text-ink">
-              すでに会員の方はログイン
-            </Link>
-          </div>
-        </div>
-      </section>
+    <main className="mx-auto min-h-screen max-w-[430px] bg-white px-4 pb-12 pt-6 shadow-[0_0_80px_rgba(17,17,17,0.08)]">
+      <BrandLogo />
 
-      <section className="px-4 pt-7">
-        <div className="grid gap-2">
-          {signupBenefits.map((benefit) => (
-            <div key={benefit} className="flex items-center gap-2 rounded-[8px] border border-line bg-white p-3 shadow-sm">
-              <CheckCircle2 aria-hidden="true" size={18} className="shrink-0 text-blush" />
-              <p className="text-sm font-black text-ink">{benefit}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="px-4 pt-7">
-        <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-4">
-          <div className="flex items-center gap-2 text-sm font-black text-ink">
-            <LockKeyhole aria-hidden="true" size={18} className="text-blush" />
-            Back Roomは理容師を中心に、理美容業界の人が話せる営業後コミュニティです。
-          </div>
-          <p className="mt-2 text-[0.78rem] font-medium leading-relaxed text-mute">
-            Back Roomは理容師・美容師・理美容学生などが自然に交流できる場所です。安心してスレッドで話せるように、会員タイプを確認します。
-          </p>
-        </div>
-      </section>
-
-      <section id="signup-form" className="px-4 pt-7">
-        <h2 className="text-lg font-black text-ink">会員タイプを選ぶ</h2>
-        <div className="mt-3 no-scrollbar flex gap-2 overflow-x-auto pb-1">
-          {memberTypes.map((type, index) => (
-            <button
-              key={type}
-              className={
-                "shrink-0 rounded-full px-3 py-2 text-xs font-black " +
-                (index === 0 ? "bg-blush text-white" : "border border-line bg-white text-ink")
-              }
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <form action={signUpAction} className="grid gap-4 px-4 pt-5">
-        <input type="hidden" name="next" value={next} />
-        {params?.message ? (
-          <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-sm font-black leading-relaxed text-ink">
-            {params.message}
-          </div>
-        ) : null}
-        {params?.error ? (
-          <div className="rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
-            {params.error}
-          </div>
-        ) : null}
-
-        <div className="flex items-center gap-4 rounded-[8px] border border-line bg-white p-4 shadow-sm">
-          <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-neutral-100 text-mute">
-            <ImagePlus aria-hidden="true" size={24} />
-          </div>
-          <div className="min-w-0">
-            <button type="button" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-sm font-black text-white">
-              写真を追加
-            </button>
-            <Link href="#signup-form" className="mt-2 block text-xs font-black text-blush">
-              あとで設定
-            </Link>
-          </div>
-        </div>
-
-        {[
-          { label: "名前または表示名", name: "displayName", placeholder: "例：TAKA", type: "text" },
-          { label: "メールアドレス", name: "email", placeholder: "example@barberhub.jp", type: "email" },
-          { label: "パスワード", name: "password", placeholder: "8文字以上", type: "password" },
-          { label: "地域", name: "area", placeholder: "例：東京・渋谷", type: "text" },
-          { label: "店舗名または所属", name: "organization", placeholder: "例：BARBER HUB SALON", type: "text" },
-          { label: "得意分野", name: "specialty", placeholder: "例：フェード / 白髪ぼかし / 経営", type: "text" },
-        ].map(({ label, name, placeholder, type }) => (
-          <label key={label} className="grid gap-2">
-            <span className="text-sm font-black text-ink">{label}</span>
-            <input
-              name={name}
-              type={type}
-              className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none focus:border-blush"
-              placeholder={placeholder}
-            />
-          </label>
-        ))}
-
-        <label className="grid gap-2">
-          <span className="text-sm font-black text-ink">会員タイプ</span>
-          <select name="memberType" className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none focus:border-blush">
-            {memberTypes.map((type) => (
-              <option key={type}>{type}</option>
-            ))}
-          </select>
-        </label>
-
-        <fieldset className="grid gap-2">
-          <legend className="text-sm font-black text-ink">興味カテゴリ</legend>
-          <div className="flex flex-wrap gap-2">
-            {interests.map((interest) => (
-              <label key={interest} className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-2 text-xs font-black text-ink">
-                <input name="interests" value={interest} type="checkbox" className="h-3.5 w-3.5 accent-blush" />
-                {interest}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <label className="flex items-start gap-2 rounded-[8px] bg-neutral-50 p-3 text-sm font-bold leading-relaxed text-ink">
-          <input name="terms" type="checkbox" className="mt-1 h-4 w-4 accent-blush" />
-          利用規約に同意します
-        </label>
-
-        <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
-          <Sparkles aria-hidden="true" size={17} />
-          無料で会員登録する
-        </button>
-        <p className="text-center text-xs font-bold text-mute">
-          あなたに合った記事・投稿・求人・講習会を届けます。BARBER HUBは、理容師の毎朝の入口です。
+      <section className="pt-10">
+        <p className="text-[0.72rem] font-black uppercase tracking-[0.14em] text-blush">SIGN UP</p>
+        <h1 className="mt-2 text-[2rem] font-black leading-tight text-ink">会員登録</h1>
+        <p className="mt-3 text-sm font-medium leading-relaxed text-mute">
+          まずはメールアドレスとパスワードでアカウントを作成します。登録後にメールを確認してからログインしてください。
         </p>
-      </form>
+      </section>
+
+      <section className="pt-7">
+        {isSuccess ? (
+          <SuccessCard />
+        ) : user ? (
+          <LoggedInCard />
+        ) : (
+          <SignupForm next={next} error={params?.error} />
+        )}
+      </section>
     </main>
   );
 }
