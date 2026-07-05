@@ -33,7 +33,7 @@ export function BottomNavigation() {
           );
 
           return auth ? (
-            <AuthGateLink key={href} className={className} ariaLabel={label}>
+            <AuthGateLink key={href} href={href} className={className} ariaLabel={label}>
               {content}
             </AuthGateLink>
           ) : (

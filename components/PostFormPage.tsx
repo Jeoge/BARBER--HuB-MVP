@@ -1,5 +1,7 @@
 import { ArrowLeft, ImagePlus, Save, Send, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { SignupRequiredCard } from "./AuthGate";
 import { PageChrome } from "./PageChrome";
 
 type Field =
@@ -25,7 +27,26 @@ type PostFormPageProps = {
   };
 };
 
-export function PostFormPage({ title, description, phrase, fields, imageLabel = "画像追加", postingNotice }: PostFormPageProps) {
+export async function PostFormPage({ title, description, phrase, fields, imageLabel = "画像追加", postingNotice }: PostFormPageProps) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user == null) {
+    return (
+      <PageChrome>
+        <section className="px-4 pt-4">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-black text-ink">
+            <ArrowLeft aria-hidden="true" size={17} />
+            戻る
+          </Link>
+        </section>
+        <SignupRequiredCard />
+      </PageChrome>
+    );
+  }
+
   return (
     <PageChrome>
       <section className="px-4 pt-4">

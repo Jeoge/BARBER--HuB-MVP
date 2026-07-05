@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
+import { SignupRequiredCard } from "@/components/AuthGate";
 import { PageChrome } from "@/components/PageChrome";
 import { currentUser } from "@/lib/userDashboard";
 import { findPublicProfile } from "@/lib/publicProfiles";
+import { createClient } from "@/lib/supabase/server";
 
 const profileTypes = ["理容師", "美容師", "理容学生", "美容学生", "理美容アシスタント", "サロン", "理容学校", "美容学校", "メーカー", "ディーラー", "組合"];
 
@@ -20,7 +22,26 @@ function Field({ label, placeholder, defaultValue }: { label: string; placeholde
   );
 }
 
-export default function ProfileEditPage() {
+export default async function ProfileEditPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user == null) {
+    return (
+      <PageChrome>
+        <section className="px-4 pt-5">
+          <Link href="/mypage" className="inline-flex items-center gap-1 text-sm font-black text-ink">
+            <ArrowLeft aria-hidden="true" size={17} />
+            戻る
+          </Link>
+        </section>
+        <SignupRequiredCard />
+      </PageChrome>
+    );
+  }
+
   const profile = findPublicProfile(currentUser.profileId);
 
   return (

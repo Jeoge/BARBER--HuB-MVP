@@ -5,11 +5,11 @@ import { useState } from "react";
 import { AuthGateLink } from "./AuthGate";
 
 const postItems = [
-  { label: "スナップ投稿", icon: Camera },
-  { label: "経験記事を書く", icon: FilePenLine },
-  { label: "Q&Aで相談する", icon: MessageSquare },
-  { label: "Back Roomに投稿", icon: ShieldCheck, kind: "backyard" as const },
-  { label: "講習会レポートを書く", icon: Video },
+  { label: "スナップ投稿", icon: Camera, href: "/post/snap" },
+  { label: "経験記事を書く", icon: FilePenLine, href: "/post/article" },
+  { label: "Q&Aで相談する", icon: MessageSquare, href: "/post/qa" },
+  { label: "Back Roomに投稿", icon: ShieldCheck, href: "/post/backyard", kind: "backyard" as const, signupNextHref: "/backyard/setup" },
+  { label: "講習会レポートを書く", icon: Video, href: "/post/seminar" },
 ];
 
 export function FloatingPostButton() {
@@ -23,12 +23,14 @@ export function FloatingPostButton() {
             <FileText aria-hidden="true" size={15} className="text-blush" />
             投稿メニュー
           </div>
-          {postItems.map(({ label, icon: Icon, kind }) => (
+          {postItems.map(({ label, icon: Icon, href, kind, signupNextHref }) => (
             <AuthGateLink
               key={label}
+              href={href}
               className="flex w-full items-center gap-2 rounded-[7px] px-3 py-2.5 text-left text-sm font-semibold text-ink"
               kind={kind}
               ariaLabel={label}
+              signupNextHref={signupNextHref}
             >
               <Icon aria-hidden="true" size={18} className="text-blush" />
               {label}

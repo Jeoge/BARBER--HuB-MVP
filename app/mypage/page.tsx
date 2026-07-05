@@ -1,9 +1,12 @@
-import { Bookmark, BriefcaseBusiness, FilePenLine, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
+import { Bookmark, BriefcaseBusiness, FilePenLine, LogOut, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode } from "react";
+import { logoutAction } from "@/app/auth/actions";
+import { SignupRequiredCard } from "@/components/AuthGate";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { findPublicProfile } from "@/lib/publicProfiles";
+import { createClient } from "@/lib/supabase/server";
 import {
   currentUser,
   jobApplications,
@@ -40,7 +43,25 @@ function DashboardLinkList({ items }: { items: { id: string; title: string; meta
   );
 }
 
-export default function MyPage() {
+export default async function MyPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user == null) {
+    return (
+      <PageChrome>
+        <PageHeaderBlock
+          eyebrow="PRIVATE DASHBOARD"
+          title="マイページ"
+          body="保存、メモ、フォロー中、Thanksポイント、自分の投稿への反応を確認する本人専用の管理画面です。"
+        />
+        <SignupRequiredCard />
+      </PageChrome>
+    );
+  }
+
   const currentProfile = findPublicProfile(currentUser.profileId);
   const followedProfiles = currentUser.followedProfileIds
     .map((profileId) => findPublicProfile(profileId))
@@ -64,6 +85,7 @@ export default function MyPage() {
             <div className="min-w-0">
               <h2 className="truncate text-lg font-black">{currentProfile?.displayName ?? "BARBER HUB会員"}</h2>
               <p className="mt-1 text-xs font-semibold text-white/60">公開プロフィールとは別の、本人だけの管理情報です。</p>
+              <p className="mt-1 break-words text-xs font-semibold text-white/65">ログイン中: {user.email}</p>
             </div>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2">
@@ -80,6 +102,12 @@ export default function MyPage() {
               求人
             </Link>
           </div>
+          <form action={logoutAction} className="mt-3">
+            <button type="submit" className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[8px] border border-white/15 bg-white/5 text-xs font-black text-white">
+              <LogOut aria-hidden="true" size={14} />
+              ログアウト
+            </button>
+          </form>
         </div>
       </section>
 

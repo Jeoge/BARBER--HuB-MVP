@@ -1,11 +1,32 @@
 import { ArrowLeft, Send } from "lucide-react";
 import Link from "next/link";
+import { SignupRequiredCard } from "@/components/AuthGate";
 import { PageChrome } from "@/components/PageChrome";
 import { backRoomRooms } from "@/lib/backRoom";
+import { createClient } from "@/lib/supabase/server";
 
 // Future: add a per-user rate limit for thread creation, such as one thread per few minutes,
 // backed by account/session identity. MVP keeps the UI only.
-export default function BackRoomPostPage() {
+export default async function BackRoomPostPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user == null) {
+    return (
+      <PageChrome>
+        <section className="px-4 pt-4">
+          <Link href="/backyard" className="inline-flex items-center gap-1.5 text-sm font-black text-ink">
+            <ArrowLeft aria-hidden="true" size={17} />
+            Back Roomへ戻る
+          </Link>
+        </section>
+        <SignupRequiredCard kind="backyard" />
+      </PageChrome>
+    );
+  }
+
   return (
     <PageChrome>
       <section className="px-4 pt-4">

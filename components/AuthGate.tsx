@@ -2,7 +2,9 @@
 
 import { LockKeyhole, X } from "lucide-react";
 import Link from "next/link";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { pathWithParams } from "@/lib/auth/redirects";
+import { createClient } from "@/lib/supabase/client";
 
 type GateKind = "default" | "backyard" | "jobs";
 
@@ -36,11 +38,46 @@ const copyMap: Record<GateKind, Copy> = {
 
 type AuthRequiredModalProps = {
   kind?: GateKind;
+  targetHref?: string;
   onClose: () => void;
 };
 
-function AuthRequiredModal({ kind = "default", onClose }: AuthRequiredModalProps) {
+function defaultNextForKind(kind: GateKind) {
+  if (kind === "backyard") return "/backyard/setup";
+  if (kind === "jobs") return "/jobs/register";
+  return "/mypage";
+}
+
+function useAuthState() {
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null);
+      setReady(true);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user.email ?? null);
+      setReady(true);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return { ready, userEmail, isLoggedIn: userEmail != null };
+}
+
+function AuthRequiredModal({ kind = "default", targetHref, onClose }: AuthRequiredModalProps) {
   const copy = copyMap[kind];
+  const next = targetHref ?? defaultNextForKind(kind);
+  const signupHref = pathWithParams("/signup", { next });
+  const loginHref = pathWithParams("/login", { next });
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-ink/35 px-4 pb-4">
@@ -60,13 +97,16 @@ function AuthRequiredModal({ kind = "default", onClose }: AuthRequiredModalProps
           </button>
         </div>
         <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-          <Link href={copy.href} className="inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
+          <Link href={signupHref} className="inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
             {copy.cta}
           </Link>
-          <button className="h-11 rounded-[8px] border border-line bg-white px-4 text-sm font-black text-ink" onClick={onClose}>
-            あとで見る
-          </button>
+          <Link href={loginHref} className="inline-flex h-11 items-center justify-center rounded-[8px] border border-line bg-white px-4 text-sm font-black text-ink">
+            ログイン
+          </Link>
         </div>
+        <button className="mt-2 h-10 w-full rounded-[8px] text-xs font-black text-mute" onClick={onClose}>
+          あとで見る
+        </button>
       </div>
     </div>
   );
@@ -74,20 +114,31 @@ function AuthRequiredModal({ kind = "default", onClose }: AuthRequiredModalProps
 
 type AuthGateLinkProps = {
   children: ReactNode;
+  href?: string;
   className?: string;
   kind?: GateKind;
   ariaLabel?: string;
+  signupNextHref?: string;
 };
 
-export function AuthGateLink({ children, className, kind = "default", ariaLabel }: AuthGateLinkProps) {
+export function AuthGateLink({ children, href, className, kind = "default", ariaLabel, signupNextHref }: AuthGateLinkProps) {
   const [open, setOpen] = useState(false);
+  const { isLoggedIn } = useAuthState();
+
+  if (isLoggedIn && href) {
+    return (
+      <Link href={href} className={className} aria-label={ariaLabel}>
+        {children}
+      </Link>
+    );
+  }
 
   return (
     <>
-      <button type="button" aria-label={ariaLabel} className={className} onClick={() => setOpen(true)}>
+      <button type="button" aria-label={ariaLabel} className={className} onClick={() => !isLoggedIn && setOpen(true)}>
         {children}
       </button>
-      {open ? <AuthRequiredModal kind={kind} onClose={() => setOpen(false)} /> : null}
+      {open ? <AuthRequiredModal kind={kind} targetHref={signupNextHref ?? href} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }
@@ -101,10 +152,11 @@ type AuthGateButtonProps = {
 
 export function AuthGateButton({ children, className, kind = "default", ariaLabel }: AuthGateButtonProps) {
   const [open, setOpen] = useState(false);
+  const { isLoggedIn } = useAuthState();
 
   return (
     <>
-      <button type="button" aria-label={ariaLabel} className={className} onClick={() => setOpen(true)}>
+      <button type="button" aria-label={ariaLabel} className={className} onClick={() => !isLoggedIn && setOpen(true)}>
         {children}
       </button>
       {open ? <AuthRequiredModal kind={kind} onClose={() => setOpen(false)} /> : null}
@@ -114,6 +166,26 @@ export function AuthGateButton({ children, className, kind = "default", ariaLabe
 
 export function SignupRequiredCard({ kind = "default" }: { kind?: GateKind }) {
   const copy = copyMap[kind];
+  const { isLoggedIn, userEmail } = useAuthState();
+
+  if (isLoggedIn) {
+    return (
+      <section className="px-4 pt-5">
+        <div className="rounded-[8px] border border-line bg-white p-5 shadow-sm">
+          <div className="grid h-12 w-12 place-items-center rounded-full bg-blushSoft text-blush">
+            <LockKeyhole aria-hidden="true" size={23} />
+          </div>
+          <h1 className="mt-4 text-[1.5rem] font-black leading-tight text-ink">ログイン済みです</h1>
+          <p className="mt-2 break-words text-sm font-medium leading-relaxed text-mute">
+            ログイン中: {userEmail}
+          </p>
+          <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
+            この機能の本番データ保存は次のPhaseで接続します。
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="px-4 pt-5">
@@ -125,6 +197,9 @@ export function SignupRequiredCard({ kind = "default" }: { kind?: GateKind }) {
         <p className="mt-2 text-sm font-medium leading-relaxed text-mute">{copy.body}</p>
         <Link href={copy.href} className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-[8px] bg-blush text-sm font-black text-white">
           {copy.cta}
+        </Link>
+        <Link href="/login" className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-[8px] border border-line bg-white text-sm font-black text-ink">
+          ログイン
         </Link>
         <p className="mt-3 text-center text-xs font-bold text-mute">
           読むだけなら無料。参加すると、もっと広がる。
