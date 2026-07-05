@@ -15,7 +15,6 @@ import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabas
 import {
   currentUser,
   jobApplications,
-  privateMemos,
   reactionSummaries,
   salonJobAdminItems,
   savedArticles,
@@ -69,9 +68,9 @@ function SectionCard({
   );
 }
 
-function DashboardLinkList({ items }: { items: { id: string; title: string; meta: string; href: string }[] }) {
+function DashboardLinkList({ items, className = "" }: { items: { id: string; title: string; meta: string; href: string }[]; className?: string }) {
   return (
-    <div className="grid gap-2">
+    <div className={"grid gap-2 " + className}>
       {items.map((item) => (
         <Link key={item.id} href={item.href} className="block rounded-[8px] bg-neutral-50 p-3">
           <p className="line-clamp-1 text-sm font-black text-ink">{item.title}</p>
@@ -100,7 +99,7 @@ function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
   }
 
   return (
-    <div className="grid gap-2.5">
+    <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
       {snaps.map((snap) => (
         <article key={snap.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
           <div className="flex gap-3">
@@ -148,11 +147,12 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   }
 
   const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
-  const { snaps: mySnaps, error: mySnapsError } = await listUserSnaps(supabase, user.id, 3);
+  const { snaps: mySnaps, error: mySnapsError } = await listUserSnaps(supabase, user.id, 30);
   const profileDisplayName = profile?.display_name?.trim() || "プロフィール未設定";
   const loginEmail = user.email ?? "メールアドレス未取得";
   const hasProfile = profile != null;
   const showSalonAdmin = Boolean(profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
+  const savedItems = [...savedArticles, ...savedSnaps, ...savedJobs];
   const followedProfiles = currentUser.followedProfileIds
     .map((profileId) => findPublicProfile(profileId))
     .filter((profile): profile is NonNullable<typeof profile> => profile != null);
@@ -175,7 +175,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           ) : null}
           {params?.snap === "deleted" ? (
             <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
-              Snapを削除しました。
+              削除しました
             </p>
           ) : null}
           <div className="mt-3 flex items-center gap-3">
@@ -216,6 +216,69 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         </div>
       </section>
 
+      <SectionCard eyebrow="THANKS POINTS" title="Thanksポイント" testNote={testDisplayNote}>
+        <div className="rounded-[8px] bg-neutral-50 p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs font-bold text-mute">今月の管理ポイント</p>
+              <p className="mt-1 text-2xl font-black text-ink">{currentUser.thanksPoints}pt</p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-mute">次の特典目安</p>
+              <p className="mt-1 text-2xl font-black text-ink">{currentUser.pointsToNextReward}pt</p>
+            </div>
+          </div>
+          <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
+            本人だけが確認する管理情報です。公開ランキングや他人のプロフィールには表示しません。
+          </p>
+        </div>
+      </SectionCard>
+
+      <SectionCard eyebrow="MY SNAP" title="自分のSnap">
+        {params?.snapError ? (
+          <div className="mb-3 rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
+            {params.snapError}
+          </div>
+        ) : null}
+        {mySnapsError ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            自分のSnapを読み込めませんでした。
+          </div>
+        ) : (
+          <MySnapList snaps={mySnaps} />
+        )}
+      </SectionCard>
+
+      <SectionCard eyebrow="SAVED" title="保存したもの" testNote={testDisplayNote}>
+        <div className="flex items-center gap-2 text-sm font-black text-ink">
+          <Bookmark aria-hidden="true" size={15} className="text-blush" />
+          保存一覧
+        </div>
+        <DashboardLinkList items={savedItems} className="mt-2 max-h-[14.25rem] overflow-y-auto overscroll-contain pr-1" />
+      </SectionCard>
+
+      <SectionCard eyebrow="FOLLOWING" title="フォロー中" testNote={testDisplayNote}>
+        {followedProfiles.length === 0 ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            フォロー中のプロフィールはまだありません。
+          </div>
+        ) : (
+          <div className="grid max-h-[13.75rem] gap-2 overflow-y-auto overscroll-contain pr-1">
+            {followedProfiles.map((profile) => (
+              <Link key={profile.id} href={`/profiles/${profile.id}`} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-black text-ink">{profile.displayName}</span>
+                  <span className="mt-1 block truncate text-xs font-semibold text-mute">
+                    {[...profile.badges, ...(profile.isHiring ? ["求人中"] : [])].join(" / ")}
+                  </span>
+                </span>
+                <UserRoundCheck aria-hidden="true" size={16} className="shrink-0 text-blush" />
+              </Link>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
       <SectionCard eyebrow="PROFILE" title="プロフィール">
         {hasProfile ? (
           <div className="grid gap-2.5">
@@ -241,102 +304,15 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         )}
       </SectionCard>
 
-      <SectionCard eyebrow="MY SNAP" title="自分のSnap">
-        {params?.snapError ? (
-          <div className="mb-3 rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
-            {params.snapError}
-          </div>
-        ) : null}
-        {mySnapsError ? (
-          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-            自分のSnapを読み込めませんでした。
-          </div>
-        ) : (
-          <MySnapList snaps={mySnaps} />
-        )}
-      </SectionCard>
-
-      <SectionCard eyebrow="SAVED" title="保存したもの" testNote={testDisplayNote}>
-        <div className="grid gap-4">
-          <div>
-            <h3 className="flex items-center gap-2 text-sm font-black text-ink">
-              <Bookmark aria-hidden="true" size={15} className="text-blush" />
-              保存した記事
-            </h3>
-            <div className="mt-2">
-              <DashboardLinkList items={savedArticles} />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-ink">保存したSnap</h3>
-            <div className="mt-2">
-              <DashboardLinkList items={savedSnaps} />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-ink">保存した求人</h3>
-            <div className="mt-2">
-              <DashboardLinkList items={savedJobs} />
-            </div>
-          </div>
-        </div>
-      </SectionCard>
-
       <SectionCard eyebrow="MEMO" title="自分用メモ" testNote={testDisplayNote}>
-        <div className="grid gap-3">
-          <label className="grid gap-2">
-            <span className="text-xs font-bold text-mute">メモを書く</span>
-            <textarea
-              rows={3}
-              className="resize-none rounded-[8px] border border-line bg-neutral-50 px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
-              placeholder="あとで試したいこと、見学候補、気になる道具など"
-            />
-          </label>
-          <button type="button" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
-            保存する
-          </button>
-          <div className="grid gap-2">
-            {privateMemos.map((memo) => (
-              <p key={memo} className="rounded-[8px] bg-neutral-50 p-3 text-sm font-semibold text-ink">
-                {memo}
-              </p>
-            ))}
-          </div>
-        </div>
-      </SectionCard>
-
-      <SectionCard eyebrow="FOLLOWING" title="フォロー中" testNote={testDisplayNote}>
-        <div className="grid gap-2">
-          {followedProfiles.map((profile) => (
-            <Link key={profile.id} href={`/profiles/${profile.id}`} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-black text-ink">{profile.displayName}</span>
-                <span className="mt-1 block text-xs font-semibold text-mute">
-                  {[...profile.badges, ...(profile.isHiring ? ["求人中"] : [])].join(" / ")}
-                </span>
-              </span>
-              <UserRoundCheck aria-hidden="true" size={16} className="shrink-0 text-blush" />
-            </Link>
-          ))}
-        </div>
-      </SectionCard>
-
-      <SectionCard eyebrow="THANKS POINTS" title="Thanksポイント" testNote={testDisplayNote}>
-        <div className="rounded-[8px] bg-neutral-50 p-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs font-bold text-mute">今月の獲得ポイント</p>
-              <p className="mt-1 text-2xl font-black text-ink">{currentUser.thanksPoints}pt</p>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-mute">商品交換まであと</p>
-              <p className="mt-1 text-2xl font-black text-ink">{currentUser.pointsToNextReward}pt</p>
-            </div>
-          </div>
-          <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
-            投稿に届いた反応が、Thanksポイントとして貯まります。将来的に理容道具・材料・講習特典などと交換できる予定です。
-          </p>
-        </div>
+        <label className="grid gap-2">
+          <span className="text-xs font-bold text-mute">メモを書く</span>
+          <textarea
+            rows={3}
+            className="resize-none rounded-[8px] border border-line bg-neutral-50 px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
+            placeholder="あとで試したいこと、見学候補、気になる道具など"
+          />
+        </label>
       </SectionCard>
 
       <SectionCard eyebrow="OWNER VIEW" title="自分の投稿への反応" testNote={testDisplayNote}>

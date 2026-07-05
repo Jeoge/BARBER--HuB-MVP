@@ -2,18 +2,19 @@ import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { FollowButton } from "@/components/FollowButton";
 import { MagazineImage } from "@/components/MagazineImage";
-import { ReactionBar } from "@/components/ReactionBar";
+import { SnapReactionNotice } from "@/components/SnapReactionNotice";
 import { snapAuthorMeta, snapAuthorName, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
 
 function initial(name: string) {
   return name.trim().slice(0, 1).toUpperCase();
 }
 
-export function SnapCard({ snap, compact = false }: { snap: SnapWithAuthor; compact?: boolean }) {
+export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapWithAuthor; compact?: boolean; currentUserId?: string | null }) {
   const authorName = snapAuthorName(snap);
   const authorMeta = snapAuthorMeta(snap);
   const caption = snap.caption ?? "";
   const hasImage = Boolean(snap.image_url);
+  const isOwnSnap = currentUserId != null && snap.author_id === currentUserId;
 
   return (
     <article className="min-w-0 overflow-hidden rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
@@ -32,7 +33,7 @@ export function SnapCard({ snap, compact = false }: { snap: SnapWithAuthor; comp
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <div className="flex items-center justify-end gap-1.5">
-            <FollowButton authorId={snap.author_id} variant="snapInline" />
+            {isOwnSnap ? null : <FollowButton authorId={snap.author_id} variant="snapInline" />}
             <span className="grid h-8 w-8 place-items-center rounded-full" aria-label="スナップメニュー">
               <MoreHorizontal aria-hidden="true" size={20} />
             </span>
@@ -68,8 +69,7 @@ export function SnapCard({ snap, compact = false }: { snap: SnapWithAuthor; comp
         </Link>
       ) : null}
 
-      <ReactionBar contentId={`snap:${snap.id}`} commentTitle={`${authorName}のコメント`} className="mt-3" goodIconOnly />
-      <p className="mt-2 text-[0.66rem] font-semibold text-mute">Thanks・コメント・保存は現在テスト表示です。</p>
+      <SnapReactionNotice isOwnSnap={isOwnSnap} className="mt-3" />
     </article>
   );
 }

@@ -5,6 +5,9 @@ import { SnapCard } from "./SnapCard";
 
 export async function SnapSection() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { snaps, error } = await listPublishedSnaps(supabase, 2);
 
   return (
@@ -39,7 +42,7 @@ export async function SnapSection() {
         ) : (
           <div className="grid gap-3 px-4 pb-1">
             {snaps.map((snap) => (
-              <SnapCard key={snap.id} snap={snap} compact />
+              <SnapCard key={snap.id} snap={snap} compact currentUserId={user?.id} />
             ))}
           </div>
         )}

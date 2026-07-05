@@ -7,6 +7,9 @@ import { listPublishedSnaps, snapAuthorMeta, snapAuthorName } from "@/lib/supaba
 
 export default async function SnapPage() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { snaps, error } = await listPublishedSnaps(supabase, 30);
   const featuredSnaps = snaps.filter((snap) => snap.image_url).slice(0, 3);
 
@@ -51,7 +54,7 @@ export default async function SnapPage() {
         ) : (
           <div className="grid gap-3">
             {snaps.map((snap) => (
-              <SnapCard key={snap.id} snap={snap} />
+              <SnapCard key={snap.id} snap={snap} currentUserId={user?.id} />
             ))}
           </div>
         )}

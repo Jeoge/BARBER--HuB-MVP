@@ -133,7 +133,7 @@ export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20) {
   return { snaps: normalizeSnaps(data), error };
 }
 
-export async function listUserSnaps(supabase: SupabaseClient, userId: string, limit = 3) {
+export async function listUserSnaps(supabase: SupabaseClient, userId: string, limit = 30) {
   const { data, error } = await supabase
     .from("snaps")
     .select(snapSelect)

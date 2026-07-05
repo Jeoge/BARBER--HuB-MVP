@@ -6,6 +6,7 @@ import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
+import { SnapReactionNotice } from "@/components/SnapReactionNotice";
 import { VisualTile } from "@/components/VisualTile";
 import { findBackyardPost, findPost, posts } from "@/lib/mockData";
 import { createClient } from "@/lib/supabase/server";
@@ -36,9 +37,13 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   }
 
   if (dbSnap != null) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     const authorName = snapAuthorName(dbSnap);
     const authorMeta = snapAuthorMeta(dbSnap);
     const caption = dbSnap.caption ?? "";
+    const isOwnSnap = user?.id === dbSnap.author_id;
 
     return (
       <PageChrome>
@@ -58,7 +63,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                 <span className="rounded-full bg-blushSoft px-2 py-0.5 text-[0.64rem] font-black text-blush">
                   {dbSnap.category ?? "日常"}
                 </span>
-                <FollowButton authorId={dbSnap.author_id} variant="snapInline" />
+                {isOwnSnap ? null : <FollowButton authorId={dbSnap.author_id} variant="snapInline" />}
               </div>
               <p className="mt-1 flex items-center gap-1 text-xs font-bold text-mute">
                 <MapPin aria-hidden="true" size={14} />
@@ -81,8 +86,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             </div>
           )}
 
-          <ReactionBar contentId={`snap:${dbSnap.id}`} commentTitle="スナップへのコメント" className="mt-4" goodIconOnly />
-          <p className="mt-2 text-[0.68rem] font-semibold text-mute">Thanks・コメント・保存は現在テスト表示です。</p>
+          <SnapReactionNotice isOwnSnap={isOwnSnap} className="mt-4" />
 
           <button className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute">
             <Flag aria-hidden="true" size={14} />
