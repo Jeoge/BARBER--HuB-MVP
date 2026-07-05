@@ -40,7 +40,7 @@ export function SnapSection() {
                   src={post.imageUrl}
                   alt={post.body}
                   variant={post.accents[0]}
-                  className="aspect-[4/5]"
+                  className="mx-auto aspect-[4/5] max-h-[17rem] w-[78%] max-w-[17.5rem]"
                   imageClassName="object-[center_38%]"
                 />
                 <p className="mt-3 truncate text-[0.86rem] font-medium leading-relaxed text-ink">{post.body}</p>

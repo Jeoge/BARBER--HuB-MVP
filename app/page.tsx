@@ -25,7 +25,6 @@ export default function Home() {
       <SponsorSection
         eyebrow="Sponsored"
         title="今週の協賛パートナー"
-        subtitle="理容師に役立つ道具・講習・学校情報だけを、控えめに紹介。"
         items={sponsorsForPlacement("home")}
       />
       <BackyardSection />
