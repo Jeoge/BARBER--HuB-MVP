@@ -8,14 +8,18 @@ import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
 import { VisualTile } from "@/components/VisualTile";
 import { findBackyardPost, findPost, posts } from "@/lib/mockData";
+import { createClient } from "@/lib/supabase/server";
+import { getPublishedSnapById, snapAuthorMeta, snapAuthorName, snapDateLabel } from "@/lib/supabase/snaps";
 import { getPrimaryTopicSlug, getTopicBundle } from "@/lib/topics";
 
 export default async function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const post = findPost(id);
   const backyardPost = findBackyardPost(id);
+  const supabase = await createClient();
+  const { snap: dbSnap } = post == null && backyardPost == null ? await getPublishedSnapById(supabase, id) : { snap: null };
 
-  if (post == null && backyardPost == null) {
+  if (post == null && backyardPost == null && dbSnap == null) {
     return (
       <PageChrome>
         <section className="px-4 pt-8">
@@ -27,6 +31,64 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             SNAPへ戻る
           </Link>
         </section>
+      </PageChrome>
+    );
+  }
+
+  if (dbSnap != null) {
+    const authorName = snapAuthorName(dbSnap);
+    const authorMeta = snapAuthorMeta(dbSnap);
+    const caption = dbSnap.caption ?? "";
+
+    return (
+      <PageChrome>
+        <article className="px-4 pt-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex min-w-0 items-center gap-2 rounded-full pr-1">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
+                    {dbSnap.profiles?.avatar_url ? <img src={dbSnap.profiles.avatar_url} alt="" className="h-full w-full object-cover" /> : authorName.slice(0, 1)}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold leading-tight text-ink">{authorName}</span>
+                    {authorMeta ? <span className="mt-0.5 block truncate text-[0.62rem] font-semibold text-mute">{authorMeta}</span> : null}
+                  </span>
+                </div>
+                <span className="rounded-full bg-blushSoft px-2 py-0.5 text-[0.64rem] font-black text-blush">
+                  {dbSnap.category ?? "日常"}
+                </span>
+                <FollowButton authorId={dbSnap.author_id} variant="snapInline" />
+              </div>
+              <p className="mt-1 flex items-center gap-1 text-xs font-bold text-mute">
+                <MapPin aria-hidden="true" size={14} />
+                {dbSnap.region || dbSnap.profiles?.region || "地域未設定"} / {snapDateLabel(dbSnap)}
+              </p>
+            </div>
+            <button className="grid h-9 w-9 place-items-center rounded-full bg-neutral-50 text-ink" aria-label="投稿メニュー">
+              <MoreHorizontal aria-hidden="true" size={19} />
+            </button>
+          </div>
+
+          <p className="mt-4 whitespace-pre-wrap text-[0.94rem] font-medium leading-relaxed text-ink">{caption}</p>
+
+          {dbSnap.image_url ? (
+            <MagazineImage src={dbSnap.image_url} alt={caption} variant="news" className="mt-4 aspect-[4/5]" imageClassName="object-[center_38%]" />
+          ) : (
+            <div className="mt-4 rounded-[8px] border border-line bg-neutral-50 p-4">
+              <p className="text-xs font-black text-blush">TEXT SNAP</p>
+              <p className="mt-2 text-sm font-medium leading-relaxed text-ink">画像なしのSnapです。</p>
+            </div>
+          )}
+
+          <ReactionBar contentId={`snap:${dbSnap.id}`} commentTitle="スナップへのコメント" className="mt-4" goodIconOnly />
+          <p className="mt-2 text-[0.68rem] font-semibold text-mute">Thanks・コメント・保存は現在テスト表示です。</p>
+
+          <button className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute">
+            <Flag aria-hidden="true" size={14} />
+            通報
+          </button>
+        </article>
       </PageChrome>
     );
   }

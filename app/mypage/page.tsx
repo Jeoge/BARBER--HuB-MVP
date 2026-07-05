@@ -2,13 +2,16 @@ import { Bookmark, BriefcaseBusiness, FilePenLine, LogOut, Pencil, Send, Sparkle
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
+import { deleteMySnapAction } from "@/app/mypage/actions";
 import { logoutAction } from "@/app/auth/actions";
+import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { findPublicProfile } from "@/lib/publicProfiles";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
+import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
 import {
   currentUser,
   jobApplications,
@@ -80,8 +83,53 @@ function DashboardLinkList({ items }: { items: { id: string; title: string; meta
 }
 
 type MyPageProps = {
-  searchParams?: Promise<{ profile?: string }>;
+  searchParams?: Promise<{ profile?: string; snap?: string; snapError?: string }>;
 };
+
+function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
+  if (snaps.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
+        <p className="text-sm font-black text-ink">まだ自分のSnapはありません</p>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-mute">最初のSnapを投稿すると、ここに表示されます。</p>
+        <Link href="/post/snap" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+          Snapを投稿する
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-2.5">
+      {snaps.map((snap) => (
+        <article key={snap.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex gap-3">
+            {snap.image_url ? (
+              <Link href={`/posts/${snap.id}`} className="h-20 w-16 shrink-0">
+                <MagazineImage src={snap.image_url} alt={snap.caption ?? "Snap"} variant="news" className="h-full w-full" />
+              </Link>
+            ) : null}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{snap.category ?? "日常"}</span>
+                <span className="text-[0.66rem] font-bold text-mute">{snapDateLabel(snap)}</span>
+              </div>
+              <Link href={`/posts/${snap.id}`} className="mt-1 block">
+                <p className="line-clamp-2 break-words text-sm font-semibold leading-relaxed text-ink">{snap.caption}</p>
+              </Link>
+            </div>
+          </div>
+          <form action={deleteMySnapAction} className="mt-2">
+            <input type="hidden" name="snapId" value={snap.id} />
+            <button type="submit" className="inline-flex h-9 w-full items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-mute">
+              このSnapを削除
+            </button>
+          </form>
+        </article>
+      ))}
+    </div>
+  );
+}
 
 export default async function MyPage({ searchParams }: MyPageProps) {
   const params = await searchParams;
@@ -100,6 +148,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   }
 
   const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+  const { snaps: mySnaps, error: mySnapsError } = await listUserSnaps(supabase, user.id, 3);
   const profileDisplayName = profile?.display_name?.trim() || "プロフィール未設定";
   const loginEmail = user.email ?? "メールアドレス未取得";
   const hasProfile = profile != null;
@@ -122,6 +171,11 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           {params?.profile === "updated" ? (
             <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
               プロフィールを保存しました。
+            </p>
+          ) : null}
+          {params?.snap === "deleted" ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              Snapを削除しました。
             </p>
           ) : null}
           <div className="mt-3 flex items-center gap-3">
@@ -184,6 +238,21 @@ export default async function MyPage({ searchParams }: MyPageProps) {
               プロフィールを設定する
             </Link>
           </div>
+        )}
+      </SectionCard>
+
+      <SectionCard eyebrow="MY SNAP" title="自分のSnap">
+        {params?.snapError ? (
+          <div className="mb-3 rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
+            {params.snapError}
+          </div>
+        ) : null}
+        {mySnapsError ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            自分のSnapを読み込めませんでした。
+          </div>
+        ) : (
+          <MySnapList snaps={mySnaps} />
         )}
       </SectionCard>
 

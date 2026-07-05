@@ -1,28 +1,88 @@
-import { PostFormPage } from "@/components/PostFormPage";
+import { ArrowLeft, UserRoundPen } from "lucide-react";
+import Link from "next/link";
+import { SignupRequiredCard } from "@/components/AuthGate";
+import { PageChrome } from "@/components/PageChrome";
+import { getAccountProfile } from "@/lib/supabase/profiles";
+import { createClient } from "@/lib/supabase/server";
+import { SnapPostForm } from "./SnapPostForm";
 
-export default function SnapPostPage() {
+type SnapPostPageProps = {
+  searchParams?: Promise<{ error?: string; message?: string }>;
+};
+
+function ProfileRequiredCard() {
   return (
-    <PostFormPage
-      title="スナップ投稿"
-      description="今日の営業の1コマ、道具の感想、ちょっとした気づきを共有できます。"
-      phrase="記事じゃなくても大丈夫。小さな気づきから共有できます。Thanksは、役に立った証です。"
-      imageLabel="縦写真を追加"
-      fields={[
-        { kind: "select", label: "カテゴリー", options: ["技術", "道具", "営業メモ", "集客", "日常", "編集部へ共有"] },
-        { kind: "textarea", label: "本文", placeholder: "今日の営業で気づいたことを書いてみましょう", rows: 6 },
-        { kind: "note", text: "Thanksは、あなたのスナップが誰かの役に立った証として届きます。" },
-      ]}
-      postingNotice={{
-        title: "投稿ルール",
-        body: [
-          "Snapは、現場の気づきや日常を共有する場所です。企業・学校・メーカー・ディーラー等の告知や広告掲載は、運営確認のうえ専用枠で行います。",
-          "PR・協賛・提供を含む投稿は、広告であることが分かる表記を行い、広告と分からない投稿は避けてください。",
-        ],
-        link: {
-          href: "/partners/dealers",
-          label: "広告掲載について相談する",
-        },
-      }}
-    />
+    <section className="px-4 pt-4">
+      <div className="rounded-[10px] border border-blush/20 bg-white p-4 shadow-sm">
+        <div className="grid h-11 w-11 place-items-center rounded-full bg-blushSoft text-blush">
+          <UserRoundPen aria-hidden="true" size={22} />
+        </div>
+        <h2 className="mt-4 text-lg font-black leading-tight text-ink">プロフィール設定後にSnap投稿できます</h2>
+        <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
+          Snapの投稿者として表示するため、先に表示名や地域を設定してください。
+        </p>
+        <Link href="/mypage/profile/edit" className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
+          プロフィール設定へ進む
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+export default async function SnapPostPage({ searchParams }: SnapPostPageProps) {
+  const params = await searchParams;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user == null) {
+    return (
+      <PageChrome>
+        <section className="px-4 pt-4">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-black text-ink">
+            <ArrowLeft aria-hidden="true" size={17} />
+            戻る
+          </Link>
+        </section>
+        <SignupRequiredCard />
+      </PageChrome>
+    );
+  }
+
+  const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+
+  return (
+    <PageChrome>
+      <section className="px-4 pt-4">
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-black text-ink">
+          <ArrowLeft aria-hidden="true" size={17} />
+          戻る
+        </Link>
+        <div className="mt-4 rounded-[8px] border border-blush/20 bg-white p-4 shadow-sm">
+          <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-blush">SNAP POST</p>
+          <h1 className="mt-1 text-[1.5rem] font-black leading-tight text-ink">スナップ投稿</h1>
+          <p className="mt-2 text-[0.86rem] font-medium leading-relaxed text-mute">
+            今日の営業の1コマ、道具の感想、ちょっとした気づきを共有できます。
+          </p>
+        </div>
+      </section>
+
+      {profileError ? (
+        <section className="px-4 pt-4">
+          <div className="rounded-[10px] border border-red-200 bg-red-50 p-4 text-sm font-black leading-relaxed text-red-700">
+            プロフィール情報を確認できませんでした。profilesテーブルの権限設定を確認してください。
+          </div>
+        </section>
+      ) : profile == null ? (
+        <ProfileRequiredCard />
+      ) : (
+        <SnapPostForm
+          initialRegion={profile.region}
+          error={params?.error}
+          posted={params?.message === "posted"}
+        />
+      )}
+    </PageChrome>
   );
 }
