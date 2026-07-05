@@ -1,5 +1,6 @@
 import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { FollowButton } from "@/components/FollowButton";
 import { MagazineImage } from "@/components/MagazineImage";
 import { MagazinePageHeader, MagazineRail, MagazineSectionHeading } from "@/components/MagazineListLayout";
 import { PageChrome } from "@/components/PageChrome";
@@ -29,42 +30,54 @@ export default function SnapPage() {
           imageUrl: post.imageUrl,
           variant: post.accents[0],
           imageClassName: "object-[center_38%]",
+          authorId: post.profileId,
         }))}
       />
 
       <section className="px-4 pt-7">
         <MagazineSectionHeading eyebrow="LATEST" title="新着Snap" />
         <div className="grid gap-3">
-          {posts.map((post) => (
-            <article key={post.id} className="rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
-              <div className="mb-2.5 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <ProfileMiniLink profileId={post.profileId} fallbackName={post.authorLabel} />
-                  <p className="ml-10 mt-0.5 text-xs font-bold text-mute">{post.area}</p>
+          {posts.map((post) => {
+            const hasImage = post.imageUrl != null && post.imageUrl.length > 0;
+
+            return (
+              <article key={post.id} className="overflow-hidden rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
+                <div className="mb-2.5 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <ProfileMiniLink profileId={post.profileId} fallbackName={post.authorLabel} />
+                    <p className="ml-10 mt-0.5 text-xs font-bold text-mute">{post.area}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    {!hasImage ? <FollowButton authorId={post.profileId} variant="snapInline" /> : null}
+                    <span className="rounded-full bg-blushSoft px-2 py-0.5 text-[0.6rem] font-black text-blush">
+                      {post.category}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-neutral-50 px-2 py-1 text-[0.58rem] font-black text-mute">
+                      <ShieldCheck aria-hidden="true" size={12} className="text-blush" />
+                      {post.source}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex shrink-0 flex-col items-end gap-1.5">
-                  <span className="rounded-full bg-blushSoft px-2 py-0.5 text-[0.6rem] font-black text-blush">
-                    {post.category}
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-neutral-50 px-2 py-1 text-[0.58rem] font-black text-mute">
-                    <ShieldCheck aria-hidden="true" size={12} className="text-blush" />
-                    {post.source}
-                  </span>
+
+                <div className="relative mt-3">
+                  <Link href={`/posts/${post.id}`} className="block">
+                    <MagazineImage
+                      src={post.imageUrl}
+                      alt={post.body}
+                      variant={post.accents[0]}
+                      className="aspect-[4/5]"
+                      imageClassName="object-[center_38%]"
+                    />
+                  </Link>
+                  {hasImage ? <FollowButton authorId={post.profileId} variant="snapOverlay" /> : null}
                 </div>
-              </div>
-              <Link href={`/posts/${post.id}`} className="block">
-                <MagazineImage
-                  src={post.imageUrl}
-                  alt={post.body}
-                  variant={post.accents[0]}
-                  className="mt-3 aspect-[4/5]"
-                  imageClassName="object-[center_38%]"
-                />
-                <p className="mt-3 line-clamp-2 text-[0.9rem] font-medium leading-relaxed text-ink">{post.body}</p>
-              </Link>
-              <ReactionBar contentId={`post:${post.id}`} commentTitle={`${post.authorLabel}のコメント`} className="mt-3" goodIconOnly />
-            </article>
-          ))}
+                <Link href={`/posts/${post.id}`} className="block">
+                  <p className="mt-3 line-clamp-2 text-[0.9rem] font-medium leading-relaxed text-ink">{post.body}</p>
+                </Link>
+                <ReactionBar contentId={`post:${post.id}`} commentTitle={`${post.authorLabel}のコメント`} className="mt-3" goodIconOnly />
+              </article>
+            );
+          })}
         </div>
       </section>
     </PageChrome>
