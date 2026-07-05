@@ -15,9 +15,17 @@ type PostFormPageProps = {
   phrase: string;
   fields: Field[];
   imageLabel?: string;
+  postingNotice?: {
+    title: string;
+    body: string[];
+    link?: {
+      href: string;
+      label: string;
+    };
+  };
 };
 
-export function PostFormPage({ title, description, phrase, fields, imageLabel = "画像追加" }: PostFormPageProps) {
+export function PostFormPage({ title, description, phrase, fields, imageLabel = "画像追加", postingNotice }: PostFormPageProps) {
   return (
     <PageChrome>
       <section className="px-4 pt-4">
@@ -103,6 +111,24 @@ export function PostFormPage({ title, description, phrase, fields, imageLabel = 
           <ImagePlus aria-hidden="true" size={24} />
           {imageLabel}
         </button>
+
+        {postingNotice ? (
+          <div className="rounded-[8px] border border-line/80 bg-neutral-50 px-3 py-2.5 text-[0.72rem] font-medium leading-relaxed text-mute">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-black text-ink/70">{postingNotice.title}</span>
+              {postingNotice.link ? (
+                <Link href={postingNotice.link.href} className="font-black text-blush">
+                  {postingNotice.link.label}
+                </Link>
+              ) : null}
+            </div>
+            {postingNotice.body.map((line) => (
+              <p key={line} className="mt-1">
+                {line}
+              </p>
+            ))}
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-2 pt-1">
           <button className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] border border-line bg-white text-sm font-black text-ink">
