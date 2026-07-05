@@ -86,6 +86,25 @@ function safeFileName(fileName: string, contentType: string) {
   return safeName.slice(0, 90);
 }
 
+function isLikelyImageFile(file: File) {
+  if (file.type.startsWith("image/")) return true;
+  return /\.(avif|gif|heic|heif|jpeg|jpg|png|webp)$/i.test(file.name);
+}
+
+function contentTypeForUpload(file: File) {
+  if (file.type) return file.type;
+  const extension = file.name.split(".").pop()?.toLowerCase();
+
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "png") return "image/png";
+  if (extension === "webp") return "image/webp";
+  if (extension === "gif") return "image/gif";
+  if (extension === "heic") return "image/heic";
+  if (extension === "heif") return "image/heif";
+
+  return "application/octet-stream";
+}
+
 export async function createSnapAction(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -118,7 +137,7 @@ export async function createSnapAction(formData: FormData) {
   }
 
   if (image instanceof File && image.size > 0) {
-    if (!image.type.startsWith("image/")) {
+    if (!isLikelyImageFile(image)) {
       redirectToSnapPost({ error: "画像ファイルだけアップロードできます。" });
     }
 
@@ -126,13 +145,14 @@ export async function createSnapAction(formData: FormData) {
       redirectToSnapPost({ error: "画像は10MB以下にしてください。" });
     }
 
-    const uploadPath = `${user.id}/${Date.now()}-${safeFileName(image.name, image.type)}`;
+    const uploadContentType = contentTypeForUpload(image);
+    const uploadPath = `${user.id}/${Date.now()}-${safeFileName(image.name, uploadContentType)}`;
     const { error: uploadError } = await supabase.storage
       .from(SNAP_IMAGE_BUCKET)
       .upload(uploadPath, image, {
         cacheControl: "3600",
         upsert: false,
-        contentType: image.type,
+        contentType: uploadContentType,
       });
 
     if (uploadError) {

@@ -1,13 +1,14 @@
 "use client";
 
-import { ImagePlus, Send, Sparkles } from "lucide-react";
+import { ImagePlus, Send, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { ChangeEvent, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createSnapAction } from "./actions";
 
 const categories = ["技術", "道具", "営業メモ", "集客", "日常", "編集部へ共有"];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const imageInputId = "snap-image-input";
 
 function SubmitButton({ disabledByValidation }: { disabledByValidation: boolean }) {
   const { pending } = useFormStatus();
@@ -38,24 +39,79 @@ export function SnapPostForm({
   posted?: boolean;
 }) {
   const [caption, setCaption] = useState("");
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [selectedImagePreviewUrl, setSelectedImagePreviewUrl] = useState("");
   const [imageError, setImageError] = useState("");
+  const [previewError, setPreviewError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const captionRequired = caption.trim().length === 0;
+
+  useEffect(() => {
+    return () => {
+      if (selectedImagePreviewUrl) {
+        URL.revokeObjectURL(selectedImagePreviewUrl);
+      }
+    };
+  }, [selectedImagePreviewUrl]);
+
+  function isLikelyImageFile(file: File) {
+    if (file.type.startsWith("image/")) return true;
+    return /\.(avif|gif|heic|heif|jpeg|jpg|png|webp)$/i.test(file.name);
+  }
+
+  function isHeicLike(file: File) {
+    return file.type === "image/heic" || file.type === "image/heif" || /\.(heic|heif)$/i.test(file.name);
+  }
+
+  function fileSizeLabel(bytes: number) {
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  }
+
+  function clearSelectedImage() {
+    if (selectedImagePreviewUrl) {
+      URL.revokeObjectURL(selectedImagePreviewUrl);
+    }
+    setSelectedImageFile(null);
+    setSelectedImagePreviewUrl("");
+    setImageError("");
+    setPreviewError("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
 
   function checkImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
+    if (selectedImagePreviewUrl) {
+      URL.revokeObjectURL(selectedImagePreviewUrl);
+    }
+    setSelectedImageFile(null);
+    setSelectedImagePreviewUrl("");
     setImageError("");
+    setPreviewError("");
 
-    if (!file) return;
+    if (!file) {
+      setImageError("画像を選択できませんでした。");
+      return;
+    }
 
-    if (!file.type.startsWith("image/")) {
+    if (!isLikelyImageFile(file)) {
       setImageError("画像ファイルだけアップロードできます。");
       event.target.value = "";
       return;
     }
 
     if (file.size > MAX_IMAGE_SIZE) {
-      setImageError("画像は10MB以下にしてください。");
+      setImageError("画像は10MB以下で選択してください。");
       event.target.value = "";
+      return;
+    }
+
+    setSelectedImageFile(file);
+    setSelectedImagePreviewUrl(URL.createObjectURL(file));
+
+    if (isHeicLike(file)) {
+      setPreviewError("この写真形式は表示できない可能性があります。スクリーンショット、JPEG、PNG画像でお試しください。");
     }
   }
 
@@ -120,12 +176,70 @@ export function SnapPostForm({
         />
       </label>
 
-      <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-[8px] border border-dashed border-blush/50 bg-blushSoft px-3 py-4 text-sm font-black text-blush">
-        <ImagePlus aria-hidden="true" size={24} />
-        画像を1枚追加
-        <span className="text-[0.68rem] font-semibold text-mute">画像なしでも投稿できます / 10MB以下</span>
-        <input name="image" type="file" accept="image/*" className="sr-only" onChange={checkImage} />
-      </label>
+      <div className="grid gap-2">
+        <span className="text-sm font-black text-ink">画像</span>
+        <input
+          ref={fileInputRef}
+          id={imageInputId}
+          name="image"
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={checkImage}
+        />
+
+        {selectedImageFile ? (
+          <div className="overflow-hidden rounded-[10px] border border-line bg-white p-3 shadow-sm">
+            {selectedImagePreviewUrl ? (
+              <div className="overflow-hidden rounded-[8px] bg-neutral-100">
+                <img
+                  src={selectedImagePreviewUrl}
+                  alt="選択したSnap画像のプレビュー"
+                  className="aspect-[4/5] max-h-[22rem] w-full object-cover"
+                  onError={() => setPreviewError("画像の読み込みに失敗しました。別の画像でお試しください。")}
+                />
+              </div>
+            ) : null}
+            <div className="mt-3">
+              <p className="line-clamp-1 break-all text-sm font-black text-ink">選択済み: {selectedImageFile.name}</p>
+              <p className="mt-1 text-xs font-semibold text-mute">
+                {selectedImageFile.type || "形式不明"} / {fileSizeLabel(selectedImageFile.size)}
+              </p>
+            </div>
+            {previewError ? (
+              <p className="mt-2 rounded-[8px] border border-line bg-neutral-50 p-2 text-xs font-bold leading-relaxed text-mute">
+                {previewError}
+              </p>
+            ) : null}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <label
+                htmlFor={imageInputId}
+                className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border border-line bg-white text-xs font-black text-ink"
+              >
+                <ImagePlus aria-hidden="true" size={15} />
+                画像を変更する
+              </label>
+              <button
+                type="button"
+                onClick={clearSelectedImage}
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[8px] border border-line bg-white text-xs font-black text-mute"
+              >
+                <Trash2 aria-hidden="true" size={15} />
+                画像を削除する
+              </button>
+            </div>
+          </div>
+        ) : (
+          <label
+            htmlFor={imageInputId}
+            className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-[8px] border border-dashed border-blush/50 bg-blushSoft px-3 py-4 text-sm font-black text-blush"
+          >
+            <ImagePlus aria-hidden="true" size={24} />
+            画像を1枚追加
+            <span className="text-[0.68rem] font-semibold text-mute">画像なしでも投稿できます / 10MB以下</span>
+          </label>
+        )}
+      </div>
 
       {validationMessage ? (
         <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
