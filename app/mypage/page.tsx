@@ -1,10 +1,11 @@
 import { Bookmark, BriefcaseBusiness, FilePenLine, LogOut, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
 import { logoutAction } from "@/app/auth/actions";
-import { SignupRequiredCard } from "@/components/AuthGate";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { pathWithParams } from "@/lib/auth/redirects";
 import { findPublicProfile } from "@/lib/publicProfiles";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -18,12 +19,38 @@ import {
   savedSnaps,
 } from "@/lib/userDashboard";
 
-function SectionCard({ title, eyebrow, children }: { title: string; eyebrow?: string; children: ReactNode }) {
+const testDisplayNote = "現在はテスト表示です。投稿保存は次のPhaseで対応予定です。";
+
+function profileNameFromMetadata(metadata: Record<string, unknown>) {
+  const displayName = metadata.display_name ?? metadata.full_name ?? metadata.name;
+  return typeof displayName === "string" && displayName.trim().length > 0 ? displayName.trim() : undefined;
+}
+
+function accountInitial(nameOrEmail: string | undefined) {
+  return (nameOrEmail?.trim().slice(0, 1) || "B").toUpperCase();
+}
+
+function SectionCard({
+  title,
+  eyebrow,
+  testNote,
+  children,
+}: {
+  title: string;
+  eyebrow?: string;
+  testNote?: string;
+  children: ReactNode;
+}) {
   return (
     <section className="px-4 pt-5">
       <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.035)]">
         {eyebrow ? <p className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-blush">{eyebrow}</p> : null}
         <h2 className="mt-1 text-base font-black text-ink">{title}</h2>
+        {testNote ? (
+          <p className="mt-1.5 rounded-[7px] border border-line/70 bg-neutral-50 px-2.5 py-1.5 text-[0.68rem] font-semibold leading-relaxed text-mute">
+            {testNote}
+          </p>
+        ) : null}
         <div className="mt-3">{children}</div>
       </div>
     </section>
@@ -50,19 +77,17 @@ export default async function MyPage() {
   } = await supabase.auth.getUser();
 
   if (user == null) {
-    return (
-      <PageChrome>
-        <PageHeaderBlock
-          eyebrow="PRIVATE DASHBOARD"
-          title="マイページ"
-          body="保存、メモ、フォロー中、Thanksポイント、自分の投稿への反応を確認する本人専用の管理画面です。"
-        />
-        <SignupRequiredCard />
-      </PageChrome>
+    redirect(
+      pathWithParams("/login", {
+        next: "/mypage",
+        message: "マイページを見るにはログインしてください。",
+      })
     );
   }
 
-  const currentProfile = findPublicProfile(currentUser.profileId);
+  const authDisplayName = profileNameFromMetadata(user.user_metadata);
+  const profileDisplayName = authDisplayName ?? "プロフィール未設定";
+  const loginEmail = user.email ?? "メールアドレス未取得";
   const followedProfiles = currentUser.followedProfileIds
     .map((profileId) => findPublicProfile(profileId))
     .filter((profile): profile is NonNullable<typeof profile> => profile != null);
@@ -80,12 +105,12 @@ export default async function MyPage() {
           <p className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-white/55">ONLY YOU</p>
           <div className="mt-3 flex items-center gap-3">
             <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-full border border-white/20 bg-white/10 text-lg font-black">
-              {currentProfile?.avatarUrl ? <img src={currentProfile.avatarUrl} alt="" className="h-full w-full object-cover" /> : "B"}
+              {accountInitial(authDisplayName ?? loginEmail)}
             </div>
             <div className="min-w-0">
-              <h2 className="truncate text-lg font-black">{currentProfile?.displayName ?? "BARBER HUB会員"}</h2>
+              <h2 className="truncate text-lg font-black">{profileDisplayName}</h2>
               <p className="mt-1 text-xs font-semibold text-white/60">公開プロフィールとは別の、本人だけの管理情報です。</p>
-              <p className="mt-1 break-words text-xs font-semibold text-white/65">ログイン中: {user.email}</p>
+              <p className="mt-1 break-words text-xs font-semibold text-white/65">ログイン中: {loginEmail}</p>
             </div>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2">
@@ -102,6 +127,9 @@ export default async function MyPage() {
               求人
             </Link>
           </div>
+          <p className="mt-3 rounded-[8px] border border-white/10 bg-white/5 px-3 py-2 text-[0.7rem] font-semibold leading-relaxed text-white/62">
+            プロフィール設定は次のPhaseで保存対応します。
+          </p>
           <form action={logoutAction} className="mt-3">
             <button type="submit" className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[8px] border border-white/15 bg-white/5 text-xs font-black text-white">
               <LogOut aria-hidden="true" size={14} />
@@ -111,7 +139,7 @@ export default async function MyPage() {
         </div>
       </section>
 
-      <SectionCard eyebrow="SAVED" title="保存したもの">
+      <SectionCard eyebrow="SAVED" title="保存したもの" testNote={testDisplayNote}>
         <div className="grid gap-4">
           <div>
             <h3 className="flex items-center gap-2 text-sm font-black text-ink">
@@ -137,7 +165,7 @@ export default async function MyPage() {
         </div>
       </SectionCard>
 
-      <SectionCard eyebrow="MEMO" title="自分用メモ">
+      <SectionCard eyebrow="MEMO" title="自分用メモ" testNote={testDisplayNote}>
         <div className="grid gap-3">
           <label className="grid gap-2">
             <span className="text-xs font-bold text-mute">メモを書く</span>
@@ -160,7 +188,7 @@ export default async function MyPage() {
         </div>
       </SectionCard>
 
-      <SectionCard eyebrow="FOLLOWING" title="フォロー中">
+      <SectionCard eyebrow="FOLLOWING" title="フォロー中" testNote={testDisplayNote}>
         <div className="grid gap-2">
           {followedProfiles.map((profile) => (
             <Link key={profile.id} href={`/profiles/${profile.id}`} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
@@ -176,7 +204,7 @@ export default async function MyPage() {
         </div>
       </SectionCard>
 
-      <SectionCard eyebrow="THANKS POINTS" title="Thanksポイント">
+      <SectionCard eyebrow="THANKS POINTS" title="Thanksポイント" testNote={testDisplayNote}>
         <div className="rounded-[8px] bg-neutral-50 p-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -194,7 +222,7 @@ export default async function MyPage() {
         </div>
       </SectionCard>
 
-      <SectionCard eyebrow="OWNER VIEW" title="自分の投稿への反応">
+      <SectionCard eyebrow="OWNER VIEW" title="自分の投稿への反応" testNote={testDisplayNote}>
         <p className="text-xs font-medium leading-relaxed text-mute">
           この数字は投稿者本人だけが見る管理情報です。公開カードや他人のプロフィールには表示しません。
         </p>
@@ -225,7 +253,7 @@ export default async function MyPage() {
         </div>
       </SectionCard>
 
-      <SectionCard eyebrow="APPLICATIONS" title="応募履歴">
+      <SectionCard eyebrow="APPLICATIONS" title="応募履歴" testNote={testDisplayNote}>
         <div className="grid gap-2">
           {jobApplications.map((application) => (
             <div key={application.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
@@ -243,7 +271,7 @@ export default async function MyPage() {
       </SectionCard>
 
       {currentUser.role === "salon" ? (
-        <SectionCard eyebrow="SALON ADMIN" title="求人掲載管理">
+        <SectionCard eyebrow="SALON ADMIN" title="求人掲載管理" testNote={testDisplayNote}>
           <div className="grid gap-2">
             {salonJobAdminItems.map((item) => (
               <div key={item} className="flex items-center gap-2 rounded-[8px] bg-neutral-50 p-3 text-sm font-black text-ink">
