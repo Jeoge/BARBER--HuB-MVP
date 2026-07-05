@@ -18,39 +18,38 @@ export function SnapSection() {
         </Link>
       </div>
 
-      <div className="relative max-h-[76rem] overflow-hidden">
-        <div className="grid gap-4 px-4 pb-8">
-          {posts.slice(0, 3).map((post) => (
-            <article key={post.id} className="rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_14px_32px_rgba(17,17,17,0.045)]">
-              <div className="mb-3 flex items-center justify-between">
+      <div className="overflow-hidden">
+        <div className="grid gap-3 px-4 pb-1">
+          {posts.slice(0, 2).map((post) => (
+            <article key={post.id} className="min-w-0 overflow-hidden rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
+              <div className="mb-2.5 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <ProfileMiniLink profileId={post.profileId} fallbackName={post.authorLabel} />
                   <p className="ml-10 mt-0.5 text-xs font-medium text-mute">{post.area}</p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="rounded-full border border-line bg-white px-2 py-0.5 text-[0.6rem] font-semibold text-mute">{post.category}</span>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <span className="max-w-[6.75rem] truncate rounded-full border border-line bg-white px-2 py-0.5 text-[0.6rem] font-semibold text-mute">{post.category}</span>
                   <span className="grid h-8 w-8 place-items-center rounded-full" aria-label="スナップメニュー">
                     <MoreHorizontal aria-hidden="true" size={20} />
                   </span>
                 </div>
               </div>
 
-              <Link href={`/posts/${post.id}`} className="block">
+              <Link href={`/posts/${post.id}`} className="block min-w-0">
                 <MagazineImage
                   src={post.imageUrl}
                   alt={post.body}
                   variant={post.accents[0]}
-                  className="mx-auto aspect-[4/5] max-h-[17rem] w-[78%] max-w-[17.5rem]"
+                  className="mt-3 aspect-[4/5] max-h-[18rem] w-full max-w-full"
                   imageClassName="object-[center_38%]"
                 />
-                <p className="mt-3 truncate text-[0.86rem] font-medium leading-relaxed text-ink">{post.body}</p>
+                <p className="mt-3 line-clamp-2 break-words text-[0.86rem] font-medium leading-relaxed text-ink">{post.body}</p>
               </Link>
 
               <ReactionBar contentId={`post:${post.id}`} commentTitle={`${post.authorLabel}のコメント`} className="mt-3" goodIconOnly />
             </article>
           ))}
         </div>
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-white via-white/88 to-white/0 backdrop-blur-[1px]" />
       </div>
     </section>
   );
