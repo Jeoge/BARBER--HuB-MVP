@@ -15,7 +15,7 @@ export default async function SnapPage({ searchParams }: SnapPageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { snaps, error } = await listPublishedSnaps(supabase, 30);
+  const { snaps, error } = await listPublishedSnaps(supabase, 30, user?.id);
   const featuredSnaps = snaps.filter((snap) => snap.image_url).slice(0, 3);
 
   return (

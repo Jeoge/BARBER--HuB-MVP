@@ -6,7 +6,7 @@ import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
-import { SnapReactionNotice } from "@/components/SnapReactionNotice";
+import { SnapThanksButton } from "@/components/SnapThanksButton";
 import { VisualTile } from "@/components/VisualTile";
 import { findBackyardPost, findPost, posts } from "@/lib/mockData";
 import { createClient } from "@/lib/supabase/server";
@@ -18,7 +18,10 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   const post = findPost(id);
   const backyardPost = findBackyardPost(id);
   const supabase = await createClient();
-  const { snap: dbSnap } = post == null && backyardPost == null ? await getPublishedSnapById(supabase, id) : { snap: null };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { snap: dbSnap } = post == null && backyardPost == null ? await getPublishedSnapById(supabase, id, user?.id) : { snap: null };
 
   if (post == null && backyardPost == null && dbSnap == null) {
     return (
@@ -37,13 +40,11 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
   }
 
   if (dbSnap != null) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     const authorName = snapAuthorName(dbSnap);
     const authorMeta = snapAuthorMeta(dbSnap);
     const caption = dbSnap.caption ?? "";
     const isOwnSnap = user?.id === dbSnap.author_id;
+    const authorHref = `/profiles/${dbSnap.author_id}`;
 
     return (
       <PageChrome>
@@ -51,7 +52,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex min-w-0 items-center gap-2 rounded-full pr-1">
+                <Link href={authorHref} className="inline-flex min-w-0 items-center gap-2 rounded-full pr-1">
                   <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
                     {dbSnap.profiles?.avatar_url ? <img src={dbSnap.profiles.avatar_url} alt="" className="h-full w-full object-cover" /> : authorName.slice(0, 1)}
                   </span>
@@ -59,7 +60,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                     <span className="block truncate text-sm font-semibold leading-tight text-ink">{authorName}</span>
                     {authorMeta ? <span className="mt-0.5 block truncate text-[0.62rem] font-semibold text-mute">{authorMeta}</span> : null}
                   </span>
-                </div>
+                </Link>
                 <span className="rounded-full bg-blushSoft px-2 py-0.5 text-[0.64rem] font-black text-blush">
                   {dbSnap.category ?? "日常"}
                 </span>
@@ -86,7 +87,13 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             </div>
           )}
 
-          <SnapReactionNotice isOwnSnap={isOwnSnap} className="mt-4" />
+          <SnapThanksButton
+            snapId={dbSnap.id}
+            authorId={dbSnap.author_id}
+            currentUserId={user?.id}
+            initialCount={dbSnap.thanks_count}
+            initiallyThanked={dbSnap.viewer_has_thanked}
+          />
 
           <button className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute">
             <Flag aria-hidden="true" size={14} />

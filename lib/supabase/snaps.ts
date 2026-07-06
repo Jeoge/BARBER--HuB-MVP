@@ -26,6 +26,8 @@ export type SnapRecord = {
 
 export type SnapWithAuthor = SnapRecord & {
   profiles: SnapAuthorProfile | null;
+  thanks_count: number;
+  viewer_has_thanked: boolean;
 };
 
 type RawSnapWithAuthor = SnapRecord & {
@@ -97,6 +99,8 @@ function normalizeSnaps(data: unknown): SnapWithAuthor[] {
   return ((data ?? []) as RawSnapWithAuthor[]).map((snap) => ({
     ...snap,
     profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles,
+    thanks_count: 0,
+    viewer_has_thanked: false,
   }));
 }
 
@@ -107,10 +111,67 @@ function normalizeSnap(data: unknown): SnapWithAuthor | null {
   return {
     ...snap,
     profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles,
+    thanks_count: 0,
+    viewer_has_thanked: false,
   };
 }
 
-export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20) {
+type SnapReactionRow = {
+  snap_id: string;
+  user_id: string;
+  reaction_type: string;
+};
+
+async function withReactionSummaries(supabase: SupabaseClient, snaps: SnapWithAuthor[], viewerId?: string | null) {
+  const snapIds = snaps.map((snap) => snap.id).filter((id) => id.length > 0);
+
+  if (snapIds.length === 0) return snaps;
+
+  try {
+    const { data, error } = await supabase
+      .from("snap_reactions")
+      .select("snap_id, user_id, reaction_type")
+      .in("snap_id", snapIds)
+      .eq("reaction_type", "thanks")
+      .returns<SnapReactionRow[]>();
+
+    if (error) {
+      console.error("Snap reactions select failed", {
+        message: error.message,
+      });
+      return snaps;
+    }
+
+    const authorBySnapId = new Map(snaps.map((snap) => [snap.id, snap.author_id]));
+    const thanksBySnapId = new Map<string, number>();
+    const viewerThankedSnapIds = new Set<string>();
+
+    (data ?? []).forEach((reaction) => {
+      const authorId = authorBySnapId.get(reaction.snap_id);
+
+      if (!authorId || reaction.user_id === authorId) return;
+
+      thanksBySnapId.set(reaction.snap_id, (thanksBySnapId.get(reaction.snap_id) ?? 0) + 1);
+
+      if (viewerId && reaction.user_id === viewerId) {
+        viewerThankedSnapIds.add(reaction.snap_id);
+      }
+    });
+
+    return snaps.map((snap) => ({
+      ...snap,
+      thanks_count: thanksBySnapId.get(snap.id) ?? 0,
+      viewer_has_thanked: viewerId != null && viewerId !== snap.author_id && viewerThankedSnapIds.has(snap.id),
+    }));
+  } catch (error) {
+    console.error("Snap reactions select threw", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return snaps;
+  }
+}
+
+export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20, viewerId?: string | null) {
   try {
     const { data, error } = await supabase
       .from("snaps")
@@ -134,7 +195,7 @@ export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20) {
         .limit(limit);
 
       if (!fallback.error) {
-        return { snaps: normalizeSnaps(fallback.data), error: null };
+        return { snaps: await withReactionSummaries(supabase, normalizeSnaps(fallback.data), viewerId), error: null };
       }
 
       console.error("Published snap fallback select failed", {
@@ -142,7 +203,7 @@ export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20) {
       });
     }
 
-    return { snaps: normalizeSnaps(data), error };
+    return { snaps: await withReactionSummaries(supabase, normalizeSnaps(data), viewerId), error };
   } catch (error) {
     console.error("Published snap select threw", {
       message: error instanceof Error ? error.message : String(error),
@@ -151,7 +212,7 @@ export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20) {
   }
 }
 
-export async function listUserSnaps(supabase: SupabaseClient, userId: string, limit = 30) {
+export async function listUserSnaps(supabase: SupabaseClient, userId: string, limit = 30, viewerId?: string | null) {
   try {
     const { data, error } = await supabase
       .from("snaps")
@@ -176,7 +237,7 @@ export async function listUserSnaps(supabase: SupabaseClient, userId: string, li
         .limit(limit);
 
       if (!fallback.error) {
-        return { snaps: normalizeSnaps(fallback.data), error: null };
+        return { snaps: await withReactionSummaries(supabase, normalizeSnaps(fallback.data), viewerId), error: null };
       }
 
       console.error("User snap fallback select failed", {
@@ -185,7 +246,7 @@ export async function listUserSnaps(supabase: SupabaseClient, userId: string, li
       });
     }
 
-    return { snaps: normalizeSnaps(data), error };
+    return { snaps: await withReactionSummaries(supabase, normalizeSnaps(data), viewerId), error };
   } catch (error) {
     console.error("User snap select threw", {
       userId,
@@ -195,7 +256,7 @@ export async function listUserSnaps(supabase: SupabaseClient, userId: string, li
   }
 }
 
-export async function getPublishedSnapById(supabase: SupabaseClient, id: string) {
+export async function getPublishedSnapById(supabase: SupabaseClient, id: string, viewerId?: string | null) {
   try {
     const { data, error } = await supabase
       .from("snaps")
@@ -220,7 +281,10 @@ export async function getPublishedSnapById(supabase: SupabaseClient, id: string)
         .maybeSingle();
 
       if (!fallback.error) {
-        return { snap: normalizeSnap(fallback.data), error: null };
+        const fallbackSnap = normalizeSnap(fallback.data);
+        const fallbackWithReactions = fallbackSnap ? await withReactionSummaries(supabase, [fallbackSnap], viewerId) : [];
+
+        return { snap: fallbackWithReactions[0] ?? null, error: null };
       }
 
       console.error("Snap detail fallback select failed", {
@@ -229,7 +293,10 @@ export async function getPublishedSnapById(supabase: SupabaseClient, id: string)
       });
     }
 
-    return { snap: normalizeSnap(data), error };
+    const snap = normalizeSnap(data);
+    const snapWithReactions = snap ? await withReactionSummaries(supabase, [snap], viewerId) : [];
+
+    return { snap: snapWithReactions[0] ?? null, error };
   } catch (error) {
     console.error("Snap detail select threw", {
       snapId: id,

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, ImagePlus, Save } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
@@ -31,6 +31,45 @@ function Field({
         placeholder={placeholder}
         className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush"
       />
+    </label>
+  );
+}
+
+function ImageField({
+  label,
+  name,
+  currentUrl,
+  shape = "square",
+}: {
+  label: string;
+  name: string;
+  currentUrl?: string | null;
+  shape?: "circle" | "wide" | "square";
+}) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-sm font-black text-ink">{label}</span>
+      {currentUrl ? (
+        <span className="block overflow-hidden rounded-[8px] border border-line bg-neutral-50 p-2">
+          <img
+            src={currentUrl}
+            alt=""
+            className={
+              shape === "circle"
+                ? "h-20 w-20 rounded-full object-cover"
+                : shape === "wide"
+                  ? "aspect-[16/7] w-full rounded-[7px] object-cover"
+                  : "aspect-square w-24 rounded-[7px] object-cover"
+            }
+          />
+        </span>
+      ) : null}
+      <span className="inline-flex h-12 cursor-pointer items-center gap-2 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink">
+        <ImagePlus aria-hidden="true" size={16} className="text-blush" />
+        画像を選択
+      </span>
+      <input name={name} type="file" accept="image/*" className="sr-only" />
+      <span className="text-[0.68rem] font-semibold leading-relaxed text-mute">未選択なら現在の画像をそのまま使います。5MB以下。</span>
     </label>
   );
 }
@@ -118,8 +157,9 @@ export default async function ProfileEditPage({ searchParams }: ProfileEditPageP
           />
         </label>
 
-        <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-[0.74rem] font-semibold leading-relaxed text-mute">
-          アイコン画像アップロードは今回は未実装です。avatar_urlは今後のPhaseで対応します。
+        <div className="grid gap-4 rounded-[8px] border border-line bg-neutral-50 p-3">
+          <ImageField label="丸いアイコン写真" name="avatar_image" currentUrl={profile?.avatar_url} shape="circle" />
+          <ImageField label="背景写真 / カバー写真" name="cover_image" currentUrl={profile?.cover_url} shape="wide" />
         </div>
 
         <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink text-sm font-black text-white">

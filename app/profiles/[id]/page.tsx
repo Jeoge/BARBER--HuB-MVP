@@ -15,6 +15,9 @@ import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { articles, posts } from "@/lib/mockData";
 import { findPublicProfile, type ProfileLinkKey, type PublicProfile } from "@/lib/publicProfiles";
+import { getAccountProfile, type AccountProfile } from "@/lib/supabase/profiles";
+import { createClient } from "@/lib/supabase/server";
+import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
 
 const linkLabels: Record<ProfileLinkKey, string> = {
   instagram: "Instagram",
@@ -49,9 +52,71 @@ function profileImageVariant(type: PublicProfile["type"]) {
   return "news";
 }
 
+function errorMessage(error: unknown) {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+
+  if (error instanceof Error) return error.message;
+  return String(error || "");
+}
+
+function profileTypeFromJobType(jobType: string | null | undefined): PublicProfile["type"] {
+  if (!jobType) return "individual";
+  if (jobType.includes("サロン")) return "salon";
+  if (jobType.includes("学校")) return "school";
+  if (jobType.includes("メーカー")) return "maker";
+  if (jobType.includes("ディーラー")) return "dealer";
+  if (jobType.includes("組合")) return "organization";
+  return "individual";
+}
+
+function dbProfileToPublicProfile(profile: AccountProfile): PublicProfile {
+  const type = profileTypeFromJobType(profile.job_type);
+  const displayName = profile.display_name?.trim() || "プロフィール未設定";
+  const area = profile.region?.trim() || "地域未設定";
+  const badges = [profile.job_type, profile.salon_name].filter((value): value is string => Boolean(value && value.trim().length > 0));
+
+  return {
+    id: profile.id,
+    displayName,
+    type,
+    badges: badges.length > 0 ? badges : ["BARBER HUB"],
+    area,
+    avatarUrl: profile.avatar_url ?? undefined,
+    coverImageUrl: profile.cover_url ?? undefined,
+    bio: profile.bio?.trim() || "BARBER HUBのプロフィールです。",
+    specialtyTags: profile.job_type ? [profile.job_type] : undefined,
+  };
+}
+
 export default async function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const profile = findPublicProfile(id);
+  const supabase = await createClient();
+  const { profile: dbProfile, error: dbProfileError } = await getAccountProfile(supabase, id);
+
+  if (dbProfileError) {
+    console.error("Public profile DB lookup failed", {
+      profileId: id,
+      message: dbProfileError.message,
+    });
+  }
+
+  const profile = dbProfile ? dbProfileToPublicProfile(dbProfile) : findPublicProfile(id);
+  let dbRecentSnaps: SnapWithAuthor[] = [];
+
+  if (dbProfile) {
+    const { snaps, error } = await listUserSnaps(supabase, id, 4);
+
+    if (error) {
+      console.error("Public profile DB snap lookup failed", {
+        profileId: id,
+        message: errorMessage(error),
+      });
+    }
+
+    dbRecentSnaps = snaps.filter((snap) => snap.is_published !== false);
+  }
 
   if (profile == null) {
     return (
@@ -70,9 +135,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const recentPosts = posts
-    .filter((post) => profile.recentPostIds?.includes(post.id) || post.profileId === profile.id)
-    .slice(0, 4);
+  const recentPosts = dbProfile
+    ? []
+    : posts
+        .filter((post) => profile.recentPostIds?.includes(post.id) || post.profileId === profile.id)
+        .slice(0, 4);
   const recentArticles = articles
     .filter((article) => profile.recentArticleIds?.includes(article.id) || article.profileId === profile.id)
     .slice(0, 4);
@@ -241,7 +308,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
           </Link>
         </div>
         <div className="mt-3 grid gap-2.5">
-          {recentPosts.length > 0 ? (
+          {dbRecentSnaps.length > 0 ? (
+            dbRecentSnaps.map((snap) => (
+              <Link key={snap.id} href={`/posts/${snap.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
+                <p className="text-[0.66rem] font-black text-blush">{snap.category ?? "日常"}</p>
+                <p className="mt-1 line-clamp-2 text-sm font-semibold leading-relaxed text-ink">{snap.caption ?? "本文なしのSnapです。"}</p>
+                <p className="mt-1 text-xs font-bold text-mute">{snapDateLabel(snap)}</p>
+              </Link>
+            ))
+          ) : recentPosts.length > 0 ? (
             recentPosts.map((post) => (
               <Link key={post.id} href={`/posts/${post.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
                 <p className="text-[0.66rem] font-black text-blush">{post.category}</p>

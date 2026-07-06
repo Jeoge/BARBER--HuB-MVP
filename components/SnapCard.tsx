@@ -2,7 +2,7 @@ import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { FollowButton } from "@/components/FollowButton";
 import { MagazineImage } from "@/components/MagazineImage";
-import { SnapReactionNotice } from "@/components/SnapReactionNotice";
+import { SnapThanksButton } from "@/components/SnapThanksButton";
 import { snapAuthorMeta, snapAuthorName, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
 
 function initial(name: string) {
@@ -15,12 +15,13 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
   const caption = snap.caption ?? "";
   const hasImage = Boolean(snap.image_url);
   const isOwnSnap = currentUserId != null && snap.author_id === currentUserId;
+  const authorHref = `/profiles/${snap.author_id}`;
 
   return (
     <article className="min-w-0 overflow-hidden rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
       <div className="mb-2.5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="inline-flex min-w-0 items-center gap-2 rounded-full pr-1">
+          <Link href={authorHref} className="inline-flex min-w-0 items-center gap-2 rounded-full pr-1">
             <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
               {snap.profiles?.avatar_url ? <img src={snap.profiles.avatar_url} alt="" className="h-full w-full object-cover" /> : initial(authorName)}
             </span>
@@ -28,7 +29,7 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
               <span className="block truncate text-sm font-semibold leading-tight text-ink">{authorName}</span>
               {authorMeta ? <span className="mt-0.5 block truncate text-[0.62rem] font-semibold text-mute">{authorMeta}</span> : null}
             </span>
-          </div>
+          </Link>
           <p className="ml-10 mt-0.5 text-xs font-medium text-mute">{snapDateLabel(snap)}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
@@ -69,7 +70,13 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
         </Link>
       ) : null}
 
-      <SnapReactionNotice isOwnSnap={isOwnSnap} className="mt-3" />
+      <SnapThanksButton
+        snapId={snap.id}
+        authorId={snap.author_id}
+        currentUserId={currentUserId}
+        initialCount={snap.thanks_count}
+        initiallyThanked={snap.viewer_has_thanked}
+      />
     </article>
   );
 }

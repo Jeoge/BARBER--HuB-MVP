@@ -147,7 +147,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   }
 
   const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
-  const { snaps: mySnaps, error: mySnapsError } = await listUserSnaps(supabase, user.id, 30);
+  const { snaps: mySnaps, error: mySnapsError } = await listUserSnaps(supabase, user.id, 30, user.id);
   const profileDisplayName = profile?.display_name?.trim() || "プロフィール未設定";
   const loginEmail = user.email ?? "メールアドレス未取得";
   const hasProfile = profile != null;

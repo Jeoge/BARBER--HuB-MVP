@@ -8,7 +8,7 @@ export async function SnapSection() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { snaps, error } = await listPublishedSnaps(supabase, 2);
+  const { snaps, error } = await listPublishedSnaps(supabase, 2, user?.id);
 
   return (
     <section className="pt-6">
