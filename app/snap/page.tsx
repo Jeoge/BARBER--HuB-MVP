@@ -5,7 +5,12 @@ import { PageChrome } from "@/components/PageChrome";
 import { createClient } from "@/lib/supabase/server";
 import { listPublishedSnaps, snapAuthorMeta, snapAuthorName } from "@/lib/supabase/snaps";
 
-export default async function SnapPage() {
+type SnapPageProps = {
+  searchParams?: Promise<{ posted?: string }>;
+};
+
+export default async function SnapPage({ searchParams }: SnapPageProps) {
+  const params = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -39,6 +44,11 @@ export default async function SnapPage() {
 
       <section className="px-4 pt-7">
         <MagazineSectionHeading eyebrow="LATEST" title="新着Snap" />
+        {params?.posted === "1" ? (
+          <div className="mb-3 rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-sm font-black leading-relaxed text-ink">
+            投稿できました
+          </div>
+        ) : null}
         {error ? (
           <div className="rounded-[8px] border border-line bg-white p-4 text-sm font-bold leading-relaxed text-mute shadow-sm">
             Snapを読み込めませんでした。時間をおいて再読み込みしてください。

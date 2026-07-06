@@ -81,13 +81,16 @@ export function snapAuthorMeta(snap: SnapWithAuthor) {
 
 export function snapDateLabel(snap: SnapWithAuthor) {
   if (!snap.created_at) return "投稿日時未設定";
+  const createdAt = new Date(snap.created_at);
+
+  if (Number.isNaN(createdAt.getTime())) return "投稿日時未設定";
 
   return new Intl.DateTimeFormat("ja-JP", {
     month: "numeric",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(snap.created_at));
+  }).format(createdAt);
 }
 
 function normalizeSnaps(data: unknown): SnapWithAuthor[] {
@@ -108,79 +111,130 @@ function normalizeSnap(data: unknown): SnapWithAuthor | null {
 }
 
 export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20) {
-  const { data, error } = await supabase
-    .from("snaps")
-    .select(snapSelect)
-    .eq("is_published", true)
-    .eq("is_deleted", false)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    const fallback = await supabase
+  try {
+    const { data, error } = await supabase
       .from("snaps")
-      .select(snapBaseSelect)
+      .select(snapSelect)
       .eq("is_published", true)
       .eq("is_deleted", false)
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    if (!fallback.error) {
-      return { snaps: normalizeSnaps(fallback.data), error: null };
-    }
-  }
+    if (error) {
+      console.error("Published snap joined select failed", {
+        message: error.message,
+      });
 
-  return { snaps: normalizeSnaps(data), error };
+      const fallback = await supabase
+        .from("snaps")
+        .select(snapBaseSelect)
+        .eq("is_published", true)
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (!fallback.error) {
+        return { snaps: normalizeSnaps(fallback.data), error: null };
+      }
+
+      console.error("Published snap fallback select failed", {
+        message: fallback.error.message,
+      });
+    }
+
+    return { snaps: normalizeSnaps(data), error };
+  } catch (error) {
+    console.error("Published snap select threw", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return { snaps: [], error };
+  }
 }
 
 export async function listUserSnaps(supabase: SupabaseClient, userId: string, limit = 30) {
-  const { data, error } = await supabase
-    .from("snaps")
-    .select(snapSelect)
-    .eq("author_id", userId)
-    .eq("is_deleted", false)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    const fallback = await supabase
+  try {
+    const { data, error } = await supabase
       .from("snaps")
-      .select(snapBaseSelect)
+      .select(snapSelect)
       .eq("author_id", userId)
       .eq("is_deleted", false)
       .order("created_at", { ascending: false })
       .limit(limit);
 
-    if (!fallback.error) {
-      return { snaps: normalizeSnaps(fallback.data), error: null };
-    }
-  }
+    if (error) {
+      console.error("User snap joined select failed", {
+        userId,
+        message: error.message,
+      });
 
-  return { snaps: normalizeSnaps(data), error };
+      const fallback = await supabase
+        .from("snaps")
+        .select(snapBaseSelect)
+        .eq("author_id", userId)
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (!fallback.error) {
+        return { snaps: normalizeSnaps(fallback.data), error: null };
+      }
+
+      console.error("User snap fallback select failed", {
+        userId,
+        message: fallback.error.message,
+      });
+    }
+
+    return { snaps: normalizeSnaps(data), error };
+  } catch (error) {
+    console.error("User snap select threw", {
+      userId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return { snaps: [], error };
+  }
 }
 
 export async function getPublishedSnapById(supabase: SupabaseClient, id: string) {
-  const { data, error } = await supabase
-    .from("snaps")
-    .select(snapSelect)
-    .eq("id", id)
-    .eq("is_published", true)
-    .eq("is_deleted", false)
-    .maybeSingle();
-
-  if (error) {
-    const fallback = await supabase
+  try {
+    const { data, error } = await supabase
       .from("snaps")
-      .select(snapBaseSelect)
+      .select(snapSelect)
       .eq("id", id)
       .eq("is_published", true)
       .eq("is_deleted", false)
       .maybeSingle();
 
-    if (!fallback.error) {
-      return { snap: normalizeSnap(fallback.data), error: null };
-    }
-  }
+    if (error) {
+      console.error("Snap detail joined select failed", {
+        snapId: id,
+        message: error.message,
+      });
 
-  return { snap: normalizeSnap(data), error };
+      const fallback = await supabase
+        .from("snaps")
+        .select(snapBaseSelect)
+        .eq("id", id)
+        .eq("is_published", true)
+        .eq("is_deleted", false)
+        .maybeSingle();
+
+      if (!fallback.error) {
+        return { snap: normalizeSnap(fallback.data), error: null };
+      }
+
+      console.error("Snap detail fallback select failed", {
+        snapId: id,
+        message: fallback.error.message,
+      });
+    }
+
+    return { snap: normalizeSnap(data), error };
+  } catch (error) {
+    console.error("Snap detail select threw", {
+      snapId: id,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return { snap: null, error };
+  }
 }
