@@ -1,31 +1,12 @@
-import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { createClient } from "@/lib/supabase/server";
 import { SignupForm } from "./SignupForm";
+import { normalizeSignupStatus, SignupStatusCard } from "./SignupStatusCard";
 
 type SignupPageProps = {
-  searchParams?: Promise<{ error?: string; message?: string; next?: string }>;
+  searchParams?: Promise<{ error?: string; message?: string; next?: string; status?: string }>;
 };
-
-function SuccessCard() {
-  return (
-    <div className="rounded-[10px] border border-blush/20 bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.04)]">
-      <div className="grid h-11 w-11 place-items-center rounded-full bg-blushSoft text-blush">
-        <CheckCircle2 aria-hidden="true" size={22} />
-      </div>
-      <h2 className="mt-4 text-xl font-black leading-tight text-ink">会員登録を受け付けました。</h2>
-      <div className="mt-3 grid gap-2 text-sm font-medium leading-relaxed text-mute">
-        <p>確認メールを送信しました。</p>
-        <p>メール内のリンクを押してからログインしてください。</p>
-        <p>メールが届かない場合は、迷惑メールフォルダをご確認ください。</p>
-      </div>
-      <Link href="/login" className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
-        ログインページへ進む
-      </Link>
-    </div>
-  );
-}
 
 function LoggedInCard() {
   return (
@@ -42,7 +23,7 @@ function LoggedInCard() {
 export default async function SignupPage({ searchParams }: SignupPageProps) {
   const params = await searchParams;
   const next = params?.next ?? "/mypage";
-  const isSuccess = params?.message === "signup-sent";
+  const status = params?.status ?? (params?.message === "signup-sent" ? "check-email" : undefined);
   const supabase = await createClient();
   const {
     data: { user },
@@ -61,8 +42,8 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
       </section>
 
       <section className="pt-7">
-        {isSuccess ? (
-          <SuccessCard />
+        {status ? (
+          <SignupStatusCard status={normalizeSignupStatus(status)} />
         ) : user ? (
           <LoggedInCard />
         ) : (

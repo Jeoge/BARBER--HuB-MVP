@@ -59,9 +59,33 @@ export function SignupForm({ next, error }: SignupFormProps) {
   }, [email, emailTouched, password, passwordTouched]);
 
   const disabledByValidation = !isValidEmail(email.trim()) || password.length < 6;
+  const disabledReason = useMemo(() => {
+    if (email.trim().length === 0 && password.length === 0) {
+      return "メールアドレスとパスワードを入力してください";
+    }
+
+    if (email.trim().length === 0) {
+      return "メールアドレスを入力してください";
+    }
+
+    if (!isValidEmail(email.trim())) {
+      return "メールアドレスの形式を確認してください";
+    }
+
+    if (password.length === 0) {
+      return "パスワードを入力してください";
+    }
+
+    if (password.length < 6) {
+      return "パスワードは6文字以上で入力してください";
+    }
+
+    return "";
+  }, [email, password]);
+  const visibleValidationMessages = validationMessages.length > 0 ? validationMessages : disabledReason ? [disabledReason] : [];
 
   return (
-    <form action={signUpAction} className="grid gap-4">
+    <form action={signUpAction} className="grid gap-4" noValidate>
       <input type="hidden" name="next" value={next} />
 
       {error ? (
@@ -77,6 +101,7 @@ export function SignupForm({ next, error }: SignupFormProps) {
           type="email"
           inputMode="email"
           autoComplete="email"
+          required
           value={email}
           onBlur={() => setEmailTouched(true)}
           onChange={(event) => {
@@ -94,6 +119,8 @@ export function SignupForm({ next, error }: SignupFormProps) {
           name="password"
           type="password"
           autoComplete="new-password"
+          minLength={6}
+          required
           value={password}
           onBlur={() => setPasswordTouched(true)}
           onChange={(event) => {
@@ -105,9 +132,9 @@ export function SignupForm({ next, error }: SignupFormProps) {
         />
       </label>
 
-      {validationMessages.length > 0 ? (
+      {visibleValidationMessages.length > 0 ? (
         <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-          {validationMessages.map((message) => (
+          {visibleValidationMessages.map((message) => (
             <p key={message}>{message}</p>
           ))}
         </div>
