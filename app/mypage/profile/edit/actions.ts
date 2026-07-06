@@ -15,13 +15,38 @@ function redirectToEdit(error: string) {
   redirect(pathWithParams("/mypage/profile/edit", { error }));
 }
 
+function errorMessage(error: unknown) {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
+    return error.message;
+  }
+
+  return "";
+}
+
+function profileSaveErrorMessage(error: unknown) {
+  const message = errorMessage(error).toLowerCase();
+
+  if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
+    return "プロフィールを保存できませんでした。profilesテーブルの権限設定を確認してください。";
+  }
+
+  return "プロフィールを保存できませんでした。入力内容を確認して、もう一度お試しください。";
+}
+
 export async function saveProfileAction(formData: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
   if (user == null) {
+    if (userError) {
+      console.error("Profile auth user lookup failed", {
+        message: userError.message,
+      });
+    }
+
     redirect(
       pathWithParams("/login", {
         next: "/mypage/profile/edit",
@@ -38,7 +63,12 @@ export async function saveProfileAction(formData: FormData) {
     .maybeSingle<{ id: string; avatar_url: string | null }>();
 
   if (existingError) {
-    redirectToEdit("プロフィールの確認に失敗しました。少し時間をおいてもう一度お試しください。");
+    console.error("Profile lookup before save failed", {
+      userId: user.id,
+      userEmail: user.email ?? null,
+      message: existingError.message,
+    });
+    redirectToEdit("プロフィールの確認に失敗しました。profilesテーブルの権限設定を確認してください。");
   }
 
   const profilePayload = {
@@ -53,10 +83,27 @@ export async function saveProfileAction(formData: FormData) {
     ...(existingProfile ? {} : { created_at: now }),
   };
 
-  const { error } = await supabase.from("profiles").upsert(profilePayload, { onConflict: "id" });
+  const { data: savedProfile, error } = await supabase
+    .from("profiles")
+    .upsert(profilePayload, { onConflict: "id" })
+    .select("id")
+    .maybeSingle<{ id: string }>();
 
   if (error) {
-    redirectToEdit("プロフィールを保存できませんでした。入力内容を確認して、もう一度お試しください。");
+    console.error("Profile upsert failed", {
+      userId: user.id,
+      userEmail: user.email ?? null,
+      message: error.message,
+    });
+    redirectToEdit(profileSaveErrorMessage(error));
+  }
+
+  if (savedProfile?.id !== user.id) {
+    console.error("Profile save verification failed", {
+      userId: user.id,
+      savedProfileId: savedProfile?.id ?? null,
+    });
+    redirectToEdit("プロフィールを保存できませんでした。ログイン中ユーザーとの紐づきを確認してください。");
   }
 
   revalidatePath("/mypage");

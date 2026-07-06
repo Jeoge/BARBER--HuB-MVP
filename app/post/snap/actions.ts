@@ -19,12 +19,16 @@ function redirectToSnapPost(params: { error?: string; message?: string }): never
   redirect(pathWithParams("/post/snap", params));
 }
 
-function supabaseMessage(error: unknown) {
+function errorMessage(error: unknown) {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
-    return error.message.toLowerCase();
+    return error.message;
   }
 
   return "";
+}
+
+function supabaseMessage(error: unknown) {
+  return errorMessage(error).toLowerCase();
 }
 
 function uploadErrorMessage(error: unknown) {
@@ -74,16 +78,21 @@ function insertErrorMessage(error: unknown, hadUploadedImage: boolean) {
 
 function safeFileName(fileName: string, contentType: string) {
   const extensionFromType = contentType.split("/")[1]?.replace(/[^a-z0-9]/gi, "").toLowerCase();
-  const normalized = fileName
+  const filePart = fileName.split(/[/\\]/).pop() || "";
+  const extensionFromName = filePart.includes(".")
+    ? filePart.split(".").pop()?.replace(/[^a-z0-9]/gi, "").toLowerCase()
+    : "";
+  const extension = extensionFromName || extensionFromType || "jpg";
+  const baseName = filePart.replace(/\.[^.]+$/, "");
+  const normalizedBase = baseName
     .normalize("NFKD")
     .replace(/[^\w.-]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase();
-  const fallback = `snap.${extensionFromType || "jpg"}`;
-  const safeName = normalized || fallback;
+  const safeBase = normalizedBase || "snap";
 
-  return safeName.slice(0, 90);
+  return `${safeBase.slice(0, 72)}.${extension}`.slice(0, 90);
 }
 
 function isLikelyImageFile(file: File) {
@@ -109,20 +118,40 @@ export async function createSnapAction(formData: FormData) {
   const supabase = await createClient();
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
   if (user == null) {
+    if (userError) {
+      console.error("Snap auth user lookup failed", {
+        message: userError.message,
+      });
+    }
+
     redirect(pathWithParams("/login", { next: "/post/snap", message: "ログインが必要です。" }));
   }
 
   const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
 
   if (profileError) {
+    console.error("Snap profile lookup failed", {
+      userId: user.id,
+      userEmail: user.email ?? null,
+      message: errorMessage(profileError),
+    });
     redirectToSnapPost({ error: profileErrorMessage(profileError) });
   }
 
   if (profile == null) {
     redirectToSnapPost({ error: "プロフィール設定後にSnap投稿できます。" });
+  }
+
+  if (profile.id !== user.id) {
+    console.error("Snap profile id mismatch", {
+      userId: user.id,
+      profileId: profile.id,
+    });
+    redirectToSnapPost({ error: "投稿保存に失敗しました：profilesとの紐づきを確認してください。" });
   }
 
   const caption = cleanText(formData.get("caption"));
@@ -146,7 +175,7 @@ export async function createSnapAction(formData: FormData) {
     }
 
     const uploadContentType = contentTypeForUpload(image);
-    const uploadPath = `${user.id}/${Date.now()}-${safeFileName(image.name, uploadContentType)}`;
+    const uploadPath = `${user.id}/${Date.now()}-${randomUUID()}-${safeFileName(image.name, uploadContentType)}`;
     const { error: uploadError } = await supabase.storage
       .from(SNAP_IMAGE_BUCKET)
       .upload(uploadPath, image, {
@@ -156,6 +185,12 @@ export async function createSnapAction(formData: FormData) {
       });
 
     if (uploadError) {
+      console.error("Snap image upload failed", {
+        userId: user.id,
+        userEmail: user.email ?? null,
+        uploadPath,
+        message: uploadError.message,
+      });
       redirectToSnapPost({ error: uploadErrorMessage(uploadError) });
     }
 
@@ -180,8 +215,24 @@ export async function createSnapAction(formData: FormData) {
   });
 
   if (error) {
+    console.error("Snap insert failed", {
+      userId: user.id,
+      userEmail: user.email ?? null,
+      profileId: profile.id,
+      hasImage: Boolean(imagePath),
+      message: error.message,
+    });
+
     if (imagePath) {
-      await supabase.storage.from(SNAP_IMAGE_BUCKET).remove([imagePath]);
+      const { error: removeError } = await supabase.storage.from(SNAP_IMAGE_BUCKET).remove([imagePath]);
+
+      if (removeError) {
+        console.error("Snap image cleanup failed after insert error", {
+          userId: user.id,
+          imagePath,
+          message: removeError.message,
+        });
+      }
     }
 
     redirectToSnapPost({ error: insertErrorMessage(error, Boolean(imagePath)) });

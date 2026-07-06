@@ -136,7 +136,7 @@ export function SnapPostForm({
           {error}
           {error.includes("プロフィール") ? (
             <Link href="/mypage/profile/edit" className="mt-2 block text-xs font-black text-red-700 underline">
-              プロフィール設定へ進む
+              プロフィールを設定する
             </Link>
           ) : null}
         </div>

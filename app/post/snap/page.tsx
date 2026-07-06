@@ -22,7 +22,7 @@ function ProfileRequiredCard() {
           Snapの投稿者として表示するため、先に表示名や地域を設定してください。
         </p>
         <Link href="/mypage/profile/edit" className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
-          プロフィール設定へ進む
+          プロフィールを設定する
         </Link>
       </div>
     </section>
@@ -34,9 +34,16 @@ export default async function SnapPostPage({ searchParams }: SnapPostPageProps) 
   const supabase = await createClient();
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
   if (user == null) {
+    if (userError) {
+      console.error("Snap post page auth lookup failed", {
+        message: userError.message,
+      });
+    }
+
     return (
       <PageChrome>
         <section className="px-4 pt-4">
@@ -51,6 +58,14 @@ export default async function SnapPostPage({ searchParams }: SnapPostPageProps) 
   }
 
   const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+
+  if (profileError) {
+    console.error("Snap post page profile lookup failed", {
+      userId: user.id,
+      userEmail: user.email ?? null,
+      message: profileError.message,
+    });
+  }
 
   return (
     <PageChrome>
