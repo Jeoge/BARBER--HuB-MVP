@@ -10,6 +10,7 @@ import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { listFollowingProfiles } from "@/lib/supabase/follows";
 import { getAccountProfile } from "@/lib/supabase/profiles";
+import { getMySnapStats } from "@/lib/supabase/insights";
 import { listSavedSnaps } from "@/lib/supabase/saved";
 import { createClient } from "@/lib/supabase/server";
 import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
@@ -136,6 +137,11 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const showSalonAdmin = Boolean(profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
   const followedProfiles = await listFollowingProfiles(supabase, user.id);
   const savedSnapList = await listSavedSnaps(supabase, user.id);
+  const stats = await getMySnapStats(supabase, user.id);
+  // Thanksポイント：受け取ったThanks 1件＝1pt。
+  const thanksPoints = stats.thanksReceived;
+  const nextRewardAt = (Math.floor(thanksPoints / 100) + 1) * 100;
+  const pointsToNext = nextRewardAt - thanksPoints;
   // 応募・求人掲載の保存機能ができるまでは空（実際に応募/掲載したら並ぶ受け皿）。
   const jobApplications: JobApplication[] = [];
   const salonJobPostings: SalonJobPosting[] = [];
@@ -200,8 +206,26 @@ export default async function MyPage({ searchParams }: MyPageProps) {
       </section>
 
       <SectionCard eyebrow="THANKS POINTS" title="Thanksポイント">
-        <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-          Thanksポイントはまだありません。
+        <div className="rounded-[8px] bg-neutral-50 p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs font-bold text-mute">受け取ったThanks</p>
+              <p className="mt-1 text-2xl font-black text-ink">
+                {thanksPoints}
+                <span className="text-base"> pt</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-mute">次の特典まで</p>
+              <p className="mt-1 text-2xl font-black text-ink">
+                {pointsToNext}
+                <span className="text-base"> pt</span>
+              </p>
+            </div>
+          </div>
+          <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
+            自分の投稿が受け取ったThanks 1件＝1ptです（{nextRewardAt}ptで次の特典）。
+          </p>
         </div>
       </SectionCard>
 
@@ -305,9 +329,27 @@ export default async function MyPage({ searchParams }: MyPageProps) {
       </SectionCard>
 
       <SectionCard eyebrow="OWNER VIEW" title="自分の投稿への反応">
-        <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-          まだ反応データはありません。
-        </div>
+        {stats.snapCount === 0 ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            まだ投稿がありません。Snapを投稿すると、他の人からの反応がここに集計されます。
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-[8px] bg-neutral-50 p-3 text-center">
+                <p className="text-[0.62rem] font-bold text-mute">受け取ったThanks</p>
+                <p className="mt-1 text-2xl font-black text-ink">{stats.thanksReceived}</p>
+              </div>
+              <div className="rounded-[8px] bg-neutral-50 p-3 text-center">
+                <p className="text-[0.62rem] font-bold text-mute">コメント</p>
+                <p className="mt-1 text-2xl font-black text-ink">{stats.commentsReceived}</p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
+              あなたの{stats.snapCount}件の投稿に、他の人から届いた反応です。
+            </p>
+          </>
+        )}
       </SectionCard>
 
       <SectionCard eyebrow="APPLICATIONS" title="応募履歴">
