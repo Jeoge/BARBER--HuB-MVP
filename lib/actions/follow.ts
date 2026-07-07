@@ -50,6 +50,7 @@ export async function followAction(targetId: string): Promise<FollowResult> {
 
   revalidatePath(`/profiles/${targetId}`);
   revalidatePath(`/profiles/${user.id}`);
+  revalidatePath("/mypage");
   return { status: "ok", following: true };
 }
 
@@ -76,5 +77,6 @@ export async function unfollowAction(targetId: string): Promise<FollowResult> {
 
   revalidatePath(`/profiles/${targetId}`);
   revalidatePath(`/profiles/${user.id}`);
+  revalidatePath("/mypage");
   return { status: "ok", following: false };
 }
