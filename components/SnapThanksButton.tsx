@@ -2,7 +2,7 @@
 
 import { Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useActionState } from "react";
+import { type ReactNode, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { toggleSnapThanksAction, type SnapThanksState } from "@/app/snap/actions";
 import { pathWithParams } from "@/lib/auth/redirects";
@@ -39,12 +39,14 @@ export function SnapThanksButton({
   currentUserId,
   initialCount,
   initiallyThanked,
+  actions,
 }: {
   snapId: string;
   authorId: string;
   currentUserId?: string | null;
   initialCount: number;
   initiallyThanked: boolean;
+  actions?: ReactNode;
 }) {
   const initialState: SnapThanksState = {
     count: initialCount,
@@ -64,6 +66,7 @@ export function SnapThanksButton({
           Thanks
         </Link>
         <span className="text-[0.68rem] font-bold text-mute">{state.count}</span>
+        {actions ? <span className="ml-auto flex items-center">{actions}</span> : null}
       </div>
     );
   }
@@ -77,6 +80,7 @@ export function SnapThanksButton({
         </button>
         <span className="text-[0.68rem] font-bold text-mute">{state.count}</span>
         <span className="text-[0.68rem] font-semibold text-mute">自分の投稿はカウントされません</span>
+        {actions ? <span className="ml-auto flex items-center">{actions}</span> : null}
       </div>
     );
   }
@@ -88,6 +92,7 @@ export function SnapThanksButton({
       <span className="text-[0.68rem] font-bold text-mute">{state.count}</span>
       {state.error ? <span className="text-[0.68rem] font-bold text-red-600">{state.error}</span> : null}
       {!state.error && state.message ? <span className="text-[0.68rem] font-semibold text-mute">{state.message}</span> : null}
+      {actions ? <span className="ml-auto flex items-center">{actions}</span> : null}
     </form>
   );
 }

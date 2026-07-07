@@ -1,4 +1,4 @@
-import { Bookmark, BriefcaseBusiness, FilePenLine, LogOut, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
+import { BriefcaseBusiness, FilePenLine, LogOut, Pencil, Sparkles, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
@@ -10,19 +10,14 @@ import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { listFollowingProfiles } from "@/lib/supabase/follows";
 import { getAccountProfile } from "@/lib/supabase/profiles";
+import { listSavedSnaps } from "@/lib/supabase/saved";
 import { createClient } from "@/lib/supabase/server";
 import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
-import {
-  currentUser,
-  jobApplications,
-  reactionSummaries,
-  salonJobAdminItems,
-  savedArticles,
-  savedJobs,
-  savedSnaps,
-} from "@/lib/userDashboard";
 
-const testDisplayNote = "現在はテスト表示です。投稿保存は次のPhaseで対応予定です。";
+// 応募・求人掲載はまだDBに保存していないため、現状は空。
+// 将来 応募/求人掲載の保存機能ができたら、ここをDB取得に差し替えると自動で一覧に並ぶ。
+type JobApplication = { id: string; salonName: string; type: string; status: string };
+type SalonJobPosting = { id: string; title: string; status: string };
 
 function accountInitial(nameOrEmail: string | undefined) {
   return (nameOrEmail?.trim().slice(0, 1) || "B").toUpperCase();
@@ -65,19 +60,6 @@ function SectionCard({
         <div className="mt-3">{children}</div>
       </div>
     </section>
-  );
-}
-
-function DashboardLinkList({ items, className = "" }: { items: { id: string; title: string; meta: string; href: string }[]; className?: string }) {
-  return (
-    <div className={"grid gap-2 " + className}>
-      {items.map((item) => (
-        <Link key={item.id} href={item.href} className="block rounded-[8px] bg-neutral-50 p-3">
-          <p className="line-clamp-1 text-sm font-black text-ink">{item.title}</p>
-          <p className="mt-1 text-xs font-semibold text-mute">{item.meta}</p>
-        </Link>
-      ))}
-    </div>
   );
 }
 
@@ -152,8 +134,11 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const loginEmail = user.email ?? "メールアドレス未取得";
   const hasProfile = profile != null;
   const showSalonAdmin = Boolean(profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
-  const savedItems = [...savedArticles, ...savedSnaps, ...savedJobs];
   const followedProfiles = await listFollowingProfiles(supabase, user.id);
+  const savedSnapList = await listSavedSnaps(supabase, user.id);
+  // 応募・求人掲載の保存機能ができるまでは空（実際に応募/掲載したら並ぶ受け皿）。
+  const jobApplications: JobApplication[] = [];
+  const salonJobPostings: SalonJobPosting[] = [];
 
   return (
     <PageChrome>
@@ -214,21 +199,9 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         </div>
       </section>
 
-      <SectionCard eyebrow="THANKS POINTS" title="Thanksポイント" testNote={testDisplayNote}>
-        <div className="rounded-[8px] bg-neutral-50 p-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs font-bold text-mute">今月の管理ポイント</p>
-              <p className="mt-1 text-2xl font-black text-ink">{currentUser.thanksPoints}pt</p>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-mute">次の特典目安</p>
-              <p className="mt-1 text-2xl font-black text-ink">{currentUser.pointsToNextReward}pt</p>
-            </div>
-          </div>
-          <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
-            本人だけが確認する管理情報です。公開ランキングや他人のプロフィールには表示しません。
-          </p>
+      <SectionCard eyebrow="THANKS POINTS" title="Thanksポイント">
+        <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+          Thanksポイントはまだありません。
         </div>
       </SectionCard>
 
@@ -247,12 +220,30 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         )}
       </SectionCard>
 
-      <SectionCard eyebrow="SAVED" title="保存したもの" testNote={testDisplayNote}>
-        <div className="flex items-center gap-2 text-sm font-black text-ink">
-          <Bookmark aria-hidden="true" size={15} className="text-blush" />
-          保存一覧
-        </div>
-        <DashboardLinkList items={savedItems} className="mt-2 max-h-[14.25rem] overflow-y-auto overscroll-contain pr-1" />
+      <SectionCard eyebrow="SAVED" title="保存したもの">
+        {savedSnapList.length === 0 ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            保存したSnapはまだありません。
+          </div>
+        ) : (
+          <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
+            {savedSnapList.map((snap) => (
+              <Link key={snap.id} href={`/posts/${snap.id}`} className="flex gap-3 rounded-[8px] border border-line bg-neutral-50 p-3">
+                {snap.image_url ? (
+                  <div className="h-16 w-14 shrink-0">
+                    <MagazineImage src={snap.image_url} alt={snap.caption ?? "Snap"} variant="news" className="h-full w-full" />
+                  </div>
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{snap.category ?? "日常"}</span>
+                  <p className="mt-1 line-clamp-2 break-words text-sm font-semibold leading-relaxed text-ink">
+                    {snap.caption?.trim() || "本文なしのSnapです。"}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </SectionCard>
 
       <SectionCard eyebrow="FOLLOWING" title="フォロー中">
@@ -307,78 +298,54 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         )}
       </SectionCard>
 
-      <SectionCard eyebrow="MEMO" title="自分用メモ" testNote={testDisplayNote}>
-        <label className="grid gap-2">
-          <span className="text-xs font-bold text-mute">メモを書く</span>
-          <textarea
-            rows={3}
-            className="resize-none rounded-[8px] border border-line bg-neutral-50 px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
-            placeholder="あとで試したいこと、見学候補、気になる道具など"
-          />
-        </label>
-      </SectionCard>
-
-      <SectionCard eyebrow="OWNER VIEW" title="自分の投稿への反応" testNote={testDisplayNote}>
-        <p className="text-xs font-medium leading-relaxed text-mute">
-          この数字は投稿者本人だけが見る管理情報です。公開カードや他人のプロフィールには表示しません。
-        </p>
-        <div className="mt-3 grid gap-3">
-          {reactionSummaries.map((summary) => (
-            <div key={summary.contentId} className="rounded-[8px] bg-neutral-50 p-3">
-              <p className="text-sm font-black text-ink">{summary.title}</p>
-              <div className="mt-2 grid grid-cols-4 gap-1.5 text-center">
-                <div className="rounded-[7px] bg-white px-1.5 py-2">
-                  <p className="text-[0.62rem] font-bold text-mute">いいね</p>
-                  <p className="text-sm font-black text-ink">{summary.likes}</p>
-                </div>
-                <div className="rounded-[7px] bg-white px-1.5 py-2">
-                  <p className="text-[0.62rem] font-bold text-mute">Thanks</p>
-                  <p className="text-sm font-black text-ink">{summary.thanks}</p>
-                </div>
-                <div className="rounded-[7px] bg-white px-1.5 py-2">
-                  <p className="text-[0.62rem] font-bold text-mute">保存</p>
-                  <p className="text-sm font-black text-ink">{summary.saves}</p>
-                </div>
-                <div className="rounded-[7px] bg-white px-1.5 py-2">
-                  <p className="text-[0.62rem] font-bold text-mute">コメント</p>
-                  <p className="text-sm font-black text-ink">{summary.comments}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+      <SectionCard eyebrow="MEMO" title="自分用メモ">
+        <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+          メモ機能は準備中です。
         </div>
       </SectionCard>
 
-      <SectionCard eyebrow="APPLICATIONS" title="応募履歴" testNote={testDisplayNote}>
-        <div className="grid gap-2">
-          {jobApplications.map((application) => (
-            <div key={application.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
-              <span>
-                <span className="block text-sm font-black text-ink">{application.salonName}</span>
-                <span className="mt-1 block text-xs font-semibold text-mute">{application.type}</span>
-              </span>
-              <span className="rounded-full bg-white px-2.5 py-1 text-[0.66rem] font-black text-ink">{application.status}</span>
-            </div>
-          ))}
+      <SectionCard eyebrow="OWNER VIEW" title="自分の投稿への反応">
+        <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+          まだ反応データはありません。
         </div>
-        <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
-          応募後の連絡や採用判断は求人掲載サロンが行います。BARBER HUBは応募導線を提供するプラットフォームです。
-        </p>
       </SectionCard>
 
-      {showSalonAdmin ? (
-        <SectionCard eyebrow="SALON ADMIN" title="求人掲載管理" testNote={testDisplayNote}>
+      <SectionCard eyebrow="APPLICATIONS" title="応募履歴">
+        {jobApplications.length === 0 ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            まだ応募はありません。求人に応募すると、ここに履歴が表示されます。
+          </div>
+        ) : (
           <div className="grid gap-2">
-            {salonJobAdminItems.map((item) => (
-              <div key={item} className="flex items-center gap-2 rounded-[8px] bg-neutral-50 p-3 text-sm font-black text-ink">
-                <Send aria-hidden="true" size={14} className="text-blush" />
-                {item}
+            {jobApplications.map((application) => (
+              <div key={application.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
+                <span>
+                  <span className="block text-sm font-black text-ink">{application.salonName}</span>
+                  <span className="mt-1 block text-xs font-semibold text-mute">{application.type}</span>
+                </span>
+                <span className="rounded-full bg-white px-2.5 py-1 text-[0.66rem] font-black text-ink">{application.status}</span>
               </div>
             ))}
           </div>
-          <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
-            MVPでは表示枠のみです。正式版では求人内容編集、応募者確認、露出強化の管理に使います。
-          </p>
+        )}
+      </SectionCard>
+
+      {showSalonAdmin ? (
+        <SectionCard eyebrow="SALON ADMIN" title="求人掲載管理">
+          {salonJobPostings.length === 0 ? (
+            <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+              まだ掲載中の求人はありません。求人を掲載すると、ここに表示されます。
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              {salonJobPostings.map((posting) => (
+                <div key={posting.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
+                  <span className="block text-sm font-black text-ink">{posting.title}</span>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[0.66rem] font-black text-ink">{posting.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </SectionCard>
       ) : null}
 
