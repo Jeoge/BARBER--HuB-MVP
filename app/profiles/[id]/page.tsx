@@ -15,6 +15,7 @@ import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { articles, posts } from "@/lib/mockData";
 import { findPublicProfile, type ProfileLinkKey, type PublicProfile } from "@/lib/publicProfiles";
+import { getFollowCounts } from "@/lib/supabase/follows";
 import { getAccountProfile, type AccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
@@ -145,6 +146,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
     .slice(0, 4);
   const links = Object.entries(profile.links ?? {}) as [ProfileLinkKey, string][];
   const isHiringSalon = profile.type === "salon" && profile.isHiring && profile.jobId;
+  const followCounts = await getFollowCounts(supabase, profile.id);
 
   return (
     <PageChrome>
@@ -189,6 +191,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
               <MapPin aria-hidden="true" size={14} />
               {profile.area}
             </p>
+            <div className="mt-3 flex items-center gap-4 text-xs font-bold text-mute">
+              <span>
+                <span className="font-black text-ink">{followCounts.followers.toLocaleString()}</span> フォロワー
+              </span>
+              <span>
+                <span className="font-black text-ink">{followCounts.following.toLocaleString()}</span> フォロー中
+              </span>
+            </div>
             <p className="mt-3 text-[0.9rem] font-medium leading-relaxed text-ink">{profile.bio}</p>
 
             {profile.specialtyTags && profile.specialtyTags.length > 0 ? (
