@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { type MouseEvent, useEffect, useState, useTransition } from "react";
 import { followAction, unfollowAction } from "@/lib/actions/follow";
 import { isFollowing as fetchIsFollowing } from "@/lib/supabase/follows";
@@ -29,6 +30,7 @@ export function FollowButton({
 }: FollowButtonProps) {
   const targetUserId = followingUserId ?? profileId ?? authorId;
 
+  const router = useRouter();
   const [isFollowing, setIsFollowing] = useState(false);
   const [isSelf, setIsSelf] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -78,10 +80,13 @@ export function FollowButton({
     startTransition(async () => {
       const result = next ? await followAction(target) : await unfollowAction(target);
       // 未ログインならサーバーアクション側でログインページへリダイレクトされる。
-      // 失敗時のみ楽観的更新を巻き戻す。
       if (result?.status === "error") {
-        setIsFollowing(!next);
+        setIsFollowing(!next); // 失敗時のみ楽観的更新を巻き戻す
+        return;
       }
+      // App Routerのクライアントキャッシュを無効化し、他ページに戻ったときも
+      // フォロー状態・フォロー数が最新になるようにする。
+      router.refresh();
     });
   }
 

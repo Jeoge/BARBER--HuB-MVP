@@ -8,7 +8,7 @@ import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
-import { findPublicProfile } from "@/lib/publicProfiles";
+import { listFollowingProfiles } from "@/lib/supabase/follows";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
@@ -153,9 +153,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const hasProfile = profile != null;
   const showSalonAdmin = Boolean(profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
   const savedItems = [...savedArticles, ...savedSnaps, ...savedJobs];
-  const followedProfiles = currentUser.followedProfileIds
-    .map((profileId) => findPublicProfile(profileId))
-    .filter((profile): profile is NonNullable<typeof profile> => profile != null);
+  const followedProfiles = await listFollowingProfiles(supabase, user.id);
 
   return (
     <PageChrome>
@@ -257,24 +255,29 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         <DashboardLinkList items={savedItems} className="mt-2 max-h-[14.25rem] overflow-y-auto overscroll-contain pr-1" />
       </SectionCard>
 
-      <SectionCard eyebrow="FOLLOWING" title="フォロー中" testNote={testDisplayNote}>
+      <SectionCard eyebrow="FOLLOWING" title="フォロー中">
         {followedProfiles.length === 0 ? (
           <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-            フォロー中のプロフィールはまだありません。
+            まだフォローしていません。
           </div>
         ) : (
           <div className="grid max-h-[13.75rem] gap-2 overflow-y-auto overscroll-contain pr-1">
-            {followedProfiles.map((profile) => (
-              <Link key={profile.id} href={`/profiles/${profile.id}`} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-black text-ink">{profile.displayName}</span>
-                  <span className="mt-1 block truncate text-xs font-semibold text-mute">
-                    {[...profile.badges, ...(profile.isHiring ? ["求人中"] : [])].join(" / ")}
+            {followedProfiles.map((profile) => {
+              const meta = [profile.job_type, profile.salon_name, profile.region].filter(Boolean).join(" / ");
+              return (
+                <Link key={profile.id} href={`/profiles/${profile.id}`} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-black text-ink">
+                      {profile.display_name?.trim() || "プロフィール未設定"}
+                    </span>
+                    <span className="mt-1 block truncate text-xs font-semibold text-mute">
+                      {meta || "BARBER HUB"}
+                    </span>
                   </span>
-                </span>
-                <UserRoundCheck aria-hidden="true" size={16} className="shrink-0 text-blush" />
-              </Link>
-            ))}
+                  <UserRoundCheck aria-hidden="true" size={16} className="shrink-0 text-blush" />
+                </Link>
+              );
+            })}
           </div>
         )}
       </SectionCard>
