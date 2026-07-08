@@ -208,7 +208,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               </Link>
             ))}
             {post ? (
-              <Link href={`/backyard/setup?next=/backyard`} className="rounded-[8px] border border-blush/20 bg-blushSoft p-3">
+              <Link href="/post/backroom" className="rounded-[8px] border border-blush/20 bg-blushSoft p-3">
                 <p className="text-[0.68rem] font-black text-blush">Back Room</p>
                 <p className="mt-1 text-sm font-black leading-snug text-ink">この話題をBack Roomで話す</p>
               </Link>

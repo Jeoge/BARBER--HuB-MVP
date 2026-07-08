@@ -9,7 +9,7 @@ const navItems = [
   { label: "経営", href: "/topics/management" },
   { label: "集客", href: "/topics/marketing" },
   { label: "AI", href: "/topics/ai" },
-  { label: "Back Room", href: "/backyard" },
+  { label: "Back Room", href: "/backroom" },
   { label: "求人", href: "/jobs" },
   { label: "開業承継", href: "/salon-transition" },
   { label: "技術", href: "/topics/technique" },

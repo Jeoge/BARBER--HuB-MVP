@@ -66,7 +66,7 @@ export default function ExplorePage() {
         </div>
       </section>
       <section className="px-4 pt-5">
-        <AuthGateLink href="/backyard/setup" kind="backyard" className="flex w-full items-center gap-3 rounded-[8px] border border-blush/20 bg-blushSoft p-4 text-left">
+        <AuthGateLink href="/backroom" kind="backyard" className="flex w-full items-center gap-3 rounded-[8px] border border-blush/20 bg-blushSoft p-4 text-left">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-white text-blush">
             <ShieldCheck aria-hidden="true" size={20} />
           </span>

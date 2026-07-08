@@ -8,7 +8,7 @@ const postItems = [
   { label: "スナップ投稿", icon: Camera, href: "/post/snap" },
   { label: "経験記事を書く", icon: FilePenLine, href: "/post/article" },
   { label: "Q&Aで相談する", icon: MessageSquare, href: "/post/qa" },
-  { label: "Back Roomに投稿", icon: ShieldCheck, href: "/post/backyard", kind: "backyard" as const, signupNextHref: "/backyard/setup" },
+  { label: "Back Roomに投稿", icon: ShieldCheck, href: "/post/backroom", kind: "backyard" as const, signupNextHref: "/post/backroom" },
   { label: "講習会レポートを書く", icon: Video, href: "/post/seminar" },
 ];
 
