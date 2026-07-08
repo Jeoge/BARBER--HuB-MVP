@@ -11,7 +11,7 @@ const navItems = [
   { label: "AI", href: "/topics/ai" },
   { label: "Back Room", href: "/backroom" },
   { label: "求人", href: "/jobs" },
-  { label: "開業承継", href: "/salon-transition" },
+  { label: "開業承継", href: "/succession" },
   { label: "技術", href: "/topics/technique" },
 ];
 

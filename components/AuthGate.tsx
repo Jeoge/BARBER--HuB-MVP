@@ -6,7 +6,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/client";
 
-type GateKind = "default" | "backyard" | "jobs";
+type GateKind = "default" | "backyard" | "jobs" | "succession";
 
 type Copy = {
   title: string;
@@ -34,6 +34,12 @@ const copyMap: Record<GateKind, Copy> = {
     cta: "無料で会員登録する",
     href: "/signup?next=/post/job",
   },
+  succession: {
+    title: "開業・承継情報の掲載には会員登録が必要です",
+    body: "公開情報と非公開情報を分けて、居抜き・設備譲渡・承継相談を掲載できます。掲載を始めるには無料登録が必要です。",
+    cta: "無料で会員登録する",
+    href: "/signup?next=/post/succession",
+  },
 };
 
 type AuthRequiredModalProps = {
@@ -45,6 +51,7 @@ type AuthRequiredModalProps = {
 function defaultNextForKind(kind: GateKind) {
   if (kind === "backyard") return "/backroom";
   if (kind === "jobs") return "/post/job";
+  if (kind === "succession") return "/post/succession";
   return "/mypage";
 }
 
