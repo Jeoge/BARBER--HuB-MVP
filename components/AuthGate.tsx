@@ -26,7 +26,7 @@ const copyMap: Record<GateKind, Copy> = {
     title: "Back Roomは理美容業界向けです",
     body: "理容師を中心に、理美容業界の人が仕事終わりに技術・道具・経営・今日あったことを話せる会員限定エリアです。安心して使える場所にするため、会員登録が必要です。",
     cta: "会員登録して設定へ",
-    href: "/signup?next=/backyard/setup",
+    href: "/signup?next=/backroom",
   },
   jobs: {
     title: "求人掲載には会員登録が必要です",
@@ -43,7 +43,7 @@ type AuthRequiredModalProps = {
 };
 
 function defaultNextForKind(kind: GateKind) {
-  if (kind === "backyard") return "/backyard/setup";
+  if (kind === "backyard") return "/backroom";
   if (kind === "jobs") return "/jobs/register";
   return "/mypage";
 }

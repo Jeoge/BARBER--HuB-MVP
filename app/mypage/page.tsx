@@ -15,9 +15,23 @@ import {
   listUserArticles,
   type ArticleWithAuthor,
 } from "@/lib/supabase/articles";
+import {
+  backroomDateLabel,
+  backroomExcerpt,
+  listUserBackroomPosts,
+  type BackroomPostWithAuthor,
+} from "@/lib/supabase/backroom";
 import { listFollowingProfiles } from "@/lib/supabase/follows";
 import { getMySnapStats } from "@/lib/supabase/insights";
 import { getAccountProfile } from "@/lib/supabase/profiles";
+import {
+  listUserQaAnswers,
+  listUserQaQuestions,
+  qaDateLabel,
+  qaExcerpt,
+  type QaAnswerWithQuestion,
+  type QaQuestionWithAuthor,
+} from "@/lib/supabase/qa";
 import { listSavedSnaps } from "@/lib/supabase/saved";
 import { createClient } from "@/lib/supabase/server";
 import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
@@ -133,6 +147,91 @@ function MyArticleList({ articles }: { articles: ArticleWithAuthor[] }) {
   );
 }
 
+function MyBackroomList({ posts }: { posts: BackroomPostWithAuthor[] }) {
+  if (posts.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
+        <p className="text-sm font-black text-ink">まだ自分のBack Room投稿はありません</p>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-mute">営業後トークや相談を投稿すると、ここに表示されます。</p>
+        <Link href="/post/backroom" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+          Back Roomに投稿
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
+      {posts.map((post) => (
+        <Link key={post.id} href={`/backroom/${post.id}`} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{post.category}</span>
+            <span className="text-[0.66rem] font-bold text-mute">{backroomDateLabel(post)}</span>
+            <span className="text-[0.66rem] font-bold text-mute">コメント {post.comment_count}</span>
+          </div>
+          <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{post.title}</p>
+          <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{backroomExcerpt(post.body, 78)}</p>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function MyQaQuestionList({ questions }: { questions: QaQuestionWithAuthor[] }) {
+  if (questions.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
+        <p className="text-sm font-black text-ink">まだ自分のQ&A質問はありません</p>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-mute">困りごとを相談すると、ここに表示されます。</p>
+        <Link href="/post/qa" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+          Q&Aで相談する
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
+      {questions.map((question) => (
+        <Link key={question.id} href={`/qa/${question.id}`} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{question.category}</span>
+            <span className="text-[0.66rem] font-bold text-mute">{qaDateLabel(question)}</span>
+            <span className="text-[0.66rem] font-bold text-mute">回答 {question.answer_count}</span>
+          </div>
+          <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{question.title}</p>
+          <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{qaExcerpt(question.body, 78)}</p>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function MyQaAnswerList({ answers }: { answers: QaAnswerWithQuestion[] }) {
+  if (answers.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+        まだ自分のQ&A回答はありません。
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
+      {answers.map((answer) => (
+        <Link key={answer.id} href={`/qa/${answer.question_id}`} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{answer.qa_questions?.category ?? "Q&A"}</span>
+            <span className="text-[0.66rem] font-bold text-mute">{qaDateLabel({ created_at: answer.created_at })}</span>
+          </div>
+          <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{answer.qa_questions?.title ?? "質問"}</p>
+          <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{qaExcerpt(answer.body, 78)}</p>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 function SavedArticleList({ articles }: { articles: ArticleWithAuthor[] }) {
   if (articles.length === 0) {
     return (
@@ -232,6 +331,9 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
   const { snaps: mySnaps, error: mySnapsError } = await listUserSnaps(supabase, user.id, 30, user.id);
   const { articles: myArticles, error: myArticlesError } = await listUserArticles(supabase, user.id, 30, user.id);
+  const { posts: myBackroomPosts, error: myBackroomPostsError } = await listUserBackroomPosts(supabase, user.id, 30);
+  const { questions: myQaQuestions, error: myQaQuestionsError } = await listUserQaQuestions(supabase, user.id, 30);
+  const { answers: myQaAnswers, error: myQaAnswersError } = await listUserQaAnswers(supabase, user.id, 30);
   const { articles: savedArticles, error: savedArticlesError } = await listSavedArticles(supabase, user.id, 30, user.id);
   const followedProfiles = await listFollowingProfiles(supabase, user.id);
   const savedSnapList = await listSavedSnaps(supabase, user.id);
@@ -354,6 +456,41 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         ) : (
           <MySnapList snaps={mySnaps} />
         )}
+      </SectionCard>
+
+      <SectionCard eyebrow="MY BACK ROOM" title="自分のBack Room投稿">
+        {myBackroomPostsError ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            自分のBack Room投稿を読み込めませんでした。
+          </div>
+        ) : (
+          <MyBackroomList posts={myBackroomPosts} />
+        )}
+      </SectionCard>
+
+      <SectionCard eyebrow="MY Q&A" title="自分のQ&A">
+        <div className="grid gap-4">
+          <div>
+            <p className="mb-2 text-xs font-black text-mute">質問</p>
+            {myQaQuestionsError ? (
+              <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+                自分のQ&A質問を読み込めませんでした。
+              </div>
+            ) : (
+              <MyQaQuestionList questions={myQaQuestions} />
+            )}
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-black text-mute">回答</p>
+            {myQaAnswersError ? (
+              <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+                自分のQ&A回答を読み込めませんでした。
+              </div>
+            ) : (
+              <MyQaAnswerList answers={myQaAnswers} />
+            )}
+          </div>
+        </div>
       </SectionCard>
 
       <SectionCard eyebrow="SAVED" title="保存したもの">

@@ -135,7 +135,7 @@ export function BackRoomThreadDetail({ thread }: { thread: BackyardPost }) {
           <div className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
             <p className="text-sm font-black text-ink">このスレッドはコメント上限に達しました。</p>
             <p className="mt-1 text-xs font-medium leading-relaxed text-mute">続きの話題は新しいスレッドを立ててください。</p>
-            <Link href="/post/backyard" className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
+            <Link href="/post/backroom" className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
               続きスレッドを立てる
             </Link>
           </div>

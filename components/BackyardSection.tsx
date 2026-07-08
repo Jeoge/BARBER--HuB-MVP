@@ -25,12 +25,12 @@ export function BackyardSection() {
         </div>
 
         <div className="mt-5 grid grid-cols-[1fr_auto] gap-2">
-          <Link href="/backyard/setup?next=/backyard" className="inline-flex h-11 items-center justify-center gap-1.5 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
+          <Link href="/backroom" className="inline-flex h-11 items-center justify-center gap-1.5 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
             Back Roomに入る
             <ArrowRight aria-hidden="true" size={15} />
           </Link>
           <Link
-            href="/backyard/setup"
+            href="/backyard/setup?next=/backroom"
             className="inline-flex h-11 w-11 items-center justify-center rounded-[8px] border border-line bg-white text-ink"
             aria-label="Back Room用ニックネームを設定する"
           >
@@ -38,7 +38,7 @@ export function BackyardSection() {
           </Link>
         </div>
 
-        <Link href="/backyard/setup" className="mt-2 inline-flex text-[0.68rem] font-bold text-mute">
+        <Link href="/backyard/setup?next=/backroom" className="mt-2 inline-flex text-[0.68rem] font-bold text-mute">
           ニックネーム未設定の方は参加設定へ
         </Link>
       </div>

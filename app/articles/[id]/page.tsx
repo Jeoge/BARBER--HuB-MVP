@@ -209,13 +209,10 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
       {topicBundle == null ? null : (
         <section className="px-4 pt-5">
           <div className="grid gap-2">
-            {topicBundle.backRoomThreads.slice(0, 2).map((thread) => (
-              <Link key={thread.id} href={`/backyard/setup?next=/posts/${thread.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
-                <p className="text-[0.68rem] font-black text-blush">Back Room</p>
-                <p className="mt-1 truncate text-sm font-black text-ink">{thread.title ?? thread.body}</p>
-                <p className="mt-1 text-xs font-bold text-mute">{thread.comments}コメント / {thread.latestCommentAt ?? "さっき"}</p>
-              </Link>
-            ))}
+            <Link href="/post/backroom" className="rounded-[8px] border border-blush/20 bg-blushSoft p-3 shadow-sm">
+              <p className="text-[0.68rem] font-black text-blush">Back Room</p>
+              <p className="mt-1 text-sm font-black leading-snug text-ink">この記事の話題をBack Roomで話す</p>
+            </Link>
             {topicBundle.seminars.slice(0, 1).map((seminar) => (
               <Link key={seminar.id} href="/seminars" className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
                 <p className="text-[0.68rem] font-black text-blush">関連講習</p>

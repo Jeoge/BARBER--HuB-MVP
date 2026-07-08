@@ -1,4 +1,4 @@
-import { Building2, Clock, ExternalLink, MapPin } from "lucide-react";
+import { Building2, ExternalLink, MapPin } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MagazineImage } from "@/components/MagazineImage";
@@ -239,23 +239,11 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
       />
 
       <section className="px-4 pt-7">
-        <MagazineSectionHeading title="Back Room最近の話題" eyebrow="BACK ROOM" actionHref="/backyard/setup?next=/backyard" />
-        <div className="grid gap-2">
-          {bundle.backRoomThreads.slice(0, 3).map((thread) => (
-            <Link key={thread.id} href={`/backyard/setup?next=/posts/${thread.id}`} className="rounded-[8px] border border-line bg-white px-3 py-2.5 shadow-sm">
-              <div className="flex items-center gap-2">
-                <span className="shrink-0 rounded-full bg-blushSoft px-2 py-0.5 text-[0.6rem] font-black text-blush">{thread.category}</span>
-                <h3 className="min-w-0 flex-1 truncate text-[0.84rem] font-black text-ink">{thread.title ?? thread.body}</h3>
-              </div>
-              <div className="mt-1.5 flex items-center gap-3 text-[0.68rem] font-bold text-mute">
-                <span className="inline-flex items-center gap-1">
-                  <Clock aria-hidden="true" size={13} />
-                  {thread.latestCommentAt ?? "さっき"}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <MagazineSectionHeading title="Back Roomで話す" eyebrow="BACK ROOM" actionHref="/backroom" actionLabel="入る" />
+        <Link href="/post/backroom" className="block rounded-[8px] border border-blush/20 bg-blushSoft px-3 py-3 shadow-sm">
+          <p className="text-[0.68rem] font-black text-blush">会員限定</p>
+          <p className="mt-1 text-sm font-black leading-snug text-ink">この話題を営業後コミュニティに投稿する</p>
+        </Link>
       </section>
 
       <MagazineCompactList
