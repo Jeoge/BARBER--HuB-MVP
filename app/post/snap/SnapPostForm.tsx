@@ -250,7 +250,7 @@ export function SnapPostForm({
       <div className="rounded-[8px] border border-line/80 bg-neutral-50 px-3 py-2.5 text-[0.72rem] font-medium leading-relaxed text-mute">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="font-black text-ink/70">投稿ルール</span>
-          <Link href="/partners/dealers" className="font-black text-blush">
+          <Link href="/advertising" className="font-black text-blush">
             広告掲載について相談する
           </Link>
         </div>
@@ -258,7 +258,7 @@ export function SnapPostForm({
           Snapは、現場の気づきや日常を共有する場所です。企業・学校・メーカー・ディーラー等の告知や広告掲載は、運営確認のうえ専用枠で行います。
         </p>
         <p className="mt-1">
-          PR・協賛・提供を含む投稿は、広告であることが分かる表記を行い、広告と分からない投稿は避けてください。
+          企業・団体から依頼された投稿、報酬や商品提供を受けた投稿、告知・販売を主目的とする投稿は、PR・協賛掲載として扱う場合があります。
         </p>
       </div>
 

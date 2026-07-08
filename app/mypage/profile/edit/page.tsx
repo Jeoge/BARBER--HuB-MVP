@@ -3,13 +3,12 @@ import { ArrowLeft, ExternalLink, ImagePlus, MapPin, Save } from "lucide-react";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { ACCOUNT_TYPE_OPTIONS } from "@/lib/accountTypes";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { saveProfileAction } from "./actions";
-
-const profileTypes = ["理容師", "美容師", "理容学生", "美容学生", "理美容アシスタント", "サロン", "理容学校", "美容学校", "メーカー", "ディーラー", "組合"];
 
 function Field({
   label,
@@ -131,19 +130,22 @@ export default async function ProfileEditPage({ searchParams }: ProfileEditPageP
 
         <Field name="display_name" label="表示名" defaultValue={profile?.display_name} placeholder="例：福岡の理容師" />
         <label className="grid gap-2">
-          <span className="text-sm font-black text-ink">職種</span>
+          <span className="text-sm font-black text-ink">登録区分</span>
           <select
             name="job_type"
             className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none focus:border-blush"
             defaultValue={profile?.job_type ?? ""}
           >
             <option value="">未設定</option>
-            {profileTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
+            {ACCOUNT_TYPE_OPTIONS.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
               </option>
             ))}
           </select>
+          <span className="text-[0.72rem] font-medium leading-relaxed text-mute">
+            理容師・学生・サロン関係者は通常投稿できます。学校・メーカー・ディーラー・組合・企業などの告知は広告掲載・協賛の問い合わせから運営確認後に扱います。
+          </span>
         </label>
         <Field name="salon_name" label="サロン名" defaultValue={profile?.salon_name} placeholder="例：BARBER HUB SALON" />
         <Field name="region" label="地域" defaultValue={profile?.region} placeholder="例：福岡県 福岡市" />

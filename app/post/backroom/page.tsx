@@ -6,6 +6,7 @@ import { BackroomSetupRequiredCard } from "@/components/BackroomSetupRequiredCar
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { BACKROOM_CATEGORIES, getBackroomProfile } from "@/lib/supabase/backroom";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
@@ -86,6 +87,11 @@ export default async function BackroomPostPage({ searchParams }: BackroomPostPag
 
   if (profileError) {
     redirect(pathWithParams("/mypage/profile/edit", { error: "プロフィール情報を確認できませんでした。保存後にBack Room投稿をお試しください。" }));
+  }
+
+  const permissionRedirect = getPostPermissionRedirect(profile, "backroom", "/post/backroom");
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
   }
 
   const { profile: backroomProfile } = await getBackroomProfile(supabase, user.id);
@@ -169,7 +175,7 @@ export default async function BackroomPostPage({ searchParams }: BackroomPostPag
         </label>
 
         <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-[0.78rem] font-medium leading-relaxed text-ink">
-          タイトル・カテゴリー・本文は必須です。個人名や店舗名を出した攻撃、晒しは避けてください。
+          タイトル・カテゴリー・本文は必須です。個人名や店舗名を出した攻撃、晒しは避けてください。企業・団体から依頼された投稿や告知を主目的とする投稿は、PR・協賛掲載として扱う場合があります。
         </div>
 
         <LoadingSubmitButton pendingText="作成中..." className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">

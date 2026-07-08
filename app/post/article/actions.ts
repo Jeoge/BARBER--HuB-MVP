@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
@@ -72,11 +73,18 @@ export async function createArticleAction(formData: FormData) {
   }
 
   if (profile == null) {
-    redirectToArticlePost({ error: "プロフィール設定後に記事投稿できます。" });
+    const permissionRedirect = getPostPermissionRedirect(null, "article", "/post/article");
+    redirect(permissionRedirect ?? pathWithParams("/mypage/profile/edit", { error: "プロフィール設定後に記事投稿できます。" }));
+  }
+
+  const category = cleanText(formData.get("category")) || "経験記事";
+  const capability = category === "講習会レポート" || category === "コンクールレポート" ? "report" : "article";
+  const permissionRedirect = getPostPermissionRedirect(profile, capability, "/post/article");
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
   }
 
   const title = cleanText(formData.get("title"));
-  const category = cleanText(formData.get("category")) || "経験記事";
   const body = cleanText(formData.get("body"));
   const takeaway = cleanText(formData.get("takeaway"));
 

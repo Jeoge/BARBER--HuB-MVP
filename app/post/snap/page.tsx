@@ -1,7 +1,9 @@
 import { ArrowLeft, UserRoundPen } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SignupRequiredCard } from "@/components/AuthGate";
 import { PageChrome } from "@/components/PageChrome";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { SnapPostForm } from "./SnapPostForm";
@@ -65,6 +67,13 @@ export default async function SnapPostPage({ searchParams }: SnapPostPageProps) 
       userEmail: user.email ?? null,
       message: profileError.message,
     });
+  }
+
+  if (profileError == null) {
+    const permissionRedirect = getPostPermissionRedirect(profile, "snap", "/post/snap");
+    if (permissionRedirect) {
+      redirect(permissionRedirect);
+    }
   }
 
   return (

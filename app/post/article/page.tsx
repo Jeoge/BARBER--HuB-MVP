@@ -5,15 +5,24 @@ import { SignupRequiredCard } from "@/components/AuthGate";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { createArticleAction } from "./actions";
 
-const categories = ["経営", "技術", "集客", "AI活用", "独立", "道具", "求人", "講習会", "経験記事"];
+const categories = ["経営", "技術", "集客", "AI活用", "独立", "道具", "求人", "講習会", "講習会レポート", "コンクールレポート", "経験記事"];
 
 type ArticlePostPageProps = {
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; category?: string; type?: string }>;
 };
+
+function defaultArticleCategory(categoryParam: string | undefined, typeParam: string | undefined) {
+  const value = categoryParam ?? typeParam;
+  if (value === "seminar_report") return "講習会レポート";
+  if (value === "competition_report") return "コンクールレポート";
+  if (value && categories.includes(value)) return value;
+  return "経営";
+}
 
 function ProfileRequiredCard() {
   return (
@@ -90,6 +99,13 @@ export default async function ArticlePostPage({ searchParams }: ArticlePostPageP
     redirect(pathWithParams("/mypage/profile/edit", { error: "プロフィール情報を確認できませんでした。保存後に記事投稿をお試しください。" }));
   }
 
+  const defaultCategory = defaultArticleCategory(params?.category, params?.type);
+  const capability = defaultCategory === "講習会レポート" || defaultCategory === "コンクールレポート" ? "report" : "article";
+  const permissionRedirect = getPostPermissionRedirect(profile, capability, "/post/article");
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
+  }
+
   return (
     <PageChrome>
       <section className="px-4 pt-4">
@@ -135,7 +151,7 @@ export default async function ArticlePostPage({ searchParams }: ArticlePostPageP
 
         <label className="grid gap-2">
           <span className="text-sm font-black text-ink">カテゴリー</span>
-          <select name="category" className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none focus:border-blush">
+          <select name="category" defaultValue={defaultCategory} className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none focus:border-blush">
             {categories.map((category) => (
               <option key={category} value={category}>
                 {category}
@@ -154,6 +170,16 @@ export default async function ArticlePostPage({ searchParams }: ArticlePostPageP
             placeholder="背景、試したこと、結果、学びを書いてください。"
           />
         </label>
+
+        <div className="rounded-[8px] border border-line/80 bg-neutral-50 px-3 py-2.5 text-[0.72rem] font-medium leading-relaxed text-mute">
+          <p className="font-black text-ink/70">投稿ルール</p>
+          <p className="mt-1">
+            企業・団体から依頼された投稿、報酬や商品提供を受けた投稿、告知・販売を主目的とする投稿は、PR・協賛掲載として扱う場合があります。
+          </p>
+          <p className="mt-1">
+            講習会・コンクールのレポートは、参加して感じたこと、学んだこと、次に活かしたいことを自由に残してください。
+          </p>
+        </div>
 
         <label className="grid gap-2">
           <span className="text-sm font-black text-ink">この記事で伝えたいこと</span>

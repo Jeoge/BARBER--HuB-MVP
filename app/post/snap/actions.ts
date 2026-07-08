@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
@@ -169,7 +170,13 @@ export async function createSnapAction(formData: FormData) {
   }
 
   if (profile == null) {
-    redirectToSnapPost({ error: "プロフィール設定後にSnap投稿できます。" });
+    const permissionRedirect = getPostPermissionRedirect(null, "snap", "/post/snap");
+    redirect(permissionRedirect ?? pathWithParams("/mypage/profile/edit", { error: "プロフィール設定後にSnap投稿できます。" }));
+  }
+
+  const permissionRedirect = getPostPermissionRedirect(profile, "snap", "/post/snap");
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
   }
 
   if (profile.id !== user.id) {

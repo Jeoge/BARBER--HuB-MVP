@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
+import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
 function cleanText(value: FormDataEntryValue | null) {
@@ -72,6 +74,22 @@ export async function createQaAnswerAction(formData: FormData) {
     }
 
     redirect(pathWithParams("/login", { next: `/qa/${questionId}`, message: "回答にはログインしてください。" }));
+  }
+
+  const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+
+  if (profileError) {
+    console.error("Q&A answer profile lookup failed", {
+      questionId,
+      userId: user.id,
+      message: profileError.message,
+    });
+    redirect(qaPath(questionId, { answerError: "プロフィール情報を確認できませんでした。時間をおいて再度お試しください。" }));
+  }
+
+  const permissionRedirect = getPostPermissionRedirect(profile, "qa", `/qa/${questionId}`);
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
   }
 
   const now = new Date().toISOString();
