@@ -4,6 +4,7 @@ import { MessageCircle, Send, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useCallback, useEffect, useState, useTransition } from "react";
+import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { addSnapCommentAction, deleteSnapCommentAction } from "@/lib/actions/comments";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/client";
@@ -165,22 +166,27 @@ export function SnapCommentButton({ snapId, currentUserId }: { snapId: string; c
                 </Link>
               </div>
             ) : (
-              <form onSubmit={submit} className="flex items-end gap-2 border-t border-line px-4 py-3 pb-6">
-                <textarea
-                  value={text}
-                  onChange={(event) => setText(event.target.value)}
-                  rows={1}
-                  placeholder="コメントを書く..."
-                  className="max-h-28 flex-1 resize-none rounded-[18px] border border-line bg-neutral-50 px-4 py-2.5 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
-                />
-                <button
-                  type="submit"
-                  disabled={isPending || text.trim().length === 0}
-                  aria-label="送信"
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-white transition active:scale-95 disabled:opacity-40"
-                >
-                  <Send aria-hidden="true" size={18} />
-                </button>
+              <form onSubmit={submit} className="border-t border-line px-4 py-3 pb-6">
+                <div className="flex items-end gap-2">
+                  <textarea
+                    value={text}
+                    onChange={(event) => setText(event.target.value)}
+                    rows={1}
+                    placeholder="コメントを書く..."
+                    className="max-h-28 flex-1 resize-none rounded-[18px] border border-line bg-neutral-50 px-4 py-2.5 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isPending || text.trim().length === 0}
+                    aria-label="送信"
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-white transition active:scale-95 disabled:opacity-40"
+                  >
+                    <Send aria-hidden="true" size={18} />
+                  </button>
+                </div>
+                <FormDisclaimer className="mt-2">
+                  相手への敬意を持ってコメントしてください。個人攻撃、実名批判、顧客情報、他店への誹謗中傷は投稿できません。
+                </FormDisclaimer>
               </form>
             )}
           </div>

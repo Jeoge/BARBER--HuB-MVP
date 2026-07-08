@@ -4,8 +4,15 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { hasSafetyConfirmations, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
+
+const ADVERTISING_SAFETY_FIELDS = [
+  "advertisingTruthConfirmed",
+  "advertisingLabelConfirmed",
+  "advertisingNoGuaranteeConfirmed",
+];
 
 function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -54,6 +61,10 @@ function saveErrorMessage(error: unknown) {
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
     return "問い合わせを保存できませんでした。advertising_inquiriesテーブルの権限設定を確認してください。";
+  }
+
+  if (message.includes("safety_confirmed_at") || message.includes("guidelines_confirmed") || message.includes("pr_disclosure_checked")) {
+    return safetyMigrationErrorMessage("広告・協賛問い合わせ");
   }
 
   return "問い合わせを保存できませんでした。入力内容を確認して、もう一度お試しください。";
@@ -118,6 +129,11 @@ export async function createAdvertisingInquiryAction(formData: FormData) {
     redirectToApply("掲載したい内容を入力してください。");
   }
 
+  if (!hasSafetyConfirmations(formData, ADVERTISING_SAFETY_FIELDS)) {
+    redirectToApply(SAFETY_CONFIRMATION_ERROR);
+  }
+
+  const now = new Date().toISOString();
   const id = randomUUID();
   const { data, error } = await supabase
     .from("advertising_inquiries")
@@ -136,7 +152,10 @@ export async function createAdvertisingInquiryAction(formData: FormData) {
       website_url: cleanUrl(formData.get("websiteUrl")),
       note: cleanNullableText(formData.get("note")),
       status: "new",
-      created_at: new Date().toISOString(),
+      safety_confirmed_at: now,
+      guidelines_confirmed: true,
+      pr_disclosure_checked: true,
+      created_at: now,
     })
     .select("id")
     .maybeSingle<{ id: string }>();

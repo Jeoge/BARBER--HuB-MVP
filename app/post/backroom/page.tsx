@@ -3,14 +3,25 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignupRequiredCard } from "@/components/AuthGate";
 import { BackroomSetupRequiredCard } from "@/components/BackroomSetupRequiredCard";
-import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
+import { SafetyChecklistSubmit } from "@/components/SafetyChecklist";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getPostPermissionRedirect } from "@/lib/permissions";
 import { BACKROOM_CATEGORIES, getBackroomProfile } from "@/lib/supabase/backroom";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { createBackroomPostAction } from "./actions";
+
+const backroomSafetyItems = [
+  {
+    name: "backroomPrivacyConfirmed",
+    label: "個人・店舗・顧客が特定される情報は含めていません。",
+  },
+  {
+    name: "backroomScopeConfirmed",
+    label: "会員限定でも外部に伝わる可能性があることを理解しています。",
+  },
+];
 
 type BackroomPostPageProps = {
   searchParams?: Promise<{ error?: string }>;
@@ -178,10 +189,16 @@ export default async function BackroomPostPage({ searchParams }: BackroomPostPag
           タイトル・カテゴリー・本文は必須です。個人名や店舗名を出した攻撃、晒しは避けてください。企業・団体から依頼された投稿や告知を主目的とする投稿は、PR・協賛掲載として扱う場合があります。
         </div>
 
-        <LoadingSubmitButton pendingText="作成中..." className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+        <SafetyChecklistSubmit
+          title="Back Room投稿前の確認"
+          body="Back Roomは会員限定の営業後コミュニティです。ただし、投稿内容の外部共有やスクリーンショットを完全に防ぐことはできません。個人名、顧客情報、他店批判、内部情報、機密情報は投稿しないでください。"
+          items={backroomSafetyItems}
+          pendingText="作成中..."
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white"
+        >
           <Send aria-hidden="true" size={17} />
           スレッドを作成
-        </LoadingSubmitButton>
+        </SafetyChecklistSubmit>
       </form>
     </PageChrome>
   );

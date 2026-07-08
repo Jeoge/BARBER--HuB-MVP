@@ -4,11 +4,18 @@ import { ImagePlus, Send, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { SafetyChecklist } from "@/components/SafetyChecklist";
 import { createSnapAction } from "./actions";
 
 const categories = ["技術", "道具", "営業メモ", "集客", "日常", "編集部へ共有"];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const imageInputId = "snap-image-input";
+const snapSafetyItems = [
+  {
+    name: "snapSafetyConfirmed",
+    label: "写真・文章の投稿許可と権利関係を確認しました。",
+  },
+];
 
 function SubmitButton({ disabledByValidation }: { disabledByValidation: boolean }) {
   const { pending } = useFormStatus();
@@ -43,6 +50,7 @@ export function SnapPostForm({
   const [selectedImagePreviewUrl, setSelectedImagePreviewUrl] = useState("");
   const [imageError, setImageError] = useState("");
   const [previewError, setPreviewError] = useState("");
+  const [safetyReady, setSafetyReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const captionRequired = caption.trim().length === 0;
 
@@ -262,6 +270,13 @@ export function SnapPostForm({
         </p>
       </div>
 
+      <SafetyChecklist
+        title="Snap投稿前の確認"
+        body="写真にお客様の顔、個人情報、他店や第三者の権利物が写っていないか確認してください。商品紹介・企業依頼・報酬ありの投稿はPR申告が必要です。"
+        items={snapSafetyItems}
+        onRequiredCompleteChange={setSafetyReady}
+      />
+
       <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-3">
         <div className="flex items-start gap-2">
           <Sparkles aria-hidden="true" size={17} className="mt-0.5 shrink-0 text-blush" />
@@ -271,7 +286,8 @@ export function SnapPostForm({
         </div>
       </div>
 
-      <SubmitButton disabledByValidation={captionRequired || Boolean(imageError)} />
+      {!safetyReady ? <p className="text-[0.68rem] font-bold text-mute">確認欄にチェックすると投稿できます。</p> : null}
+      <SubmitButton disabledByValidation={captionRequired || Boolean(imageError) || !safetyReady} />
     </form>
   );
 }

@@ -2,6 +2,7 @@ import { ArrowLeft, MessageCircle, Send, UserRound } from "lucide-react";
 import Link from "next/link";
 import { SignupRequiredCard } from "@/components/AuthGate";
 import { BackroomSetupRequiredCard } from "@/components/BackroomSetupRequiredCard";
+import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import {
@@ -194,6 +195,9 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
             <Send aria-hidden="true" size={16} />
             コメント投稿
           </LoadingSubmitButton>
+          <FormDisclaimer className="mt-2">
+            相手への敬意を持ってコメントしてください。個人攻撃、実名批判、顧客情報、他店への誹謗中傷は投稿できません。
+          </FormDisclaimer>
         </form>
       </section>
     </PageChrome>

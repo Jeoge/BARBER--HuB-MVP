@@ -1,8 +1,8 @@
 import { ArrowLeft, Megaphone, Send } from "lucide-react";
 import Link from "next/link";
-import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { SafetyChecklistSubmit } from "@/components/SafetyChecklist";
 import { ACCOUNT_TYPE_OPTIONS } from "@/lib/accountTypes";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getAccountProfile } from "@/lib/supabase/profiles";
@@ -25,6 +25,20 @@ const inquiryTypes = [
 ];
 
 const budgetRanges = ["未定", "無料掲載の範囲で相談", "3万円未満", "3〜10万円", "10〜30万円", "30万円以上"];
+const advertisingSafetyItems = [
+  {
+    name: "advertisingTruthConfirmed",
+    label: "掲載内容に虚偽・誇大表現はありません。",
+  },
+  {
+    name: "advertisingLabelConfirmed",
+    label: "PR・広告・協賛表記が入ることを理解しています。",
+  },
+  {
+    name: "advertisingNoGuaranteeConfirmed",
+    label: "掲載効果が保証されるものではないことを理解しています。",
+  },
+];
 
 function TextField({
   label,
@@ -210,10 +224,18 @@ export default async function AdvertisingApplyPage({ searchParams }: Advertising
         <TextField name="websiteUrl" label="公式サイトURL" type="url" placeholder="https://example.com" />
         <TextAreaField name="note" label="備考" placeholder="補足、相談したいこと、希望する見せ方など。" rows={4} />
 
-        <LoadingSubmitButton pendingText="送信中..." className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+        <SafetyChecklistSubmit
+          title="広告・協賛問い合わせ前の確認"
+          body="掲載内容は運営確認後に掲載します。広告・PR・協賛であることが分かる表記を行い、掲載による応募数・売上・集客効果を保証するものではありません。"
+          items={advertisingSafetyItems}
+          rulesHref="/ad-policy"
+          rulesLabel="広告・PRポリシー"
+          pendingText="送信中..."
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white"
+        >
           <Send aria-hidden="true" size={17} />
           問い合わせを送信
-        </LoadingSubmitButton>
+        </SafetyChecklistSubmit>
       </form>
     </PageChrome>
   );

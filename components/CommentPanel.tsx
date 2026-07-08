@@ -2,6 +2,7 @@
 
 import { Send } from "lucide-react";
 import { useState } from "react";
+import { FormDisclaimer } from "@/components/FormDisclaimer";
 
 type CommentPanelProps = {
   title?: string;
@@ -48,6 +49,9 @@ export function CommentPanel({
             <Send aria-hidden="true" size={15} />
             コメントする
           </button>
+          <FormDisclaimer>
+            相手への敬意を持ってコメントしてください。個人攻撃、実名批判、顧客情報、他店への誹謗中傷は投稿できません。
+          </FormDisclaimer>
         </div>
         <div className="mt-4 grid gap-2">
           {comments.map((comment) => (

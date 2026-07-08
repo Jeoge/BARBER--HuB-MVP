@@ -2,8 +2,8 @@ import { ArrowLeft, FilePenLine, Save, Send, Sparkles, UserRoundPen } from "luci
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignupRequiredCard } from "@/components/AuthGate";
-import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
+import { SafetyChecklistSubmit } from "@/components/SafetyChecklist";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getAccountProfile } from "@/lib/supabase/profiles";
@@ -11,6 +11,20 @@ import { createClient } from "@/lib/supabase/server";
 import { createArticleAction } from "./actions";
 
 const categories = ["経営", "技術", "集客", "AI活用", "独立", "道具", "求人", "講習会", "講習会レポート", "コンクールレポート", "経験記事"];
+const articleSafetyItems = [
+  {
+    name: "articleExperienceConfirmed",
+    label: "自分の経験・考えとして投稿します。",
+  },
+  {
+    name: "articleNoHarmConfirmed",
+    label: "他店・個人・お客様が不利益を受ける内容は含めていません。",
+  },
+  {
+    name: "articlePrDisclosureChecked",
+    label: "企業依頼・報酬・商品提供がある場合はPRとして申告します。",
+  },
+];
 
 type ArticlePostPageProps = {
   searchParams?: Promise<{ error?: string; category?: string; type?: string }>;
@@ -191,16 +205,21 @@ export default async function ArticlePostPage({ searchParams }: ArticlePostPageP
           />
         </label>
 
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          <button type="button" disabled className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] border border-line bg-neutral-50 text-sm font-black text-mute">
-            <Save aria-hidden="true" size={17} />
-            下書き
-          </button>
-          <LoadingSubmitButton pendingText="投稿中..." className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
-            <Send aria-hidden="true" size={17} />
-            投稿する
-          </LoadingSubmitButton>
-        </div>
+        <SafetyChecklistSubmit
+          title="記事投稿前の確認"
+          body="経験記事は、あなたの実体験・工夫・学びを共有する場所です。断定的な効果保証、他店批判、無断転載、PR表記のない広告投稿は避けてください。講習会・コンクールのレポートは、参加して感じたことや次に活かしたいことを中心に残してください。"
+          items={articleSafetyItems}
+          pendingText="投稿中..."
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white"
+        >
+          <Send aria-hidden="true" size={17} />
+          投稿する
+        </SafetyChecklistSubmit>
+
+        <button type="button" disabled className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] border border-line bg-neutral-50 text-sm font-black text-mute">
+          <Save aria-hidden="true" size={17} />
+          下書き
+        </button>
       </form>
     </PageChrome>
   );

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { SafetyNotice } from "@/components/SafetyNotice";
 import { JOB_DIRECT_CONTACT_NOTICE } from "@/lib/jobs";
 
 const paidOptions = ["注目掲載", "上位表示", "トップページ掲載", "編集部作成の求人記事", "学校・組合・地域特集との連動"];
@@ -31,6 +32,10 @@ export default function JobsAboutPage() {
           <h2 className="mt-2 text-base font-black text-ink">BARBER HUBは求人情報の掲載場所です</h2>
           <p className="mt-2 text-sm font-medium leading-relaxed text-mute">{JOB_DIRECT_CONTACT_NOTICE}</p>
         </div>
+
+        <SafetyNotice title="求人掲載の確認" href="/terms" linkLabel="利用規約">
+          BARBER HUBは求人情報の掲載場所です。応募・見学・条件確認は掲載サロンと応募者の間で直接行ってください。採用成立、勤務条件、雇用契約の内容を保証するものではありません。
+        </SafetyNotice>
 
         <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.035)]">
           <p className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-blush">PAID OPTIONS</p>

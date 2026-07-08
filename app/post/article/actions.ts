@@ -5,8 +5,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getPostPermissionRedirect } from "@/lib/permissions";
+import { hasSafetyConfirmations, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
+
+const ARTICLE_SAFETY_FIELDS = ["articleExperienceConfirmed", "articleNoHarmConfirmed", "articlePrDisclosureChecked"];
 
 function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -39,6 +42,10 @@ function articleSaveErrorMessage(error: unknown) {
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
     return "記事を保存できませんでした。articlesテーブルの権限設定を確認してください。";
+  }
+
+  if (message.includes("safety_confirmed_at") || message.includes("guidelines_confirmed") || message.includes("pr_disclosure_checked")) {
+    return safetyMigrationErrorMessage("記事");
   }
 
   return "記事を保存できませんでした。入力内容を確認して、もう一度お試しください。";
@@ -100,6 +107,10 @@ export async function createArticleAction(formData: FormData) {
     redirectToArticlePost({ error: "本文を入力してください。" });
   }
 
+  if (!hasSafetyConfirmations(formData, ARTICLE_SAFETY_FIELDS)) {
+    redirectToArticlePost({ error: SAFETY_CONFIRMATION_ERROR });
+  }
+
   const articleId = randomUUID();
   const now = new Date().toISOString();
   const articleBody = takeaway ? `${body}\n\nこの記事で伝えたいこと\n${takeaway}` : body;
@@ -114,6 +125,9 @@ export async function createArticleAction(formData: FormData) {
       body: articleBody,
       is_published: true,
       is_deleted: false,
+      safety_confirmed_at: now,
+      guidelines_confirmed: true,
+      pr_disclosure_checked: true,
       published_at: now,
       created_at: now,
       updated_at: now,
