@@ -2,6 +2,8 @@ import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { FollowButton } from "@/components/FollowButton";
 import { MagazineImage } from "@/components/MagazineImage";
+import { SnapCommentButton } from "@/components/SnapCommentButton";
+import { SnapSaveButton } from "@/components/SnapSaveButton";
 import { SnapThanksButton } from "@/components/SnapThanksButton";
 import { snapAuthorMeta, snapAuthorName, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
 
@@ -77,6 +79,12 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
         initialCount={snap.thanks_count}
         initiallyThanked={snap.viewer_has_thanked}
         showCount={false}
+        actions={
+          <span className="flex items-center gap-1.5">
+            <SnapCommentButton snapId={snap.id} currentUserId={currentUserId} />
+            <SnapSaveButton snapId={snap.id} currentUserId={currentUserId} />
+          </span>
+        }
       />
     </article>
   );

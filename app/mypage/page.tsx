@@ -1,9 +1,9 @@
-import { Bookmark, FilePenLine, LogOut, Pencil, Send, Sparkles } from "lucide-react";
+import { BriefcaseBusiness, FilePenLine, LogOut, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
-import { deleteMySnapAction } from "@/app/mypage/actions";
 import { logoutAction } from "@/app/auth/actions";
+import { deleteMySnapAction } from "@/app/mypage/actions";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
@@ -15,9 +15,15 @@ import {
   listUserArticles,
   type ArticleWithAuthor,
 } from "@/lib/supabase/articles";
+import { listFollowingProfiles } from "@/lib/supabase/follows";
+import { getMySnapStats } from "@/lib/supabase/insights";
 import { getAccountProfile } from "@/lib/supabase/profiles";
+import { listSavedSnaps } from "@/lib/supabase/saved";
 import { createClient } from "@/lib/supabase/server";
 import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
+
+type JobApplication = { id: string; salonName: string; type: string; status: string };
+type SalonJobPosting = { id: string; title: string; status: string };
 
 function accountInitial(nameOrEmail: string | undefined) {
   return (nameOrEmail?.trim().slice(0, 1) || "B").toUpperCase();
@@ -36,15 +42,7 @@ function ProfileRow({ label, value }: { label: string; value: string | null | un
   );
 }
 
-function SectionCard({
-  title,
-  eyebrow,
-  children,
-}: {
-  title: string;
-  eyebrow?: string;
-  children: ReactNode;
-}) {
+function SectionCard({ title, eyebrow, children }: { title: string; eyebrow?: string; children: ReactNode }) {
   return (
     <section className="px-4 pt-5">
       <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.035)]">
@@ -235,19 +233,27 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const { snaps: mySnaps, error: mySnapsError } = await listUserSnaps(supabase, user.id, 30, user.id);
   const { articles: myArticles, error: myArticlesError } = await listUserArticles(supabase, user.id, 30, user.id);
   const { articles: savedArticles, error: savedArticlesError } = await listSavedArticles(supabase, user.id, 30, user.id);
+  const followedProfiles = await listFollowingProfiles(supabase, user.id);
+  const savedSnapList = await listSavedSnaps(supabase, user.id);
+  const stats = await getMySnapStats(supabase, user.id);
   const profileDisplayName = profile?.display_name?.trim() || profile?.salon_name?.trim() || "プロフィール未設定";
   const loginEmail = user.email ?? "メールアドレス未取得";
   const hasProfile = profile != null;
-  const totalThanksPoints =
-    myArticles.reduce((sum, article) => sum + article.thanks_count, 0) +
-    mySnaps.reduce((sum, snap) => sum + snap.thanks_count, 0);
+  const showSalonAdmin = Boolean(profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
+  const articleThanksPoints = myArticles.reduce((sum, article) => sum + article.thanks_count, 0);
+  const thanksPoints = stats.thanksReceived + articleThanksPoints;
+  const nextRewardAt = (Math.floor(thanksPoints / 100) + 1) * 100;
+  const pointsToNext = nextRewardAt - thanksPoints;
+  const commentsReceived = stats.commentsReceived + myArticles.reduce((sum, article) => sum + article.comment_count, 0);
+  const jobApplications: JobApplication[] = [];
+  const salonJobPostings: SalonJobPosting[] = [];
 
   return (
     <PageChrome>
       <PageHeaderBlock
         eyebrow="PRIVATE DASHBOARD"
         title="マイページ"
-        body="自分の投稿、保存、Thanksポイント、自分の投稿への反応を確認する本人専用の管理画面です。"
+        body="自分の投稿、保存、フォロー中、Thanksポイント、自分の投稿への反応を確認する本人専用の管理画面です。"
       />
 
       <section className="px-4 pt-5">
@@ -303,10 +309,24 @@ export default async function MyPage({ searchParams }: MyPageProps) {
 
       <SectionCard eyebrow="THANKS POINTS" title="Thanksポイント">
         <div className="rounded-[8px] bg-neutral-50 p-4">
-          <p className="text-xs font-bold text-mute">受け取ったThanks合計</p>
-          <p className="mt-1 text-2xl font-black text-ink">{totalThanksPoints}pt</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs font-bold text-mute">受け取ったThanks</p>
+              <p className="mt-1 text-2xl font-black text-ink">
+                {thanksPoints}
+                <span className="text-base"> pt</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-mute">次の特典まで</p>
+              <p className="mt-1 text-2xl font-black text-ink">
+                {pointsToNext}
+                <span className="text-base"> pt</span>
+              </p>
+            </div>
+          </div>
           <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
-            自分自身のThanksは含めず、Supabaseに保存された反応だけを集計します。
+            自分の投稿が受け取ったThanks 1件＝1ptです。投稿者本人のThanksは含めません。
           </p>
         </div>
       </SectionCard>
@@ -336,13 +356,71 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         )}
       </SectionCard>
 
-      <SectionCard eyebrow="SAVED" title="保存した記事">
-        {savedArticlesError ? (
+      <SectionCard eyebrow="SAVED" title="保存したもの">
+        <div className="grid gap-3">
+          <div>
+            <p className="mb-2 text-xs font-black text-mute">記事</p>
+            {savedArticlesError ? (
+              <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+                保存した記事を読み込めませんでした。
+              </div>
+            ) : (
+              <SavedArticleList articles={savedArticles} />
+            )}
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-black text-mute">Snap</p>
+            {savedSnapList.length === 0 ? (
+              <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+                保存したSnapはまだありません。
+              </div>
+            ) : (
+              <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
+                {savedSnapList.map((snap) => (
+                  <Link key={snap.id} href={`/posts/${snap.id}`} className="flex gap-3 rounded-[8px] border border-line bg-neutral-50 p-3">
+                    {snap.image_url ? (
+                      <div className="h-16 w-14 shrink-0">
+                        <MagazineImage src={snap.image_url} alt={snap.caption ?? "Snap"} variant="news" className="h-full w-full" />
+                      </div>
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{snap.category ?? "日常"}</span>
+                      <p className="mt-1 line-clamp-2 break-words text-sm font-semibold leading-relaxed text-ink">
+                        {snap.caption?.trim() || "本文なしのSnapです。"}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard eyebrow="FOLLOWING" title="フォロー中">
+        {followedProfiles.length === 0 ? (
           <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-            保存した記事を読み込めませんでした。
+            まだフォローしていません。
           </div>
         ) : (
-          <SavedArticleList articles={savedArticles} />
+          <div className="grid max-h-[13.75rem] gap-2 overflow-y-auto overscroll-contain pr-1">
+            {followedProfiles.map((profile) => {
+              const meta = [profile.job_type, profile.salon_name, profile.region].filter(Boolean).join(" / ");
+              return (
+                <Link key={profile.id} href={`/profiles/${profile.id}`} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-black text-ink">
+                      {profile.display_name?.trim() || "プロフィール未設定"}
+                    </span>
+                    <span className="mt-1 block truncate text-xs font-semibold text-mute">
+                      {meta || "BARBER HUB"}
+                    </span>
+                  </span>
+                  <UserRoundCheck aria-hidden="true" size={16} className="shrink-0 text-blush" />
+                </Link>
+              );
+            })}
+          </div>
         )}
       </SectionCard>
 
@@ -372,12 +450,67 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         )}
       </SectionCard>
 
+      <SectionCard eyebrow="MEMO" title="自分用メモ">
+        <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+          メモ機能は準備中です。
+        </div>
+      </SectionCard>
+
       <SectionCard eyebrow="OWNER VIEW" title="自分の投稿への反応">
-        <p className="mb-3 text-xs font-medium leading-relaxed text-mute">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-[8px] bg-neutral-50 p-3 text-center">
+            <p className="text-[0.62rem] font-bold text-mute">受け取ったThanks</p>
+            <p className="mt-1 text-2xl font-black text-ink">{thanksPoints}</p>
+          </div>
+          <div className="rounded-[8px] bg-neutral-50 p-3 text-center">
+            <p className="text-[0.62rem] font-bold text-mute">コメント</p>
+            <p className="mt-1 text-2xl font-black text-ink">{commentsReceived}</p>
+          </div>
+        </div>
+        <p className="my-3 text-xs font-medium leading-relaxed text-mute">
           表示カウントから投稿者本人のリアクションは除外しています。
         </p>
         <OwnerReactionSummaries articles={myArticles} snaps={mySnaps} />
       </SectionCard>
+
+      <SectionCard eyebrow="APPLICATIONS" title="応募履歴">
+        {jobApplications.length === 0 ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            まだ応募はありません。求人に応募すると、ここに履歴が表示されます。
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            {jobApplications.map((application) => (
+              <div key={application.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
+                <span>
+                  <span className="block text-sm font-black text-ink">{application.salonName}</span>
+                  <span className="mt-1 block text-xs font-semibold text-mute">{application.type}</span>
+                </span>
+                <span className="rounded-full bg-white px-2.5 py-1 text-[0.66rem] font-black text-ink">{application.status}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      {showSalonAdmin ? (
+        <SectionCard eyebrow="SALON ADMIN" title="求人掲載管理">
+          {salonJobPostings.length === 0 ? (
+            <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+              まだ掲載中の求人はありません。求人を掲載すると、ここに表示されます。
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              {salonJobPostings.map((posting) => (
+                <div key={posting.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
+                  <span className="block text-sm font-black text-ink">{posting.title}</span>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[0.66rem] font-black text-ink">{posting.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      ) : null}
 
       <section className="px-4 pt-5">
         <div className="rounded-[10px] border border-blush/20 bg-blushSoft p-4">
@@ -386,7 +519,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
             本人専用情報について
           </div>
           <p className="mt-2 text-xs font-medium leading-relaxed text-mute">
-            保存一覧、Thanksポイント、反応数は公開プロフィールには表示されません。
+            保存一覧、自分用メモ、Thanksポイント、反応数、応募履歴は公開プロフィールには表示されません。
           </p>
         </div>
       </section>

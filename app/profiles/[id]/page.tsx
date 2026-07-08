@@ -19,6 +19,7 @@ import {
   listUserArticles,
   type ArticleWithAuthor,
 } from "@/lib/supabase/articles";
+import { getFollowCounts } from "@/lib/supabase/follows";
 import { getAccountProfile, type AccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
@@ -249,6 +250,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
     .map(([key, href]) => [key, safeExternalUrl(href)] as const)
     .filter((entry): entry is readonly [ProfileLinkKey, string] => Boolean(entry[1]));
   const isHiringSalon = !dbProfile && profile.type === "salon" && profile.isHiring && profile.jobId;
+  const followCounts = await getFollowCounts(supabase, profile.id);
 
   return (
     <PageChrome>
@@ -295,6 +297,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
                 {profile.area}
               </p>
             ) : null}
+            <div className="mt-3 flex items-center gap-4 text-xs font-bold text-mute">
+              <span>
+                <span className="font-black text-ink">{followCounts.followers.toLocaleString()}</span> フォロワー
+              </span>
+              <span>
+                <span className="font-black text-ink">{followCounts.following.toLocaleString()}</span> フォロー中
+              </span>
+            </div>
             {profile.bio ? <p className="mt-3 whitespace-pre-wrap text-[0.9rem] font-medium leading-relaxed text-ink">{profile.bio}</p> : null}
 
             {profile.specialtyTags && profile.specialtyTags.length > 0 ? (
