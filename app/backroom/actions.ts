@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getBackroomProfile } from "@/lib/supabase/backroom";
+import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
 function cleanText(value: FormDataEntryValue | null) {
@@ -73,6 +75,22 @@ export async function createBackroomCommentAction(formData: FormData) {
     }
 
     redirect(pathWithParams("/login", { next: `/backroom/${postId}`, message: "コメントにはログインしてください。" }));
+  }
+
+  const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+
+  if (profileError) {
+    console.error("Back Room comment profile lookup failed", {
+      postId,
+      userId: user.id,
+      message: profileError.message,
+    });
+    redirect(backroomPath(postId, { commentError: "プロフィール情報を確認できませんでした。時間をおいて再度お試しください。" }));
+  }
+
+  const permissionRedirect = getPostPermissionRedirect(profile, "backroom", `/backroom/${postId}`);
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
   }
 
   const { profile: backroomProfile, error: backroomProfileError } = await getBackroomProfile(supabase, user.id);

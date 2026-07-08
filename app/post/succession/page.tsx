@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { SuccessionPostForm } from "./SuccessionPostForm";
@@ -85,6 +87,11 @@ export default async function SuccessionPostPage({ searchParams }: SuccessionPos
         />
       </PageChrome>
     );
+  }
+
+  const permissionRedirect = getPostPermissionRedirect(profile, "succession", "/post/succession");
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
   }
 
   if (profile == null) {

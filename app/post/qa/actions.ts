@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { isQaCategory } from "@/lib/supabase/qa";
 import { createClient } from "@/lib/supabase/server";
@@ -73,7 +74,13 @@ export async function createQaQuestionAction(formData: FormData) {
   }
 
   if (profile == null) {
-    redirectToQaPost({ error: "プロフィール設定後に質問できます。" });
+    const permissionRedirect = getPostPermissionRedirect(null, "qa", "/post/qa");
+    redirect(permissionRedirect ?? pathWithParams("/mypage/profile/edit", { error: "プロフィール設定後に質問できます。" }));
+  }
+
+  const permissionRedirect = getPostPermissionRedirect(profile, "qa", "/post/qa");
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
   }
 
   const title = cleanText(formData.get("title"));

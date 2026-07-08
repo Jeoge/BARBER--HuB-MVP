@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
@@ -188,6 +189,11 @@ async function requireSuccessionPoster(redirectPath: string) {
       message: profileError.message,
     });
     redirectToSuccessionForm(redirectPath, "プロフィール情報を確認できませんでした。時間をおいて再度お試しください。");
+  }
+
+  const permissionRedirect = getPostPermissionRedirect(profile, "succession", redirectPath);
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
   }
 
   if (profile == null) {

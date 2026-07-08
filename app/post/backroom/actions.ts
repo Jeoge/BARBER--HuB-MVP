@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getBackroomProfile, isBackroomCategory, normalizeBackroomCategory } from "@/lib/supabase/backroom";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
@@ -73,7 +74,13 @@ export async function createBackroomPostAction(formData: FormData) {
   }
 
   if (profile == null) {
-    redirectToBackroomPost({ error: "プロフィール設定後にBack Roomへ投稿できます。" });
+    const permissionRedirect = getPostPermissionRedirect(null, "backroom", "/post/backroom");
+    redirect(permissionRedirect ?? pathWithParams("/mypage/profile/edit", { error: "プロフィール設定後にBack Roomへ投稿できます。" }));
+  }
+
+  const permissionRedirect = getPostPermissionRedirect(profile, "backroom", "/post/backroom");
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
   }
 
   const { profile: backroomProfile, error: backroomProfileError } = await getBackroomProfile(supabase, user.id);

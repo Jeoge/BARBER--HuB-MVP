@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, Building2, FilePenLine, LogOut, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
+import { BriefcaseBusiness, Building2, FilePenLine, LogOut, Megaphone, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
@@ -9,6 +9,7 @@ import { closeSuccessionPostAction } from "@/app/post/succession/actions";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { canCreateJob, canCreateSuccession, classifyAccountType, getAccountTypeLabel } from "@/lib/accountTypes";
 import { pathWithParams } from "@/lib/auth/redirects";
 import {
   articleDateLabel,
@@ -321,24 +322,32 @@ function OwnerReactionSummaries({ articles, snaps }: { articles: ArticleWithAuth
   );
 }
 
-function MyJobPostList({ jobs }: { jobs: JobPost[] }) {
+function MyJobPostList({ jobs, canCreate }: { jobs: JobPost[]; canCreate: boolean }) {
   if (jobs.length === 0) {
     return (
       <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
         <p className="text-sm font-black text-ink">まだ掲載中の求人はありません</p>
         <p className="mt-1 text-xs font-medium leading-relaxed text-mute">求人を掲載すると、ここに表示されます。</p>
-        <Link href="/post/job" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
-          新しく求人を掲載する
-        </Link>
+        {canCreate ? (
+          <Link href="/post/job" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+            新しく求人を掲載する
+          </Link>
+        ) : (
+          <Link href="/mypage/profile/edit" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+            登録区分を確認する
+          </Link>
+        )}
       </div>
     );
   }
 
   return (
     <div className="grid gap-2.5">
-      <Link href="/post/job" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
-        新しく求人を掲載する
-      </Link>
+      {canCreate ? (
+        <Link href="/post/job" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+          新しく求人を掲載する
+        </Link>
+      ) : null}
       {jobs.map((job) => (
         <article key={job.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
           <div className="flex items-start justify-between gap-3">
@@ -383,24 +392,32 @@ function MyJobPostList({ jobs }: { jobs: JobPost[] }) {
   );
 }
 
-function MySuccessionPostList({ posts }: { posts: SuccessionPublicPost[] }) {
+function MySuccessionPostList({ posts, canCreate }: { posts: SuccessionPublicPost[]; canCreate: boolean }) {
   if (posts.length === 0) {
     return (
       <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
         <p className="text-sm font-black text-ink">まだ開業・承継情報の掲載はありません</p>
         <p className="mt-1 text-xs font-medium leading-relaxed text-mute">掲載すると、ここに公開中・下書き・停止中の状態で表示されます。</p>
-        <Link href="/post/succession" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
-          新しく掲載する
-        </Link>
+        {canCreate ? (
+          <Link href="/post/succession" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+            新しく掲載する
+          </Link>
+        ) : (
+          <Link href="/mypage/profile/edit" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+            登録区分を確認する
+          </Link>
+        )}
       </div>
     );
   }
 
   return (
     <div className="grid gap-2.5">
-      <Link href="/post/succession" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
-        新しく掲載する
-      </Link>
+      {canCreate ? (
+        <Link href="/post/succession" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+          新しく掲載する
+        </Link>
+      ) : null}
       {posts.map((post) => (
         <article key={post.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
           <div className="flex items-start gap-3">
@@ -477,7 +494,11 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const profileDisplayName = profile?.display_name?.trim() || profile?.salon_name?.trim() || "プロフィール未設定";
   const loginEmail = user.email ?? "メールアドレス未取得";
   const hasProfile = profile != null;
-  const showSalonAdmin = Boolean(profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
+  const accountClassification = classifyAccountType(profile);
+  const canUseNormalPosting = accountClassification === "personal";
+  const canUseJobPosting = canCreateJob(profile);
+  const canUseSuccessionPosting = canCreateSuccession(profile);
+  const showSalonAdmin = Boolean(canUseJobPosting || profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
   const { jobs: salonJobPostings, error: salonJobPostingsError } = showSalonAdmin
     ? await listUserJobPosts(supabase, user.id, 30)
     : { jobs: [], error: null };
@@ -560,14 +581,40 @@ export default async function MyPage({ searchParams }: MyPageProps) {
               <Pencil aria-hidden="true" size={14} />
               編集
             </Link>
-            <Link href="/post/snap" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white/10 text-xs font-black text-white">
-              <FilePenLine aria-hidden="true" size={14} />
-              Snap
-            </Link>
-            <Link href="/post/article" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white/10 text-xs font-black text-white">
-              <Send aria-hidden="true" size={14} />
-              記事
-            </Link>
+            {canUseNormalPosting ? (
+              <>
+                <Link href="/post/snap" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white/10 text-xs font-black text-white">
+                  <FilePenLine aria-hidden="true" size={14} />
+                  Snap
+                </Link>
+                <Link href="/post/article" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white/10 text-xs font-black text-white">
+                  <Send aria-hidden="true" size={14} />
+                  記事
+                </Link>
+              </>
+            ) : accountClassification === "organization" ? (
+              <>
+                <Link href="/advertising" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white/10 text-xs font-black text-white">
+                  <Megaphone aria-hidden="true" size={14} />
+                  PR
+                </Link>
+                <Link href="/advertising/apply" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white/10 text-xs font-black text-white">
+                  <Send aria-hidden="true" size={14} />
+                  相談
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/mypage/profile/edit" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white/10 text-xs font-black text-white">
+                  <FilePenLine aria-hidden="true" size={14} />
+                  区分
+                </Link>
+                <Link href="/advertising" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white/10 text-xs font-black text-white">
+                  <Megaphone aria-hidden="true" size={14} />
+                  PR
+                </Link>
+              </>
+            )}
           </div>
           <form action={logoutAction} className="mt-3">
             <button type="submit" className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[8px] border border-white/15 bg-white/5 text-xs font-black text-white">
@@ -734,7 +781,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         {hasProfile ? (
           <div className="grid gap-2.5">
             <ProfileRow label="表示名" value={profile.display_name} />
-            <ProfileRow label="職種" value={profile.job_type} />
+            <ProfileRow label="登録区分" value={getAccountTypeLabel(profile)} />
             <ProfileRow label="サロン" value={profile.salon_name} />
             <ProfileRow label="地域" value={profile.region} />
             <ProfileRow label="住所" value={profile.shop_address} />
@@ -747,7 +794,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
             <p className="text-sm font-black text-ink">プロフィール未設定</p>
             <p className="mt-1 text-xs font-medium leading-relaxed text-mute">
-              表示名、職種、サロン名、地域、自己紹介を設定すると、ここに表示されます。
+              表示名、登録区分、サロン名、地域、自己紹介を設定すると、ここに表示されます。
             </p>
             <Link href="/mypage/profile/edit" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
               プロフィールを設定する
@@ -806,7 +853,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
               求人を読み込めませんでした。job_postsテーブルのmigration適用状況を確認してください。
             </div>
           ) : (
-            <MyJobPostList jobs={salonJobPostings} />
+            <MyJobPostList jobs={salonJobPostings} canCreate={canUseJobPosting} />
           )}
         </SectionCard>
       ) : null}
@@ -817,7 +864,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
             開業・承継情報を読み込めませんでした。succession_postsテーブルのmigration適用状況を確認してください。
           </div>
         ) : (
-          <MySuccessionPostList posts={mySuccessionPosts} />
+          <MySuccessionPostList posts={mySuccessionPosts} canCreate={canUseSuccessionPosting} />
         )}
       </SectionCard>
 

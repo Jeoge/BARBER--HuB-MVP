@@ -5,6 +5,7 @@ import { SignupRequiredCard } from "@/components/AuthGate";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { QA_CATEGORIES } from "@/lib/supabase/qa";
 import { createClient } from "@/lib/supabase/server";
@@ -87,6 +88,11 @@ export default async function QaPostPage({ searchParams }: QaPostPageProps) {
     redirect(pathWithParams("/mypage/profile/edit", { error: "プロフィール情報を確認できませんでした。保存後に質問投稿をお試しください。" }));
   }
 
+  const permissionRedirect = getPostPermissionRedirect(profile, "qa", "/post/qa");
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
+  }
+
   return (
     <PageChrome>
       <section className="px-4 pt-4">
@@ -150,6 +156,10 @@ export default async function QaPostPage({ searchParams }: QaPostPageProps) {
             placeholder="困っている状況、試したこと、聞きたいことを書いてください。"
           />
         </label>
+
+        <div className="rounded-[8px] border border-line/80 bg-neutral-50 px-3 py-2.5 text-[0.72rem] font-medium leading-relaxed text-mute">
+          企業・団体から依頼された質問、告知・販売・募集を主目的とする内容は、通常Q&Aではなく広告掲載・協賛の問い合わせとして扱う場合があります。
+        </div>
 
         <LoadingSubmitButton pendingText="投稿中..." className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
           <Send aria-hidden="true" size={17} />

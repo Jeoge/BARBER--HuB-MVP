@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { isSalonJobPosterProfile } from "@/lib/supabase/jobs";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
@@ -186,6 +187,11 @@ async function requireJobPoster(redirectPath: string) {
       message: profileError.message,
     });
     redirectToJobForm(redirectPath, "プロフィール情報を確認できませんでした。時間をおいて再度お試しください。");
+  }
+
+  const permissionRedirect = getPostPermissionRedirect(profile, "job", redirectPath);
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
   }
 
   if (profile == null || !isSalonJobPosterProfile(profile)) {

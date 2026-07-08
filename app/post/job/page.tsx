@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getPostPermissionRedirect } from "@/lib/permissions";
 import { isSalonJobPosterProfile } from "@/lib/supabase/jobs";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
@@ -86,6 +88,11 @@ export default async function JobPostPage({ searchParams }: JobPostPageProps) {
         />
       </PageChrome>
     );
+  }
+
+  const permissionRedirect = getPostPermissionRedirect(profile, "job", "/post/job");
+  if (permissionRedirect) {
+    redirect(permissionRedirect);
   }
 
   if (profile == null || !isSalonJobPosterProfile(profile)) {
