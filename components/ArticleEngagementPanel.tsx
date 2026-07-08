@@ -2,6 +2,7 @@ import { Bookmark, MessageCircle, Send, Sparkles, ThumbsUp } from "lucide-react"
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { createArticleCommentAction, toggleArticleReactionAction } from "@/app/articles/actions";
+import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { pathWithParams } from "@/lib/auth/redirects";
 import type { ArticleComment, ArticleMetrics } from "@/lib/supabase/articles";
@@ -177,6 +178,9 @@ export function ArticleEngagementPanel({
               placeholder="経験や気づきをコメントする"
               className="resize-none rounded-[8px] border border-line bg-neutral-50 px-3 py-2.5 text-sm font-medium leading-relaxed text-ink outline-none placeholder:text-mute/70 focus:border-ink/30 focus:bg-white"
             />
+            <FormDisclaimer>
+              相手への敬意を持ってコメントしてください。個人攻撃、実名批判、顧客情報、他店への誹謗中傷は投稿できません。
+            </FormDisclaimer>
             <LoadingSubmitButton pendingText="コメント中..." className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
               <Send aria-hidden="true" size={15} />
               コメントする

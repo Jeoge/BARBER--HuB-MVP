@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
+import { SafetyNotice } from "@/components/SafetyNotice";
 import { JOB_DIRECT_CONTACT_NOTICE } from "@/lib/jobs";
 import {
   getPublishedJobPost,
@@ -166,10 +167,10 @@ export default async function JobDetailPage({ params, searchParams }: JobDetailP
       </section>
 
       <section className="px-4 pt-6">
-        <div className="rounded-[8px] border border-line bg-neutral-50 p-4">
-          <h2 className="text-sm font-black text-ink">応募前にご確認ください</h2>
-          <p className="mt-2 text-xs font-medium leading-relaxed text-mute">{JOB_DIRECT_CONTACT_NOTICE}</p>
-        </div>
+        <SafetyNotice title="応募前にご確認ください" href="/terms" linkLabel="求人に関する利用規約">
+          {JOB_DIRECT_CONTACT_NOTICE}
+          BARBER HUBは採用成立、勤務条件、雇用契約の内容を保証しません。
+        </SafetyNotice>
       </section>
     </PageChrome>
   );

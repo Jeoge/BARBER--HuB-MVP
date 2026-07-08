@@ -5,9 +5,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getPostPermissionRedirect } from "@/lib/permissions";
+import { hasSafetyConfirmations, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
 import { getBackroomProfile, isBackroomCategory, normalizeBackroomCategory } from "@/lib/supabase/backroom";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
+
+const BACKROOM_SAFETY_FIELDS = ["backroomPrivacyConfirmed", "backroomScopeConfirmed"];
 
 function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -40,6 +43,10 @@ function saveErrorMessage(error: unknown) {
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
     return "Back Room投稿を保存できませんでした。権限設定を確認してください。";
+  }
+
+  if (message.includes("safety_confirmed_at") || message.includes("guidelines_confirmed") || message.includes("pr_disclosure_checked")) {
+    return safetyMigrationErrorMessage("Back Room投稿");
   }
 
   return "Back Room投稿を保存できませんでした。入力内容を確認して、もう一度お試しください。";
@@ -123,6 +130,10 @@ export async function createBackroomPostAction(formData: FormData) {
     redirectToBackroomPost({ error: "Back Roomカテゴリーを選択してください。" });
   }
 
+  if (!hasSafetyConfirmations(formData, BACKROOM_SAFETY_FIELDS)) {
+    redirectToBackroomPost({ error: SAFETY_CONFIRMATION_ERROR });
+  }
+
   const postId = randomUUID();
   const now = new Date().toISOString();
   const { data, error } = await supabase
@@ -134,6 +145,9 @@ export async function createBackroomPostAction(formData: FormData) {
       body,
       category,
       is_deleted: false,
+      safety_confirmed_at: now,
+      guidelines_confirmed: true,
+      pr_disclosure_checked: false,
       created_at: now,
       updated_at: now,
     })

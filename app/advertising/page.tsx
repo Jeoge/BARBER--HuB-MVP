@@ -2,6 +2,7 @@ import { ArrowRight, Megaphone, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { SafetyNotice } from "@/components/SafetyNotice";
 
 type AdvertisingPageProps = {
   searchParams?: Promise<{ message?: string; inquiry?: string }>;
@@ -71,6 +72,12 @@ export default async function AdvertisingPage({ searchParams }: AdvertisingPageP
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="px-4 pt-5">
+        <SafetyNotice title="広告・協賛の掲載方針" href="/ad-policy" linkLabel="広告・PRポリシー" tone="blush">
+          BARBER HUBでは、広告・PR・協賛・公式告知であることが分かる表記を行います。掲載による応募数、売上、集客効果を保証するものではありません。
+        </SafetyNotice>
       </section>
 
       <section className="px-4 pt-5">

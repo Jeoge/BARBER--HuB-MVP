@@ -3,6 +3,7 @@ import { ArrowLeft, ExternalLink, ImagePlus, MapPin, Save } from "lucide-react";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { SafetyNotice } from "@/components/SafetyNotice";
 import { ACCOUNT_TYPE_OPTIONS } from "@/lib/accountTypes";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getAccountProfile } from "@/lib/supabase/profiles";
@@ -127,6 +128,10 @@ export default async function ProfileEditPage({ searchParams }: ProfileEditPageP
             既存プロフィールを読み込めませんでした。保存すると、入力内容でプロフィールを作成または更新します。
           </div>
         ) : null}
+
+        <SafetyNotice title="公開プロフィールの確認" href="/privacy" linkLabel="プライバシーポリシー">
+          プロフィールに入力した店舗名、住所、SNS、外部リンクは公開プロフィールに表示される場合があります。公開したくない情報は入力しないでください。
+        </SafetyNotice>
 
         <Field name="display_name" label="表示名" defaultValue={profile?.display_name} placeholder="例：福岡の理容師" />
         <label className="grid gap-2">

@@ -1,5 +1,6 @@
 import { ArrowLeft, CheckCircle2, Send, Users } from "lucide-react";
 import Link from "next/link";
+import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { pathWithParams } from "@/lib/auth/redirects";
@@ -193,6 +194,9 @@ export default async function QaDetailPage({ params, searchParams }: QaDetailPag
               <Send aria-hidden="true" size={16} />
               回答を投稿
             </LoadingSubmitButton>
+            <FormDisclaimer className="mt-2">
+              回答は経験共有として投稿してください。断定、攻撃、専門家の判断が必要な内容の言い切りには注意してください。
+            </FormDisclaimer>
           </form>
         )}
       </section>

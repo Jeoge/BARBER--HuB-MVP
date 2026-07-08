@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getPostPermissionRedirect } from "@/lib/permissions";
+import { isSafetyConfirmed, SAFETY_CONFIRMATION_ERROR } from "@/lib/safety";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { isQaCategory } from "@/lib/supabase/qa";
 import { createClient } from "@/lib/supabase/server";
@@ -105,6 +106,10 @@ export async function createQaQuestionAction(formData: FormData) {
 
   if (!isQaCategory(category)) {
     redirectToQaPost({ error: "Q&Aカテゴリーを選択してください。" });
+  }
+
+  if (!isSafetyConfirmed(formData, "qaPrivacyConfirmed")) {
+    redirectToQaPost({ error: SAFETY_CONFIRMATION_ERROR });
   }
 
   const questionId = randomUUID();

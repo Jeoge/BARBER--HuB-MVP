@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getPostPermissionRedirect } from "@/lib/permissions";
+import { hasSafetyConfirmations, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
@@ -12,6 +13,11 @@ type SuccessionFormMode = "create" | "update";
 
 const SUCCESSION_RELATION_ERROR =
   "開業・承継情報の保存に必要なsuccession_postsテーブルが見つかりません。Supabase SQL Editorで最新migrationを実行してください。";
+const SUCCESSION_SAFETY_FIELDS = [
+  "successionPublicPrivateConfirmed",
+  "successionSensitiveInfoConfirmed",
+  "successionNoGuaranteeConfirmed",
+];
 
 const PUBLIC_SENSITIVE_PATTERNS = [
   "店舗名",
@@ -97,6 +103,10 @@ function saveErrorMessage(error: unknown) {
     return "開業・承継情報を保存できませんでした。succession_postsの権限設定を確認してください。";
   }
 
+  if (message.includes("safety_confirmed_at") || message.includes("guidelines_confirmed") || message.includes("pr_disclosure_checked")) {
+    return safetyMigrationErrorMessage("開業・承継情報");
+  }
+
   return "開業・承継情報を保存できませんでした。入力内容を確認して、もう一度お試しください。";
 }
 
@@ -127,6 +137,11 @@ function parseSuccessionPayload(formData: FormData, userId: string, redirectPath
   ensurePublicTextIsSafe(publicDescription, redirectPath, "公開用説明文");
   ensurePublicTextIsSafe(cleanText(formData.get("area")), redirectPath, "エリア・最寄駅の有無");
 
+  if (!hasSafetyConfirmations(formData, SUCCESSION_SAFETY_FIELDS)) {
+    redirectToSuccessionForm(redirectPath, SAFETY_CONFIRMATION_ERROR);
+  }
+
+  const safetyConfirmedAt = new Date().toISOString();
   const publicPayload = {
     user_id: userId,
     listing_type: listingType,
@@ -147,6 +162,9 @@ function parseSuccessionPayload(formData: FormData, userId: string, redirectPath
     is_paid_featured: false,
     sort_priority: 0,
     plan_type: "free",
+    safety_confirmed_at: safetyConfirmedAt,
+    guidelines_confirmed: true,
+    pr_disclosure_checked: false,
   };
 
   const privatePayload = {

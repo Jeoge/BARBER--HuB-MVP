@@ -2,6 +2,7 @@
 
 import { Send, ThumbsUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { ProfileMiniLink } from "./ProfileMiniLink";
 
 export type SheetComment = {
@@ -113,6 +114,9 @@ export function CommentSheet({ open, onClose, title = "コメント", comments =
               <Send aria-hidden="true" size={16} />
             </button>
           </div>
+          <FormDisclaimer className="mt-2">
+            相手への敬意を持ってコメントしてください。個人攻撃、実名批判、顧客情報、他店への誹謗中傷は投稿できません。
+          </FormDisclaimer>
         </div>
       </div>
     </div>

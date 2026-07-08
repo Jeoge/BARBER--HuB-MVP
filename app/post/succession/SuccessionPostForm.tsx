@@ -1,8 +1,10 @@
 "use client";
 
-import { Building2, Check, ChevronRight, ImagePlus, LockKeyhole, Send, ShieldCheck, Sparkles } from "lucide-react";
+import { Check, ChevronRight, ImagePlus, LockKeyhole, Send, ShieldCheck, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { useFormStatus } from "react-dom";
+import { SafetyChecklist } from "@/components/SafetyChecklist";
 import { createSuccessionPostAction, updateSuccessionPostAction } from "./actions";
 import {
   SUCCESSION_BUSINESS_TYPES,
@@ -23,6 +25,20 @@ type SuccessionPostFormProps = {
 };
 
 const paidOptions = ["注目掲載", "上位表示", "編集部作成の承継紹介記事", "地域特集", "組合・学校・企業との連動", "開業支援パートナー掲載"];
+const successionSafetyItems = [
+  {
+    name: "successionPublicPrivateConfirmed",
+    label: "公開してよい情報と非公開情報を確認しました。",
+  },
+  {
+    name: "successionSensitiveInfoConfirmed",
+    label: "店名・正確な住所・売上・譲渡額など、慎重に扱う情報を不用意に公開していません。",
+  },
+  {
+    name: "successionNoGuaranteeConfirmed",
+    label: "BARBER HUBは情報掲載場所であり、契約や条件を保証するものではないことを理解しています。",
+  },
+];
 
 function FieldLabel({ children, required = false }: { children: string; required?: boolean }) {
   return (
@@ -124,13 +140,14 @@ function SelectField({
   );
 }
 
-function SubmitButton({ editing }: { editing: boolean }) {
+function SubmitButton({ editing, disabled = false }: { editing: boolean; disabled?: boolean }) {
   const { pending } = useFormStatus();
+  const isDisabled = pending || disabled;
 
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={isDisabled}
       className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink text-sm font-black text-white transition disabled:opacity-60"
     >
       <Send aria-hidden="true" size={17} />
@@ -142,6 +159,7 @@ function SubmitButton({ editing }: { editing: boolean }) {
 export function SuccessionPostForm({ profile, error, initialPost }: SuccessionPostFormProps) {
   const editing = initialPost != null;
   const privatePost = initialPost?.private ?? null;
+  const [safetyReady, setSafetyReady] = useState(false);
 
   return (
     <>
@@ -279,20 +297,17 @@ export function SuccessionPostForm({ profile, error, initialPost }: SuccessionPo
           </div>
         </section>
 
-        <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
-          <div className="flex items-center gap-2 text-sm font-black text-ink">
-            <Building2 aria-hidden="true" size={18} className="text-blush" />
-            BARBER HUBの役割
-          </div>
-          <p className="mt-2 text-xs font-medium leading-relaxed text-mute">{SUCCESSION_NOTICE}</p>
-          <p className="mt-2 text-xs font-medium leading-relaxed text-mute">{SUCCESSION_DIRECT_NOTICE}</p>
-          <label className="mt-3 flex items-start gap-2 text-sm font-black leading-relaxed text-ink">
-            <input type="checkbox" required className="mt-1 h-4 w-4 accent-blush" />
-            不動産仲介・売買仲介・M&A仲介・契約代行ではなく、情報掲載として利用することを確認しました。
-          </label>
-        </div>
+        <SafetyChecklist
+          title="開業・承継掲載前の確認"
+          body={`開業・承継情報は、公開範囲に十分ご注意ください。店名、正確な住所、売上、家賃、譲渡希望額、スタッフ情報、顧客情報などは、公開表示しない設定を推奨します。${SUCCESSION_NOTICE} ${SUCCESSION_DIRECT_NOTICE}`}
+          items={successionSafetyItems}
+          rulesHref="/terms"
+          rulesLabel="開業・承継に関する利用規約"
+          onRequiredCompleteChange={setSafetyReady}
+        />
 
-        <SubmitButton editing={editing} />
+        {!safetyReady ? <p className="text-[0.68rem] font-bold text-mute">確認欄にチェックすると掲載できます。</p> : null}
+        <SubmitButton editing={editing} disabled={!safetyReady} />
       </form>
     </>
   );

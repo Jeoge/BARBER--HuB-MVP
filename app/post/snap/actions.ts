@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getPostPermissionRedirect } from "@/lib/permissions";
+import { isSafetyConfirmed, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
@@ -74,6 +75,10 @@ function insertErrorMessage(error: unknown, hadUploadedImage: boolean) {
 
   if (message.includes("null value") && message.includes("id")) {
     return `${prefix}Snap IDの作成に失敗しました。しばらく時間をおいて再度お試しください。`;
+  }
+
+  if (message.includes("safety_confirmed_at") || message.includes("guidelines_confirmed") || message.includes("pr_disclosure_checked")) {
+    return safetyMigrationErrorMessage("Snap");
   }
 
   return `${prefix}しばらく時間をおいて再度お試しください。`;
@@ -198,6 +203,10 @@ export async function createSnapAction(formData: FormData) {
     redirectToSnapPost({ error: "本文を入力してください。" });
   }
 
+  if (!isSafetyConfirmed(formData, "snapSafetyConfirmed")) {
+    redirectToSnapPost({ error: SAFETY_CONFIRMATION_ERROR });
+  }
+
   if (image instanceof File && image.size > 0) {
     if (!isLikelyImageFile(image)) {
       redirectToSnapPost({ error: "画像ファイルだけアップロードできます。" });
@@ -260,6 +269,9 @@ export async function createSnapAction(formData: FormData) {
       image_path: imagePath,
       is_published: true,
       is_deleted: false,
+      safety_confirmed_at: now,
+      guidelines_confirmed: true,
+      pr_disclosure_checked: true,
       created_at: now,
       updated_at: now,
     });

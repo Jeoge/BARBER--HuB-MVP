@@ -2,14 +2,21 @@ import { ArrowLeft, HelpCircle, Send, Sparkles, UserRoundPen } from "lucide-reac
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignupRequiredCard } from "@/components/AuthGate";
-import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
+import { SafetyChecklistSubmit } from "@/components/SafetyChecklist";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { QA_CATEGORIES } from "@/lib/supabase/qa";
 import { createClient } from "@/lib/supabase/server";
 import { createQaQuestionAction } from "./actions";
+
+const qaSafetyItems = [
+  {
+    name: "qaPrivacyConfirmed",
+    label: "個人・店舗が特定される情報は含めていません。",
+  },
+];
 
 type QaPostPageProps = {
   searchParams?: Promise<{ error?: string }>;
@@ -161,10 +168,16 @@ export default async function QaPostPage({ searchParams }: QaPostPageProps) {
           企業・団体から依頼された質問、告知・販売・募集を主目的とする内容は、通常Q&Aではなく広告掲載・協賛の問い合わせとして扱う場合があります。
         </div>
 
-        <LoadingSubmitButton pendingText="投稿中..." className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+        <SafetyChecklistSubmit
+          title="Q&A投稿前の確認"
+          body="Q&Aは、理美容の仕事で困ったことを相談する場所です。お客様名、スタッフ名、他店名など、個人や店舗が特定される情報は書かないでください。法律・税務・医療・労務など専門判断が必要な内容は、最終的に専門家へ確認してください。"
+          items={qaSafetyItems}
+          pendingText="投稿中..."
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white"
+        >
           <Send aria-hidden="true" size={17} />
           質問を投稿する
-        </LoadingSubmitButton>
+        </SafetyChecklistSubmit>
       </form>
     </PageChrome>
   );

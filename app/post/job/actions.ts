@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getPostPermissionRedirect } from "@/lib/permissions";
+import { hasSafetyConfirmations, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
 import { isSalonJobPosterProfile } from "@/lib/supabase/jobs";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
@@ -13,6 +14,7 @@ type JobFormMode = "create" | "update";
 
 const JOB_RELATION_ERROR =
   "求人保存に必要なjob_postsテーブルが見つかりません。Supabase SQL Editorで最新migrationを実行してください。";
+const JOB_SAFETY_FIELDS = ["jobFactsConfirmed", "jobDirectContactConfirmed", "jobNoGuaranteeConfirmed"];
 
 function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -84,6 +86,10 @@ function saveErrorMessage(error: unknown) {
     return "求人を保存できませんでした。店舗情報の登録状態またはjob_postsの権限設定を確認してください。";
   }
 
+  if (message.includes("safety_confirmed_at") || message.includes("guidelines_confirmed") || message.includes("pr_disclosure_checked")) {
+    return safetyMigrationErrorMessage("求人");
+  }
+
   return "求人を保存できませんでした。入力内容を確認して、もう一度お試しください。";
 }
 
@@ -108,6 +114,10 @@ function parseJobPayload(formData: FormData, userId: string, redirectPath: strin
   const workingHours = requireText(cleanText(formData.get("workingHours")), redirectPath, "勤務時間を入力してください。");
   const holidays = requireText(cleanText(formData.get("holidays")), redirectPath, "休日を入力してください。");
   const applicationMethod = requireText(cleanText(formData.get("applicationMethod")), redirectPath, "応募・見学方法を入力してください。");
+
+  if (!hasSafetyConfirmations(formData, JOB_SAFETY_FIELDS)) {
+    redirectToJobForm(redirectPath, SAFETY_CONFIRMATION_ERROR);
+  }
 
   if (jobTitles.length === 0) {
     redirectToJobForm(redirectPath, "募集職種を1つ以上選択してください。");
@@ -160,6 +170,9 @@ function parseJobPayload(formData: FormData, userId: string, redirectPath: strin
     is_deleted: false,
     sort_priority: 0,
     plan_type: "free",
+    safety_confirmed_at: new Date().toISOString(),
+    guidelines_confirmed: true,
+    pr_disclosure_checked: false,
   };
 }
 

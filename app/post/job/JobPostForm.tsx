@@ -4,6 +4,7 @@ import { BriefcaseBusiness, Camera, Check, ChevronRight, Clock, Crown, LinkIcon,
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { SafetyChecklist } from "@/components/SafetyChecklist";
 import { createJobPostAction, updateJobPostAction } from "./actions";
 import {
   EMPLOYMENT_TYPE_OPTIONS,
@@ -17,6 +18,20 @@ import type { JobPost } from "@/lib/supabase/jobs";
 import type { AccountProfile } from "@/lib/supabase/profiles";
 
 const requiredMark = <span className="text-blush">必須</span>;
+const jobSafetyItems = [
+  {
+    name: "jobFactsConfirmed",
+    label: "求人内容は事実に基づき、現在の募集条件と一致しています。",
+  },
+  {
+    name: "jobDirectContactConfirmed",
+    label: "応募・見学・条件確認は、掲載サロンが直接対応します。",
+  },
+  {
+    name: "jobNoGuaranteeConfirmed",
+    label: "BARBER HUBが採用成立や条件を保証するものではないことを理解しています。",
+  },
+];
 
 const plans = [
   {
@@ -121,13 +136,14 @@ function TextareaField({
   );
 }
 
-function SubmitButton({ editing }: { editing: boolean }) {
+function SubmitButton({ editing, disabled = false }: { editing: boolean; disabled?: boolean }) {
   const { pending } = useFormStatus();
+  const isDisabled = pending || disabled;
 
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={isDisabled}
       className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink text-sm font-black text-white transition disabled:opacity-60"
     >
       <Send aria-hidden="true" size={17} />
@@ -143,6 +159,7 @@ export function JobPostForm({ profile, userEmail, error, initialJob }: JobPostFo
   const initialJobTitles = splitJobMultiValue(initialJob?.job_title);
   const initialEmploymentTypes = splitJobMultiValue(initialJob?.employment_type);
   const profileHref = `/profiles/${profile.id}`;
+  const [safetyReady, setSafetyReady] = useState(false);
 
   function toggleTag(tag: string) {
     setSelectedTags((current) => (current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]));
@@ -409,15 +426,17 @@ export function JobPostForm({ profile, userEmail, error, initialJob }: JobPostFo
           </p>
         </div>
 
-        <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
-          <p className="text-xs font-medium leading-relaxed text-mute">{JOB_DIRECT_CONTACT_NOTICE}</p>
-          <label className="mt-3 flex items-start gap-2 text-sm font-black leading-relaxed text-ink">
-            <input type="checkbox" required className="mt-1 h-4 w-4 accent-blush" />
-            求人内容と応募者対応は、掲載サロンの責任で行うことを確認しました。
-          </label>
-        </div>
+        <SafetyChecklist
+          title="求人掲載前の確認"
+          body={`${JOB_DIRECT_CONTACT_NOTICE} 給与・勤務時間・休日・雇用形態などは、正確な情報を入力してください。`}
+          items={jobSafetyItems}
+          rulesHref="/terms"
+          rulesLabel="求人に関する利用規約"
+          onRequiredCompleteChange={setSafetyReady}
+        />
 
-        <SubmitButton editing={editing} />
+        {!safetyReady ? <p className="text-[0.68rem] font-bold text-mute">確認欄にチェックすると掲載できます。</p> : null}
+        <SubmitButton editing={editing} disabled={!safetyReady} />
       </form>
     </>
   );
