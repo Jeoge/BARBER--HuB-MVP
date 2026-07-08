@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ImagePlus, Save } from "lucide-react";
+import { ArrowLeft, ExternalLink, ImagePlus, MapPin, Save } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
@@ -146,6 +146,14 @@ export default async function ProfileEditPage({ searchParams }: ProfileEditPageP
         </label>
         <Field name="salon_name" label="サロン名" defaultValue={profile?.salon_name} placeholder="例：BARBER HUB SALON" />
         <Field name="region" label="地域" defaultValue={profile?.region} placeholder="例：福岡県 福岡市" />
+        <div className="grid gap-4 rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex items-center gap-2 text-sm font-black text-ink">
+            <MapPin aria-hidden="true" size={16} className="text-blush" />
+            お店情報
+          </div>
+          <Field name="shop_address" label="お店の住所" defaultValue={profile?.shop_address} placeholder="例：福岡県福岡市..." />
+          <Field name="shop_map_url" label="GoogleマップURL" defaultValue={profile?.shop_map_url} placeholder="https://maps.google.com/..." />
+        </div>
         <label className="grid gap-2">
           <span className="text-sm font-black text-ink">自己紹介</span>
           <textarea
@@ -160,6 +168,22 @@ export default async function ProfileEditPage({ searchParams }: ProfileEditPageP
         <div className="grid gap-4 rounded-[8px] border border-line bg-neutral-50 p-3">
           <ImageField label="丸いアイコン写真" name="avatar_image" currentUrl={profile?.avatar_url} shape="circle" />
           <ImageField label="背景写真 / カバー写真" name="cover_image" currentUrl={profile?.cover_url} shape="wide" />
+        </div>
+
+        <div className="grid gap-4 rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex items-center gap-2 text-sm font-black text-ink">
+            <ExternalLink aria-hidden="true" size={16} className="text-blush" />
+            公開リンク
+          </div>
+          <Field name="website_url" label="公式サイト" defaultValue={profile?.website_url} placeholder="https://example.com" />
+          <Field name="instagram_url" label="Instagram" defaultValue={profile?.instagram_url} placeholder="https://www.instagram.com/..." />
+          <Field name="youtube_url" label="YouTube" defaultValue={profile?.youtube_url} placeholder="https://www.youtube.com/..." />
+          <Field name="tiktok_url" label="TikTok" defaultValue={profile?.tiktok_url} placeholder="https://www.tiktok.com/@..." />
+          <Field name="x_url" label="X / Twitter" defaultValue={profile?.x_url} placeholder="https://x.com/..." />
+          <Field name="line_url" label="LINE公式リンク" defaultValue={profile?.line_url} placeholder="https://lin.ee/..." />
+          <Field name="hotpepper_url" label="Hot Pepper Beauty" defaultValue={profile?.hotpepper_url} placeholder="https://beauty.hotpepper.jp/..." />
+          <Field name="rakuten_url" label="楽天ビューティ" defaultValue={profile?.rakuten_url} placeholder="https://beauty.rakuten.co.jp/..." />
+          <Field name="booking_url" label="予約リンク" defaultValue={profile?.booking_url} placeholder="https://..." />
         </div>
 
         <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink text-sm font-black text-white">

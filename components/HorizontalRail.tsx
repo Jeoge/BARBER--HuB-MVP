@@ -2,7 +2,6 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { MagazineImage } from "./MagazineImage";
 import { ProfileMiniLink } from "./ProfileMiniLink";
-import { ReactionBar } from "./ReactionBar";
 import { SectionTitle } from "./SectionTitle";
 
 type RailItem = {
@@ -55,7 +54,6 @@ export function HorizontalRail({ title, items, hrefPrefix = "/articles" }: Horiz
               {showReactions ? (
                 <ProfileMiniLink profileId={item.profileId} fallbackName={item.author} compact className="mt-3 max-w-full" />
               ) : null}
-              {showReactions ? <ReactionBar contentId={`article:${item.id}`} commentTitle="記事へのコメント" compact className="mt-3" /> : null}
             </article>
           );
         })}

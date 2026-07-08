@@ -76,6 +76,7 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
         currentUserId={currentUserId}
         initialCount={snap.thanks_count}
         initiallyThanked={snap.viewer_has_thanked}
+        showCount={false}
       />
     </article>
   );

@@ -1,18 +1,180 @@
-import { PostFormPage } from "@/components/PostFormPage";
+import { ArrowLeft, FilePenLine, Save, Send, Sparkles, UserRoundPen } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { SignupRequiredCard } from "@/components/AuthGate";
+import { PageChrome } from "@/components/PageChrome";
+import { pathWithParams } from "@/lib/auth/redirects";
+import { getAccountProfile } from "@/lib/supabase/profiles";
+import { createClient } from "@/lib/supabase/server";
+import { createArticleAction } from "./actions";
 
-export default function ArticlePostPage() {
+const categories = ["経営", "技術", "集客", "AI活用", "独立", "道具", "求人", "講習会", "経験記事"];
+
+type ArticlePostPageProps = {
+  searchParams?: Promise<{ error?: string }>;
+};
+
+function ProfileRequiredCard() {
   return (
-    <PostFormPage
-      title="経験記事を書く"
-      description="あなたの実体験が、誰かの経営や技術のヒントになります。"
-      phrase="あなたの経験が、誰かのヒントになる。うまくいった話も、途中の試行錯誤も価値になります。"
-      fields={[
-        { kind: "input", label: "タイトル", placeholder: "例：Google口コミ返信を変えたら新規予約が増えた話" },
-        { kind: "select", label: "カテゴリー", options: ["経営", "技術", "集客", "AI活用", "独立", "道具"] },
-        { kind: "textarea", label: "本文", placeholder: "背景、試したこと、結果、学びを書いてください。", rows: 8 },
-        { kind: "textarea", label: "この記事で伝えたいこと", placeholder: "読んだ人に一番持ち帰ってほしいこと。", rows: 3 },
-      ]}
-      imageLabel="記事画像を追加"
-    />
+    <section className="px-4 pt-4">
+      <div className="rounded-[10px] border border-blush/20 bg-white p-4 shadow-sm">
+        <div className="grid h-11 w-11 place-items-center rounded-full bg-blushSoft text-blush">
+          <UserRoundPen aria-hidden="true" size={22} />
+        </div>
+        <h2 className="mt-4 text-lg font-black leading-tight text-ink">プロフィール設定後に記事投稿できます</h2>
+        <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
+          投稿者として表示するため、先に表示名や地域を設定してください。
+        </p>
+        <Link href="/mypage/profile/edit" className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
+          プロフィールを設定する
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+export default async function ArticlePostPage({ searchParams }: ArticlePostPageProps) {
+  const params = await searchParams;
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (user == null) {
+    if (userError) {
+      console.error("Article post page auth lookup failed", {
+        message: userError.message,
+      });
+    }
+
+    return (
+      <PageChrome>
+        <section className="px-4 pt-4">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-black text-ink">
+            <ArrowLeft aria-hidden="true" size={17} />
+            戻る
+          </Link>
+        </section>
+        <SignupRequiredCard />
+      </PageChrome>
+    );
+  }
+
+  const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+
+  if (profileError) {
+    console.error("Article post page profile lookup failed", {
+      userId: user.id,
+      userEmail: user.email ?? null,
+      message: profileError.message,
+    });
+  }
+
+  if (profileError == null && profile == null) {
+    return (
+      <PageChrome>
+        <section className="px-4 pt-4">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-black text-ink">
+            <ArrowLeft aria-hidden="true" size={17} />
+            戻る
+          </Link>
+        </section>
+        <ProfileRequiredCard />
+      </PageChrome>
+    );
+  }
+
+  if (profileError) {
+    redirect(pathWithParams("/mypage/profile/edit", { error: "プロフィール情報を確認できませんでした。保存後に記事投稿をお試しください。" }));
+  }
+
+  return (
+    <PageChrome>
+      <section className="px-4 pt-4">
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-black text-ink">
+          <ArrowLeft aria-hidden="true" size={17} />
+          戻る
+        </Link>
+        <div className="mt-4 rounded-[8px] border border-blush/20 bg-white p-4 shadow-sm">
+          <div className="grid h-11 w-11 place-items-center rounded-full bg-blushSoft text-blush">
+            <FilePenLine aria-hidden="true" size={22} />
+          </div>
+          <p className="mt-3 text-[0.68rem] font-black uppercase tracking-[0.14em] text-blush">ARTICLE POST</p>
+          <h1 className="mt-1 text-[1.5rem] font-black leading-tight text-ink">経験記事を書く</h1>
+          <p className="mt-2 text-[0.86rem] font-medium leading-relaxed text-mute">
+            あなたの実体験を、経営・技術・集客のヒントとして投稿できます。
+          </p>
+          <div className="mt-3 flex items-start gap-2 rounded-[8px] bg-blushSoft p-3">
+            <Sparkles aria-hidden="true" size={17} className="mt-0.5 shrink-0 text-blush" />
+            <p className="text-[0.78rem] font-black leading-relaxed text-ink">
+              うまくいった話も、途中の試行錯誤も価値になります。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <form action={createArticleAction} className="grid gap-4 px-4 pt-4">
+        {params?.error ? (
+          <div className="rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
+            {params.error}
+          </div>
+        ) : null}
+
+        <label className="grid gap-2">
+          <span className="text-sm font-black text-ink">タイトル</span>
+          <input
+            name="title"
+            maxLength={120}
+            required
+            className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none focus:border-blush"
+            placeholder="例：Google口コミ返信を変えたら新規予約が増えた話"
+          />
+        </label>
+
+        <label className="grid gap-2">
+          <span className="text-sm font-black text-ink">カテゴリー</span>
+          <select name="category" className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none focus:border-blush">
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="grid gap-2">
+          <span className="text-sm font-black text-ink">本文</span>
+          <textarea
+            name="body"
+            rows={9}
+            required
+            className="resize-none rounded-[8px] border border-line bg-white px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
+            placeholder="背景、試したこと、結果、学びを書いてください。"
+          />
+        </label>
+
+        <label className="grid gap-2">
+          <span className="text-sm font-black text-ink">この記事で伝えたいこと</span>
+          <textarea
+            name="takeaway"
+            rows={3}
+            className="resize-none rounded-[8px] border border-line bg-white px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
+            placeholder="読んだ人に一番持ち帰ってほしいこと。"
+          />
+        </label>
+
+        <div className="grid grid-cols-2 gap-2 pt-1">
+          <button type="button" disabled className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] border border-line bg-neutral-50 text-sm font-black text-mute">
+            <Save aria-hidden="true" size={17} />
+            下書き
+          </button>
+          <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+            <Send aria-hidden="true" size={17} />
+            投稿する
+          </button>
+        </div>
+      </form>
+    </PageChrome>
   );
 }
