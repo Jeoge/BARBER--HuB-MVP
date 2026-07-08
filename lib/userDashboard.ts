@@ -49,8 +49,6 @@ export const savedSnaps: DashboardItem[] = [
 ];
 
 export const savedJobs: DashboardItem[] = [
-  { id: "barber-sample-fukuoka-nishi", title: "BARBER SAMPLE 福岡西", meta: "見学候補 / 福岡県", href: "/jobs/barber-sample-fukuoka-nishi" },
-  { id: "classic-barber-shibuya", title: "CLASSIC BARBER 渋谷", meta: "求人保存 / 東京都", href: "/jobs/classic-barber-shibuya" },
 ];
 
 export const privateMemos = [
@@ -80,18 +78,6 @@ export const reactionSummaries: ReactionSummary[] = [
 ];
 
 export const jobApplications = [
-  {
-    id: "application-001",
-    salonName: "BARBER SAMPLE 福岡西",
-    type: "見学申し込み",
-    status: "受付済み",
-  },
-  {
-    id: "application-002",
-    salonName: "BARBER SAMPLE 天神",
-    type: "面接申し込み",
-    status: "送信済み",
-  },
 ];
 
 export const salonJobAdminItems = [

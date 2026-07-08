@@ -44,7 +44,7 @@ export const profiles: Profile[] = [
     id: "barber-sample-fukuoka-nishi",
     displayName: "BARBER SAMPLE 福岡西",
     type: "salon",
-    badges: ["サロン", "求人中"],
+    badges: ["サロン"],
     area: "福岡県 福岡市西区",
     avatarUrl: "/images/shop-interior.jpg",
     coverImageUrl: "/images/shop-interior.jpg",
@@ -54,8 +54,6 @@ export const profiles: Profile[] = [
       website: "https://example.com",
       map: "https://example.com",
     },
-    isHiring: true,
-    jobId: "barber-sample-fukuoka-nishi",
     recentPostIds: ["owner-retention"],
     recentArticleIds: ["freee-api-cost", "google-review-growth"],
     detailRows: [

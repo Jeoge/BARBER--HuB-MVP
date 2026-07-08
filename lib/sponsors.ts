@@ -59,7 +59,7 @@ export const sponsorItems: SponsorItem[] = [
     description: "若手理容師と学生が、地域のサロンを見つけるための協賛企画。",
     sponsorName: "地域求人パートナー",
     imageUrl: "/images/shop-interior.jpg",
-    href: "/jobs/register",
+    href: "/post/job",
     placement: ["jobs"],
     category: "career",
   },

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
 import { logoutAction } from "@/app/auth/actions";
 import { deleteMySnapAction } from "@/app/mypage/actions";
+import { closeJobPostAction } from "@/app/post/job/actions";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
@@ -24,6 +25,7 @@ import {
 } from "@/lib/supabase/backroom";
 import { listFollowingProfiles } from "@/lib/supabase/follows";
 import { getMySnapStats } from "@/lib/supabase/insights";
+import { jobAreaLabel, jobStatusLabel, listUserJobPosts, type JobPost } from "@/lib/supabase/jobs";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import {
   listUserQaAnswers,
@@ -38,7 +40,6 @@ import { createClient } from "@/lib/supabase/server";
 import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
 
 type JobApplication = { id: string; salonName: string; type: string; status: string };
-type SalonJobPosting = { id: string; title: string; status: string };
 
 function accountInitial(nameOrEmail: string | undefined) {
   return (nameOrEmail?.trim().slice(0, 1) || "B").toUpperCase();
@@ -70,7 +71,7 @@ function SectionCard({ title, eyebrow, children }: { title: string; eyebrow?: st
 }
 
 type MyPageProps = {
-  searchParams?: Promise<{ profile?: string; snap?: string; snapError?: string }>;
+  searchParams?: Promise<{ profile?: string; snap?: string; snapError?: string; job?: string; jobError?: string }>;
 };
 
 function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
@@ -313,6 +314,68 @@ function OwnerReactionSummaries({ articles, snaps }: { articles: ArticleWithAuth
   );
 }
 
+function MyJobPostList({ jobs }: { jobs: JobPost[] }) {
+  if (jobs.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
+        <p className="text-sm font-black text-ink">まだ掲載中の求人はありません</p>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-mute">求人を掲載すると、ここに表示されます。</p>
+        <Link href="/post/job" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+          新しく求人を掲載する
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-2.5">
+      <Link href="/post/job" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+        新しく求人を掲載する
+      </Link>
+      {jobs.map((job) => (
+        <article key={job.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{jobStatusLabel(job.status)}</span>
+                <span className="text-[0.66rem] font-bold text-mute">{jobAreaLabel(job)}</span>
+              </div>
+              <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{job.salon_name}</p>
+              <p className="mt-1 line-clamp-1 text-xs font-semibold text-mute">{job.job_title}</p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {job.status === "published" ? (
+              <Link href={`/jobs/${job.id}`} className="inline-flex h-9 items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-ink">
+                表示
+              </Link>
+            ) : (
+              <span className="inline-flex h-9 items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-mute">
+                非公開
+              </span>
+            )}
+            <Link href={`/mypage/jobs/${job.id}/edit`} className="inline-flex h-9 items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-ink">
+              編集する
+            </Link>
+            {job.status === "closed" ? (
+              <span className="inline-flex h-9 items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-mute">
+                停止中
+              </span>
+            ) : (
+              <form action={closeJobPostAction}>
+                <input type="hidden" name="jobId" value={job.id} />
+                <button type="submit" className="inline-flex h-9 w-full items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-mute">
+                  掲載停止
+                </button>
+              </form>
+            )}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export default async function MyPage({ searchParams }: MyPageProps) {
   const params = await searchParams;
   const supabase = await createClient();
@@ -343,13 +406,15 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const loginEmail = user.email ?? "メールアドレス未取得";
   const hasProfile = profile != null;
   const showSalonAdmin = Boolean(profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
+  const { jobs: salonJobPostings, error: salonJobPostingsError } = showSalonAdmin
+    ? await listUserJobPosts(supabase, user.id, 30)
+    : { jobs: [], error: null };
   const articleThanksPoints = myArticles.reduce((sum, article) => sum + article.thanks_count, 0);
   const thanksPoints = stats.thanksReceived + articleThanksPoints;
   const nextRewardAt = (Math.floor(thanksPoints / 100) + 1) * 100;
   const pointsToNext = nextRewardAt - thanksPoints;
   const commentsReceived = stats.commentsReceived + myArticles.reduce((sum, article) => sum + article.comment_count, 0);
   const jobApplications: JobApplication[] = [];
-  const salonJobPostings: SalonJobPosting[] = [];
 
   return (
     <PageChrome>
@@ -370,6 +435,21 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           {params?.snap === "deleted" ? (
             <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
               削除しました
+            </p>
+          ) : null}
+          {params?.job === "closed" ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              求人を掲載停止にしました。
+            </p>
+          ) : null}
+          {params?.job === "updated" ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              求人を更新しました。
+            </p>
+          ) : null}
+          {params?.jobError ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              {params.jobError}
             </p>
           ) : null}
           <div className="mt-3 flex items-center gap-3">
@@ -633,19 +713,12 @@ export default async function MyPage({ searchParams }: MyPageProps) {
 
       {showSalonAdmin ? (
         <SectionCard eyebrow="SALON ADMIN" title="求人掲載管理">
-          {salonJobPostings.length === 0 ? (
+          {salonJobPostingsError ? (
             <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-              まだ掲載中の求人はありません。求人を掲載すると、ここに表示されます。
+              求人を読み込めませんでした。job_postsテーブルのmigration適用状況を確認してください。
             </div>
           ) : (
-            <div className="grid gap-2">
-              {salonJobPostings.map((posting) => (
-                <div key={posting.id} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
-                  <span className="block text-sm font-black text-ink">{posting.title}</span>
-                  <span className="rounded-full bg-white px-2.5 py-1 text-[0.66rem] font-black text-ink">{posting.status}</span>
-                </div>
-              ))}
-            </div>
+            <MyJobPostList jobs={salonJobPostings} />
           )}
         </SectionCard>
       ) : null}

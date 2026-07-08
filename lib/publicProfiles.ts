@@ -65,12 +65,9 @@ export const publicProfiles: PublicProfile[] = [
       website: "https://example.com",
       map: "https://example.com",
     },
-    isHiring: true,
-    jobId: "barber-sample-fukuoka-nishi",
     recentPostIds: ["owner-retention"],
     recentArticleIds: ["freee-api-cost", "google-review-growth"],
     eventItems: [
-      { title: "サロン見学受付中", meta: "求人 / 見学", href: "/jobs/barber-sample-fukuoka-nishi/apply?type=tour" },
       { title: "営業後の技術練習を公開予定", meta: "Snap連動", href: "/snap" },
     ],
     detailRows: [
