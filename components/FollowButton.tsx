@@ -91,10 +91,10 @@ export function FollowButton({
   }
 
   const profileClass =
-    "inline-flex h-11 items-center justify-center gap-1.5 rounded-[8px] px-3 text-xs font-black transition " +
+    "inline-flex h-11 items-center justify-center gap-1.5 rounded-[8px] px-3 text-xs font-black transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70 " +
     (isFollowing ? "border border-line bg-white text-ink" : "bg-ink text-white");
   const snapClass =
-    "inline-flex h-8 shrink-0 items-center justify-center rounded-full border px-2.5 text-[0.68rem] font-black leading-none transition " +
+    "inline-flex h-8 shrink-0 items-center justify-center rounded-full border px-2.5 text-[0.68rem] font-black leading-none transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70 " +
     (isFollowing ? "border-line/80 bg-white text-ink/60" : "border-line/80 bg-white text-blush");
   const variantClass = variant === "profile" ? profileClass : snapClass;
 
@@ -105,10 +105,11 @@ export function FollowButton({
       aria-pressed={isFollowing}
       aria-busy={isPending}
       aria-label={isFollowing ? "フォローを解除する" : "投稿者をフォローする"}
+      disabled={isPending}
       className={variantClass + (className ? ` ${className}` : "")}
     >
       {variant === "profile" ? (isFollowing ? <Check aria-hidden="true" size={15} /> : <Plus aria-hidden="true" size={15} />) : null}
-      {isFollowing ? "フォロー中" : variant === "profile" ? "フォローする" : "＋フォロー"}
+      {isPending ? "処理中..." : isFollowing ? "フォロー中" : variant === "profile" ? "フォローする" : "＋フォロー"}
     </button>
   );
 }

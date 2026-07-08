@@ -1,14 +1,17 @@
 import { ArrowLeft, MessageCircle, Send, UserRound } from "lucide-react";
 import Link from "next/link";
 import { SignupRequiredCard } from "@/components/AuthGate";
+import { BackroomSetupRequiredCard } from "@/components/BackroomSetupRequiredCard";
+import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
-import { pathWithParams } from "@/lib/auth/redirects";
 import {
-  backroomAuthorMeta,
   backroomAuthorName,
+  backroomCommentAuthorName,
   backroomDateLabel,
   getBackroomPostById,
+  getBackroomProfile,
   listBackroomComments,
+  normalizeBackroomCategory,
   type BackroomComment,
 } from "@/lib/supabase/backroom";
 import { createClient } from "@/lib/supabase/server";
@@ -19,24 +22,20 @@ type BackroomDetailPageProps = {
   searchParams?: Promise<{ posted?: string; comment?: string; commentError?: string }>;
 };
 
-function commentAuthorName(comment: BackroomComment) {
-  return comment.profiles?.display_name?.trim() || comment.profiles?.salon_name?.trim() || "プロフィール未設定";
-}
-
 function CommentItem({ comment }: { comment: BackroomComment }) {
-  const name = commentAuthorName(comment);
+  const name = backroomCommentAuthorName(comment);
 
   return (
     <article className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
-      <Link href={`/profiles/${comment.user_id}`} className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
-          {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} alt="" className="h-full w-full object-cover" /> : name.slice(0, 1)}
+          {name.slice(0, 1)}
         </span>
         <span className="min-w-0">
           <span className="block truncate text-sm font-black text-ink">{name}</span>
           <span className="mt-0.5 block text-[0.66rem] font-bold text-mute">{backroomDateLabel({ created_at: comment.created_at })}</span>
         </span>
-      </Link>
+      </div>
       <p className="mt-3 whitespace-pre-wrap text-sm font-medium leading-relaxed text-ink">{comment.body}</p>
     </article>
   );
@@ -60,6 +59,22 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
           </Link>
         </section>
         <SignupRequiredCard kind="backyard" />
+      </PageChrome>
+    );
+  }
+
+  const { profile: backroomProfile } = await getBackroomProfile(supabase, user.id);
+
+  if (backroomProfile == null) {
+    return (
+      <PageChrome>
+        <section className="px-4 pt-4">
+          <Link href="/backroom" className="inline-flex items-center gap-1.5 text-sm font-black text-ink transition active:scale-[0.98]">
+            <ArrowLeft aria-hidden="true" size={17} />
+            Back Roomへ戻る
+          </Link>
+        </section>
+        <BackroomSetupRequiredCard next={`/backroom/${id}`} />
       </PageChrome>
     );
   }
@@ -92,14 +107,13 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
 
   const { comments, error: commentsError } = await listBackroomComments(supabase, post.id, 80);
   const authorName = backroomAuthorName(post);
-  const authorMeta = backroomAuthorMeta(post);
 
   return (
     <PageChrome>
       <section className="px-4 pt-4">
-        <Link href="/backroom" className="inline-flex items-center gap-1.5 text-sm font-black text-ink">
+        <Link href={`/backroom?category=${encodeURIComponent(normalizeBackroomCategory(post.category))}`} className="inline-flex items-center gap-1.5 text-sm font-black text-ink transition active:scale-[0.98]">
           <ArrowLeft aria-hidden="true" size={17} />
-          Back Roomへ戻る
+          カテゴリーへ戻る
         </Link>
       </section>
 
@@ -108,19 +122,20 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
           <div className="mb-3 rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-sm font-black text-ink">投稿しました。</div>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-blushSoft px-2.5 py-1 text-[0.68rem] font-black text-blush">{post.category}</span>
+          <span className="rounded-full bg-blushSoft px-2.5 py-1 text-[0.68rem] font-black text-blush">{normalizeBackroomCategory(post.category)}</span>
           <span className="text-xs font-bold text-mute">{backroomDateLabel(post)}</span>
+          <span className="text-xs font-bold text-mute">コメント {comments.length}</span>
         </div>
         <h1 className="mt-3 text-[1.45rem] font-black leading-tight text-ink">{post.title}</h1>
-        <Link href={`/profiles/${post.user_id}`} className="mt-3 flex min-w-0 items-center gap-2">
+        <div className="mt-3 flex min-w-0 items-center gap-2">
           <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-sm font-black text-white">
-            {post.profiles?.avatar_url ? <img src={post.profiles.avatar_url} alt="" className="h-full w-full object-cover" /> : authorName.slice(0, 1)}
+            {authorName.slice(0, 1)}
           </span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-black text-ink">{authorName}</span>
-            {authorMeta ? <span className="mt-0.5 block truncate text-xs font-semibold text-mute">{authorMeta}</span> : null}
+            <span className="mt-0.5 block truncate text-xs font-semibold text-mute">Back Roomメンバー</span>
           </span>
-        </Link>
+        </div>
         <div className="mt-4 rounded-[10px] border border-line bg-white p-4 shadow-sm">
           <p className="whitespace-pre-wrap text-[0.94rem] font-medium leading-relaxed text-ink">{post.body}</p>
         </div>
@@ -175,10 +190,10 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
               placeholder="相談、経験共有、雑談を気軽に残してください。"
             />
           </label>
-          <button type="submit" className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+          <LoadingSubmitButton pendingText="コメント中..." className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
             <Send aria-hidden="true" size={16} />
             コメント投稿
-          </button>
+          </LoadingSubmitButton>
         </form>
       </section>
     </PageChrome>

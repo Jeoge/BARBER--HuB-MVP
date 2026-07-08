@@ -19,7 +19,7 @@ function SubmitButton({ disabledByValidation }: { disabledByValidation: boolean 
       type="submit"
       disabled={disabled}
       className={
-        "inline-flex h-12 items-center justify-center gap-2 rounded-[8px] text-sm font-black transition " +
+        "inline-flex h-12 items-center justify-center gap-2 rounded-[8px] text-sm font-black transition active:scale-[0.98] " +
         (disabled ? "cursor-not-allowed bg-neutral-200 text-mute" : "bg-blush text-white")
       }
     >

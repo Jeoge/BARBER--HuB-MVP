@@ -1,5 +1,6 @@
 import { ArrowLeft, CheckCircle2, Send, Users } from "lucide-react";
 import Link from "next/link";
+import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { pathWithParams } from "@/lib/auth/redirects";
 import {
@@ -188,10 +189,10 @@ export default async function QaDetailPage({ params, searchParams }: QaDetailPag
                 placeholder="経験談、考え方、確認した方がよい点などを書いてください。"
               />
             </label>
-            <button type="submit" className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+            <LoadingSubmitButton pendingText="回答中..." className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
               <Send aria-hidden="true" size={16} />
               回答を投稿
-            </button>
+            </LoadingSubmitButton>
           </form>
         )}
       </section>

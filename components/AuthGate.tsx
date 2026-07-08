@@ -123,11 +123,18 @@ type AuthGateLinkProps = {
 
 export function AuthGateLink({ children, href, className, kind = "default", ariaLabel, signupNextHref }: AuthGateLinkProps) {
   const [open, setOpen] = useState(false);
+  const [navigating, setNavigating] = useState(false);
   const { isLoggedIn } = useAuthState();
 
   if (isLoggedIn && href) {
     return (
-      <Link href={href} className={className} aria-label={ariaLabel}>
+      <Link
+        href={href}
+        className={(className ?? "") + (navigating ? " pointer-events-none opacity-70" : "")}
+        aria-label={ariaLabel}
+        aria-busy={navigating}
+        onClick={() => setNavigating(true)}
+      >
         {children}
       </Link>
     );

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { getBackroomProfile } from "@/lib/supabase/backroom";
 import { createClient } from "@/lib/supabase/server";
 
 function cleanText(value: FormDataEntryValue | null) {
@@ -72,6 +73,21 @@ export async function createBackroomCommentAction(formData: FormData) {
     }
 
     redirect(pathWithParams("/login", { next: `/backroom/${postId}`, message: "コメントにはログインしてください。" }));
+  }
+
+  const { profile: backroomProfile, error: backroomProfileError } = await getBackroomProfile(supabase, user.id);
+
+  if (backroomProfileError) {
+    console.error("Back Room comment member profile lookup failed", {
+      postId,
+      userId: user.id,
+      message: errorMessage(backroomProfileError),
+    });
+    redirect(backroomPath(postId, { commentError: "Back Room参加設定を確認できませんでした。最新migrationを確認してください。" }));
+  }
+
+  if (backroomProfile == null) {
+    redirect(pathWithParams("/backroom/setup", { next: `/backroom/${postId}`, error: "Back Room専用ニックネームを設定してください。" }));
   }
 
   const now = new Date().toISOString();

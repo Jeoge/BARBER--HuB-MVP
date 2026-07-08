@@ -27,7 +27,7 @@ export function FloatingPostButton() {
             <AuthGateLink
               key={label}
               href={href}
-              className="flex w-full items-center gap-2 rounded-[7px] px-3 py-2.5 text-left text-sm font-semibold text-ink"
+              className="flex w-full items-center gap-2 rounded-[7px] px-3 py-2.5 text-left text-sm font-semibold text-ink transition active:scale-[0.98] disabled:opacity-60"
               kind={kind}
               ariaLabel={label}
               signupNextHref={signupNextHref}
@@ -39,7 +39,7 @@ export function FloatingPostButton() {
         </div>
       ) : null}
       <button
-        className="pointer-events-auto ml-auto grid h-9 w-9 place-items-center rounded-full bg-blush text-white shadow-[0_6px_14px_rgba(255,59,134,0.18)]"
+        className="pointer-events-auto ml-auto grid h-9 w-9 place-items-center rounded-full bg-blush text-white shadow-[0_6px_14px_rgba(255,59,134,0.18)] transition active:scale-90"
         aria-label={open ? "投稿メニューを閉じる" : "投稿メニューを開く"}
         onClick={() => setOpen((current) => !current)}
       >

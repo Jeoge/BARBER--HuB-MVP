@@ -11,7 +11,7 @@ import { isSnapSaved as fetchIsSaved } from "@/lib/supabase/saved";
 
 // Thanksボタンと同じ見た目のピル。控えめなブックマークで保存/解除。
 const base =
-  "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.7rem] font-black transition";
+  "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.7rem] font-black transition active:scale-[0.98] disabled:cursor-not-allowed";
 
 export function SnapSaveButton({ snapId, currentUserId }: { snapId: string; currentUserId?: string | null }) {
   const router = useRouter();
@@ -73,6 +73,7 @@ export function SnapSaveButton({ snapId, currentUserId }: { snapId: string; curr
       aria-pressed={saved}
       aria-busy={isPending}
       aria-label={saved ? "保存を解除する" : "保存する"}
+      disabled={isPending}
       className={
         base +
         " " +
@@ -87,7 +88,7 @@ export function SnapSaveButton({ snapId, currentUserId }: { snapId: string; curr
       ) : (
         <Bookmark aria-hidden="true" size={15} strokeWidth={1.9} />
       )}
-      {saved ? "保存済み" : "保存"}
+      {isPending ? "保存中..." : saved ? "保存済み" : "保存"}
     </button>
   );
 }
