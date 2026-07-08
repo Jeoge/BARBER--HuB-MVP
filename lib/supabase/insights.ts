@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isMissingSnapReactionsTableError } from "@/lib/supabase/snaps";
 
 export type MySnapStats = {
   snapCount: number;
@@ -41,7 +42,7 @@ export async function getMySnapStats(supabase: SupabaseClient, userId: string): 
       .neq("user_id", userId),
   ]);
 
-  if (thanks.error) {
+  if (thanks.error && !isMissingSnapReactionsTableError(thanks.error)) {
     console.error("thanks received count failed", { userId, message: thanks.error.message });
   }
   if (comments.error) {

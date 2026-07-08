@@ -366,7 +366,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 
       {!dbProfile ? (
         <section className="px-4 pt-6">
-          <Link href="/salon-transition" className="flex items-center gap-3 rounded-[8px] border border-line bg-white p-4 shadow-sm">
+          <Link href="/succession" className="flex items-center gap-3 rounded-[8px] border border-line bg-white p-4 shadow-sm">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blushSoft text-blush">
               <Building2 aria-hidden="true" size={19} />
             </span>

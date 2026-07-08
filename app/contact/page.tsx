@@ -22,8 +22,14 @@ export default function ContactPage() {
             <Link href="/jobs/about" className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink">
               求人掲載について
             </Link>
+            <Link href="/succession/about" className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink">
+              承継掲載について
+            </Link>
             <Link href="/jobs" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-3 text-sm font-black text-white">
-              求人一覧へ
+              求人一覧
+            </Link>
+            <Link href="/succession" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-3 text-sm font-black text-white">
+              開業・承継
             </Link>
           </div>
         </div>

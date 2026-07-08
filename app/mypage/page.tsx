@@ -1,10 +1,11 @@
-import { BriefcaseBusiness, FilePenLine, LogOut, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
+import { BriefcaseBusiness, Building2, FilePenLine, LogOut, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
 import { logoutAction } from "@/app/auth/actions";
 import { deleteMySnapAction } from "@/app/mypage/actions";
 import { closeJobPostAction } from "@/app/post/job/actions";
+import { closeSuccessionPostAction } from "@/app/post/succession/actions";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
@@ -38,6 +39,12 @@ import {
 import { listSavedSnaps } from "@/lib/supabase/saved";
 import { createClient } from "@/lib/supabase/server";
 import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
+import {
+  listUserSuccessionPosts,
+  successionAreaLabel,
+  successionStatusLabel,
+  type SuccessionPublicPost,
+} from "@/lib/supabase/succession";
 
 type JobApplication = { id: string; salonName: string; type: string; status: string };
 
@@ -71,7 +78,7 @@ function SectionCard({ title, eyebrow, children }: { title: string; eyebrow?: st
 }
 
 type MyPageProps = {
-  searchParams?: Promise<{ profile?: string; snap?: string; snapError?: string; job?: string; jobError?: string }>;
+  searchParams?: Promise<{ profile?: string; snap?: string; snapError?: string; job?: string; jobError?: string; succession?: string; successionError?: string }>;
 };
 
 function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
@@ -376,6 +383,71 @@ function MyJobPostList({ jobs }: { jobs: JobPost[] }) {
   );
 }
 
+function MySuccessionPostList({ posts }: { posts: SuccessionPublicPost[] }) {
+  if (posts.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
+        <p className="text-sm font-black text-ink">まだ開業・承継情報の掲載はありません</p>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-mute">掲載すると、ここに公開中・下書き・停止中の状態で表示されます。</p>
+        <Link href="/post/succession" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+          新しく掲載する
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-2.5">
+      <Link href="/post/succession" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+        新しく掲載する
+      </Link>
+      {posts.map((post) => (
+        <article key={post.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex items-start gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-blush">
+              <Building2 aria-hidden="true" size={17} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{successionStatusLabel(post.status)}</span>
+                <span className="text-[0.66rem] font-bold text-mute">{successionAreaLabel(post)}</span>
+              </div>
+              <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{post.title}</p>
+              <p className="mt-1 line-clamp-1 text-xs font-semibold text-mute">{post.listing_type}</p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {post.status === "published" ? (
+              <Link href={`/succession/${post.id}`} className="inline-flex h-9 items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-ink">
+                表示
+              </Link>
+            ) : (
+              <span className="inline-flex h-9 items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-mute">
+                非公開
+              </span>
+            )}
+            <Link href={`/mypage/succession/${post.id}/edit`} className="inline-flex h-9 items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-ink">
+              編集する
+            </Link>
+            {post.status === "closed" ? (
+              <span className="inline-flex h-9 items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-mute">
+                停止中
+              </span>
+            ) : (
+              <form action={closeSuccessionPostAction}>
+                <input type="hidden" name="postId" value={post.id} />
+                <button type="submit" className="inline-flex h-9 w-full items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-mute">
+                  掲載停止
+                </button>
+              </form>
+            )}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export default async function MyPage({ searchParams }: MyPageProps) {
   const params = await searchParams;
   const supabase = await createClient();
@@ -409,6 +481,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const { jobs: salonJobPostings, error: salonJobPostingsError } = showSalonAdmin
     ? await listUserJobPosts(supabase, user.id, 30)
     : { jobs: [], error: null };
+  const { posts: mySuccessionPosts, error: mySuccessionPostsError } = await listUserSuccessionPosts(supabase, user.id, 30);
   const articleThanksPoints = myArticles.reduce((sum, article) => sum + article.thanks_count, 0);
   const thanksPoints = stats.thanksReceived + articleThanksPoints;
   const nextRewardAt = (Math.floor(thanksPoints / 100) + 1) * 100;
@@ -450,6 +523,21 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           {params?.jobError ? (
             <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
               {params.jobError}
+            </p>
+          ) : null}
+          {params?.succession === "closed" ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              開業・承継情報を掲載停止にしました。
+            </p>
+          ) : null}
+          {params?.succession === "updated" ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              開業・承継情報を保存しました。
+            </p>
+          ) : null}
+          {params?.successionError ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              {params.successionError}
             </p>
           ) : null}
           <div className="mt-3 flex items-center gap-3">
@@ -722,6 +810,16 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           )}
         </SectionCard>
       ) : null}
+
+      <SectionCard eyebrow="SUCCESSION ADMIN" title="開業・承継掲載管理">
+        {mySuccessionPostsError ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            開業・承継情報を読み込めませんでした。succession_postsテーブルのmigration適用状況を確認してください。
+          </div>
+        ) : (
+          <MySuccessionPostList posts={mySuccessionPosts} />
+        )}
+      </SectionCard>
 
       <section className="px-4 pt-5">
         <div className="rounded-[10px] border border-blush/20 bg-blushSoft p-4">

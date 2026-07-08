@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { isMissingSnapReactionsTableError } from "@/lib/supabase/snaps";
 
 export type SnapThanksState = {
   count: number;
@@ -42,6 +43,10 @@ async function countThanksForSnap(supabase: Awaited<ReturnType<typeof createClie
       .returns<SnapReactionRow[]>();
 
     if (error) {
+      if (isMissingSnapReactionsTableError(error)) {
+        return 0;
+      }
+
       console.error("Snap thanks count failed", {
         snapId,
         message: error.message,
@@ -131,6 +136,13 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
     .maybeSingle<{ id: string }>();
 
   if (existingError) {
+    if (isMissingSnapReactionsTableError(existingError)) {
+      return {
+        ...previousState,
+        error: "Thanks機能の準備中です。snap_reactionsテーブルのmigration適用状況を確認してください。",
+      };
+    }
+
     console.error("Snap thanks existing lookup failed", {
       snapId: snap.id,
       userId: user.id,
@@ -146,6 +158,13 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
     const { error: deleteError } = await supabase.from("snap_reactions").delete().eq("id", existing.id).eq("user_id", user.id);
 
     if (deleteError) {
+      if (isMissingSnapReactionsTableError(deleteError)) {
+        return {
+          ...previousState,
+          error: "Thanks機能の準備中です。snap_reactionsテーブルのmigration適用状況を確認してください。",
+        };
+      }
+
       console.error("Snap thanks delete failed", {
         snapId: snap.id,
         userId: user.id,
@@ -176,6 +195,13 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
   });
 
   if (insertError) {
+    if (isMissingSnapReactionsTableError(insertError)) {
+      return {
+        ...previousState,
+        error: "Thanks機能の準備中です。snap_reactionsテーブルのmigration適用状況を確認してください。",
+      };
+    }
+
     console.error("Snap thanks insert failed", {
       snapId: snap.id,
       userId: user.id,
