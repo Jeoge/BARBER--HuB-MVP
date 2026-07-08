@@ -15,6 +15,21 @@ function cleanText(value: FormDataEntryValue | null) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function cleanUrl(value: FormDataEntryValue | null) {
+  const text = cleanText(value);
+  if (text == null) return null;
+
+  const candidate = /^https?:\/\//i.test(text) ? text : `https://${text}`;
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function redirectToEdit(error: string) {
   redirect(pathWithParams("/mypage/profile/edit", { error }));
 }
@@ -114,6 +129,16 @@ function profileSaveErrorMessage(error: unknown) {
     return "プロフィールを保存できませんでした。profilesテーブルの権限設定を確認してください。";
   }
 
+  if (
+    message.includes("shop_address") ||
+    message.includes("shop_map_url") ||
+    message.includes("website_url") ||
+    message.includes("instagram_url") ||
+    message.includes("hotpepper_url")
+  ) {
+    return "お店情報とSNSリンクの保存に必要なprofilesカラムが未適用です。Supabase SQL Editorで最新migrationを実行してください。";
+  }
+
   return "プロフィールを保存できませんでした。入力内容を確認して、もう一度お試しください。";
 }
 
@@ -181,6 +206,17 @@ export async function saveProfileAction(formData: FormData) {
     salon_name: cleanText(formData.get("salon_name")),
     region: cleanText(formData.get("region")),
     bio: cleanText(formData.get("bio")),
+    shop_address: cleanText(formData.get("shop_address")),
+    shop_map_url: cleanUrl(formData.get("shop_map_url")),
+    website_url: cleanUrl(formData.get("website_url")),
+    instagram_url: cleanUrl(formData.get("instagram_url")),
+    youtube_url: cleanUrl(formData.get("youtube_url")),
+    tiktok_url: cleanUrl(formData.get("tiktok_url")),
+    x_url: cleanUrl(formData.get("x_url")),
+    line_url: cleanUrl(formData.get("line_url")),
+    hotpepper_url: cleanUrl(formData.get("hotpepper_url")),
+    rakuten_url: cleanUrl(formData.get("rakuten_url")),
+    booking_url: cleanUrl(formData.get("booking_url")),
     avatar_url: avatarUrl,
     cover_url: coverUrl,
     updated_at: now,
@@ -212,5 +248,6 @@ export async function saveProfileAction(formData: FormData) {
 
   revalidatePath("/mypage");
   revalidatePath("/mypage/profile/edit");
+  revalidatePath(`/profiles/${user.id}`);
   redirect(pathWithParams("/mypage", { profile: "updated" }));
 }

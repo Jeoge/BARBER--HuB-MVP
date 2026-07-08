@@ -39,6 +39,7 @@ export function SnapThanksButton({
   currentUserId,
   initialCount,
   initiallyThanked,
+  showCount = true,
   actions,
 }: {
   snapId: string;
@@ -46,6 +47,7 @@ export function SnapThanksButton({
   currentUserId?: string | null;
   initialCount: number;
   initiallyThanked: boolean;
+  showCount?: boolean;
   actions?: ReactNode;
 }) {
   const initialState: SnapThanksState = {
@@ -65,7 +67,7 @@ export function SnapThanksButton({
           <Sparkles aria-hidden="true" size={15} strokeWidth={1.9} className="text-blush" />
           Thanks
         </Link>
-        <span className="text-[0.68rem] font-bold text-mute">{state.count}</span>
+        {showCount ? <span className="text-[0.68rem] font-bold text-mute">{state.count}</span> : null}
         {actions ? <span className="ml-auto flex items-center">{actions}</span> : null}
       </div>
     );
@@ -78,7 +80,7 @@ export function SnapThanksButton({
           <Sparkles aria-hidden="true" size={15} strokeWidth={1.9} className="text-blush/70" />
           Thanks
         </button>
-        <span className="text-[0.68rem] font-bold text-mute">{state.count}</span>
+        {showCount ? <span className="text-[0.68rem] font-bold text-mute">{state.count}</span> : null}
         <span className="text-[0.68rem] font-semibold text-mute">自分の投稿はカウントされません</span>
         {actions ? <span className="ml-auto flex items-center">{actions}</span> : null}
       </div>
@@ -89,7 +91,7 @@ export function SnapThanksButton({
     <form action={formAction} className="mt-3 flex flex-wrap items-center gap-2">
       <input type="hidden" name="snapId" value={snapId} />
       <SubmitThanksButton thanked={state.thanked} />
-      <span className="text-[0.68rem] font-bold text-mute">{state.count}</span>
+      {showCount ? <span className="text-[0.68rem] font-bold text-mute">{state.count}</span> : null}
       {state.error ? <span className="text-[0.68rem] font-bold text-red-600">{state.error}</span> : null}
       {!state.error && state.message ? <span className="text-[0.68rem] font-semibold text-mute">{state.message}</span> : null}
       {actions ? <span className="ml-auto flex items-center">{actions}</span> : null}

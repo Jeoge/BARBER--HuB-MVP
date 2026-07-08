@@ -1,6 +1,6 @@
 export type PublicProfileType = "individual" | "salon" | "school" | "maker" | "manufacturer" | "dealer" | "regional-dealer" | "online-store" | "organization" | "company" | "editor";
 
-export type ProfileLinkKey = "instagram" | "x" | "youtube" | "tiktok" | "website" | "map";
+export type ProfileLinkKey = "instagram" | "x" | "youtube" | "tiktok" | "website" | "map" | "line" | "hotpepper" | "rakuten" | "booking";
 
 export type ProfileEventItem = {
   title: string;

@@ -1,22 +1,27 @@
-import { BriefcaseBusiness, FilePenLine, LogOut, Pencil, Sparkles, UserRoundCheck } from "lucide-react";
+import { BriefcaseBusiness, FilePenLine, LogOut, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
-import { deleteMySnapAction } from "@/app/mypage/actions";
 import { logoutAction } from "@/app/auth/actions";
+import { deleteMySnapAction } from "@/app/mypage/actions";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
+import {
+  articleDateLabel,
+  articleExcerpt,
+  listSavedArticles,
+  listUserArticles,
+  type ArticleWithAuthor,
+} from "@/lib/supabase/articles";
 import { listFollowingProfiles } from "@/lib/supabase/follows";
-import { getAccountProfile } from "@/lib/supabase/profiles";
 import { getMySnapStats } from "@/lib/supabase/insights";
+import { getAccountProfile } from "@/lib/supabase/profiles";
 import { listSavedSnaps } from "@/lib/supabase/saved";
 import { createClient } from "@/lib/supabase/server";
 import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
 
-// 応募・求人掲載はまだDBに保存していないため、現状は空。
-// 将来 応募/求人掲載の保存機能ができたら、ここをDB取得に差し替えると自動で一覧に並ぶ。
 type JobApplication = { id: string; salonName: string; type: string; status: string };
 type SalonJobPosting = { id: string; title: string; status: string };
 
@@ -32,32 +37,17 @@ function ProfileRow({ label, value }: { label: string; value: string | null | un
   return (
     <div className="grid grid-cols-[4.5rem_1fr] gap-3 rounded-[8px] bg-neutral-50 px-3 py-2.5 text-sm">
       <span className="font-bold text-mute">{label}</span>
-      <span className="font-semibold text-ink">{textOrUnset(value)}</span>
+      <span className="break-words font-semibold text-ink">{textOrUnset(value)}</span>
     </div>
   );
 }
 
-function SectionCard({
-  title,
-  eyebrow,
-  testNote,
-  children,
-}: {
-  title: string;
-  eyebrow?: string;
-  testNote?: string;
-  children: ReactNode;
-}) {
+function SectionCard({ title, eyebrow, children }: { title: string; eyebrow?: string; children: ReactNode }) {
   return (
     <section className="px-4 pt-5">
       <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.035)]">
         {eyebrow ? <p className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-blush">{eyebrow}</p> : null}
         <h2 className="mt-1 text-base font-black text-ink">{title}</h2>
-        {testNote ? (
-          <p className="mt-1.5 rounded-[7px] border border-line/70 bg-neutral-50 px-2.5 py-1.5 text-[0.68rem] font-semibold leading-relaxed text-mute">
-            {testNote}
-          </p>
-        ) : null}
         <div className="mt-3">{children}</div>
       </div>
     </section>
@@ -99,6 +89,7 @@ function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
               <Link href={`/posts/${snap.id}`} className="mt-1 block">
                 <p className="line-clamp-2 break-words text-sm font-semibold leading-relaxed text-ink">{snap.caption}</p>
               </Link>
+              <p className="mt-1 text-[0.68rem] font-bold text-mute">Thanks {snap.thanks_count}</p>
             </div>
           </div>
           <form action={deleteMySnapAction} className="mt-2">
@@ -108,6 +99,115 @@ function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
             </button>
           </form>
         </article>
+      ))}
+    </div>
+  );
+}
+
+function MyArticleList({ articles }: { articles: ArticleWithAuthor[] }) {
+  if (articles.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
+        <p className="text-sm font-black text-ink">まだ自分の記事はありません</p>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-mute">経験記事を投稿すると、ここに表示されます。</p>
+        <Link href="/post/article" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+          記事を書く
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
+      {articles.map((article) => (
+        <Link key={article.id} href={`/articles/${article.id}`} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{article.category ?? "経験記事"}</span>
+            <span className="text-[0.66rem] font-bold text-mute">{articleDateLabel(article)}</span>
+          </div>
+          <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{article.title}</p>
+          <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{articleExcerpt(article.body, 78)}</p>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function SavedArticleList({ articles }: { articles: ArticleWithAuthor[] }) {
+  if (articles.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+        保存済みの記事はまだありません。
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid max-h-[14.25rem] gap-2 overflow-y-auto overscroll-contain pr-1">
+      {articles.map((article) => (
+        <Link key={article.id} href={`/articles/${article.id}`} className="block rounded-[8px] bg-neutral-50 p-3">
+          <p className="line-clamp-1 text-sm font-black text-ink">{article.title}</p>
+          <p className="mt-1 text-xs font-semibold text-mute">{article.category ?? "記事"} / {articleDateLabel(article)}</p>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function OwnerReactionSummaries({ articles, snaps }: { articles: ArticleWithAuthor[]; snaps: SnapWithAuthor[] }) {
+  const summaries = [
+    ...articles.map((article) => ({
+      id: article.id,
+      href: `/articles/${article.id}`,
+      title: article.title,
+      likes: article.like_count,
+      thanks: article.thanks_count,
+      saves: article.save_count,
+      comments: article.comment_count,
+    })),
+    ...snaps.map((snap) => ({
+      id: snap.id,
+      href: `/posts/${snap.id}`,
+      title: snap.caption || "Snap",
+      likes: 0,
+      thanks: snap.thanks_count,
+      saves: 0,
+      comments: 0,
+    })),
+  ];
+
+  if (summaries.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+        投稿すると、受け取った反応数がここに表示されます。
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3">
+      {summaries.map((summary) => (
+        <Link key={summary.id} href={summary.href} className="rounded-[8px] bg-neutral-50 p-3">
+          <p className="line-clamp-1 text-sm font-black text-ink">{summary.title}</p>
+          <div className="mt-2 grid grid-cols-4 gap-1.5 text-center">
+            <div className="rounded-[7px] bg-white px-1.5 py-2">
+              <p className="text-[0.62rem] font-bold text-mute">いいね</p>
+              <p className="text-sm font-black text-ink">{summary.likes}</p>
+            </div>
+            <div className="rounded-[7px] bg-white px-1.5 py-2">
+              <p className="text-[0.62rem] font-bold text-mute">Thanks</p>
+              <p className="text-sm font-black text-ink">{summary.thanks}</p>
+            </div>
+            <div className="rounded-[7px] bg-white px-1.5 py-2">
+              <p className="text-[0.62rem] font-bold text-mute">保存</p>
+              <p className="text-sm font-black text-ink">{summary.saves}</p>
+            </div>
+            <div className="rounded-[7px] bg-white px-1.5 py-2">
+              <p className="text-[0.62rem] font-bold text-mute">コメント</p>
+              <p className="text-sm font-black text-ink">{summary.comments}</p>
+            </div>
+          </div>
+        </Link>
       ))}
     </div>
   );
@@ -131,18 +231,20 @@ export default async function MyPage({ searchParams }: MyPageProps) {
 
   const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
   const { snaps: mySnaps, error: mySnapsError } = await listUserSnaps(supabase, user.id, 30, user.id);
-  const profileDisplayName = profile?.display_name?.trim() || "プロフィール未設定";
-  const loginEmail = user.email ?? "メールアドレス未取得";
-  const hasProfile = profile != null;
-  const showSalonAdmin = Boolean(profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
+  const { articles: myArticles, error: myArticlesError } = await listUserArticles(supabase, user.id, 30, user.id);
+  const { articles: savedArticles, error: savedArticlesError } = await listSavedArticles(supabase, user.id, 30, user.id);
   const followedProfiles = await listFollowingProfiles(supabase, user.id);
   const savedSnapList = await listSavedSnaps(supabase, user.id);
   const stats = await getMySnapStats(supabase, user.id);
-  // Thanksポイント：受け取ったThanks 1件＝1pt。
-  const thanksPoints = stats.thanksReceived;
+  const profileDisplayName = profile?.display_name?.trim() || profile?.salon_name?.trim() || "プロフィール未設定";
+  const loginEmail = user.email ?? "メールアドレス未取得";
+  const hasProfile = profile != null;
+  const showSalonAdmin = Boolean(profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
+  const articleThanksPoints = myArticles.reduce((sum, article) => sum + article.thanks_count, 0);
+  const thanksPoints = stats.thanksReceived + articleThanksPoints;
   const nextRewardAt = (Math.floor(thanksPoints / 100) + 1) * 100;
   const pointsToNext = nextRewardAt - thanksPoints;
-  // 応募・求人掲載の保存機能ができるまでは空（実際に応募/掲載したら並ぶ受け皿）。
+  const commentsReceived = stats.commentsReceived + myArticles.reduce((sum, article) => sum + article.comment_count, 0);
   const jobApplications: JobApplication[] = [];
   const salonJobPostings: SalonJobPosting[] = [];
 
@@ -151,7 +253,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
       <PageHeaderBlock
         eyebrow="PRIVATE DASHBOARD"
         title="マイページ"
-        body="保存、メモ、フォロー中、Thanksポイント、自分の投稿への反応を確認する本人専用の管理画面です。"
+        body="自分の投稿、保存、フォロー中、Thanksポイント、自分の投稿への反応を確認する本人専用の管理画面です。"
       />
 
       <section className="px-4 pt-5">
@@ -169,11 +271,11 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           ) : null}
           <div className="mt-3 flex items-center gap-3">
             <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-full border border-white/20 bg-white/10 text-lg font-black">
-              {accountInitial(profile?.display_name ?? loginEmail)}
+              {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" /> : accountInitial(profileDisplayName ?? loginEmail)}
             </div>
             <div className="min-w-0">
               <h2 className="truncate text-lg font-black">{profileDisplayName}</h2>
-              <p className="mt-1 text-xs font-semibold text-white/60">公開プロフィールとは別の、本人だけの管理情報です。</p>
+              <p className="mt-1 text-xs font-semibold text-white/60">本人だけの管理情報です。</p>
               <p className="mt-1 break-words text-xs font-semibold text-white/65">ログイン中: {loginEmail}</p>
             </div>
           </div>
@@ -189,11 +291,11 @@ export default async function MyPage({ searchParams }: MyPageProps) {
             </Link>
             <Link href="/post/snap" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white/10 text-xs font-black text-white">
               <FilePenLine aria-hidden="true" size={14} />
-              投稿
+              Snap
             </Link>
-            <Link href="/jobs/register" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white/10 text-xs font-black text-white">
-              <BriefcaseBusiness aria-hidden="true" size={14} />
-              求人
+            <Link href="/post/article" className="inline-flex h-10 items-center justify-center gap-1 rounded-[8px] bg-white/10 text-xs font-black text-white">
+              <Send aria-hidden="true" size={14} />
+              記事
             </Link>
           </div>
           <form action={logoutAction} className="mt-3">
@@ -224,9 +326,19 @@ export default async function MyPage({ searchParams }: MyPageProps) {
             </div>
           </div>
           <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
-            自分の投稿が受け取ったThanks 1件＝1ptです（{nextRewardAt}ptで次の特典）。
+            自分の投稿が受け取ったThanks 1件＝1ptです。投稿者本人のThanksは含めません。
           </p>
         </div>
+      </SectionCard>
+
+      <SectionCard eyebrow="MY ARTICLES" title="自分の記事">
+        {myArticlesError ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            自分の記事を読み込めませんでした。
+          </div>
+        ) : (
+          <MyArticleList articles={myArticles} />
+        )}
       </SectionCard>
 
       <SectionCard eyebrow="MY SNAP" title="自分のSnap">
@@ -245,29 +357,44 @@ export default async function MyPage({ searchParams }: MyPageProps) {
       </SectionCard>
 
       <SectionCard eyebrow="SAVED" title="保存したもの">
-        {savedSnapList.length === 0 ? (
-          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-            保存したSnapはまだありません。
+        <div className="grid gap-3">
+          <div>
+            <p className="mb-2 text-xs font-black text-mute">記事</p>
+            {savedArticlesError ? (
+              <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+                保存した記事を読み込めませんでした。
+              </div>
+            ) : (
+              <SavedArticleList articles={savedArticles} />
+            )}
           </div>
-        ) : (
-          <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
-            {savedSnapList.map((snap) => (
-              <Link key={snap.id} href={`/posts/${snap.id}`} className="flex gap-3 rounded-[8px] border border-line bg-neutral-50 p-3">
-                {snap.image_url ? (
-                  <div className="h-16 w-14 shrink-0">
-                    <MagazineImage src={snap.image_url} alt={snap.caption ?? "Snap"} variant="news" className="h-full w-full" />
-                  </div>
-                ) : null}
-                <div className="min-w-0 flex-1">
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{snap.category ?? "日常"}</span>
-                  <p className="mt-1 line-clamp-2 break-words text-sm font-semibold leading-relaxed text-ink">
-                    {snap.caption?.trim() || "本文なしのSnapです。"}
-                  </p>
-                </div>
-              </Link>
-            ))}
+          <div>
+            <p className="mb-2 text-xs font-black text-mute">Snap</p>
+            {savedSnapList.length === 0 ? (
+              <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+                保存したSnapはまだありません。
+              </div>
+            ) : (
+              <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
+                {savedSnapList.map((snap) => (
+                  <Link key={snap.id} href={`/posts/${snap.id}`} className="flex gap-3 rounded-[8px] border border-line bg-neutral-50 p-3">
+                    {snap.image_url ? (
+                      <div className="h-16 w-14 shrink-0">
+                        <MagazineImage src={snap.image_url} alt={snap.caption ?? "Snap"} variant="news" className="h-full w-full" />
+                      </div>
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{snap.category ?? "日常"}</span>
+                      <p className="mt-1 line-clamp-2 break-words text-sm font-semibold leading-relaxed text-ink">
+                        {snap.caption?.trim() || "本文なしのSnapです。"}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </SectionCard>
 
       <SectionCard eyebrow="FOLLOWING" title="フォロー中">
@@ -304,6 +431,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
             <ProfileRow label="職種" value={profile.job_type} />
             <ProfileRow label="サロン" value={profile.salon_name} />
             <ProfileRow label="地域" value={profile.region} />
+            <ProfileRow label="住所" value={profile.shop_address} />
             <div className="rounded-[8px] bg-neutral-50 px-3 py-3">
               <p className="text-xs font-bold text-mute">自己紹介</p>
               <p className="mt-1 whitespace-pre-wrap text-sm font-medium leading-relaxed text-ink">{textOrUnset(profile.bio)}</p>
@@ -329,27 +457,20 @@ export default async function MyPage({ searchParams }: MyPageProps) {
       </SectionCard>
 
       <SectionCard eyebrow="OWNER VIEW" title="自分の投稿への反応">
-        {stats.snapCount === 0 ? (
-          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-            まだ投稿がありません。Snapを投稿すると、他の人からの反応がここに集計されます。
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-[8px] bg-neutral-50 p-3 text-center">
+            <p className="text-[0.62rem] font-bold text-mute">受け取ったThanks</p>
+            <p className="mt-1 text-2xl font-black text-ink">{thanksPoints}</p>
           </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-[8px] bg-neutral-50 p-3 text-center">
-                <p className="text-[0.62rem] font-bold text-mute">受け取ったThanks</p>
-                <p className="mt-1 text-2xl font-black text-ink">{stats.thanksReceived}</p>
-              </div>
-              <div className="rounded-[8px] bg-neutral-50 p-3 text-center">
-                <p className="text-[0.62rem] font-bold text-mute">コメント</p>
-                <p className="mt-1 text-2xl font-black text-ink">{stats.commentsReceived}</p>
-              </div>
-            </div>
-            <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
-              あなたの{stats.snapCount}件の投稿に、他の人から届いた反応です。
-            </p>
-          </>
-        )}
+          <div className="rounded-[8px] bg-neutral-50 p-3 text-center">
+            <p className="text-[0.62rem] font-bold text-mute">コメント</p>
+            <p className="mt-1 text-2xl font-black text-ink">{commentsReceived}</p>
+          </div>
+        </div>
+        <p className="my-3 text-xs font-medium leading-relaxed text-mute">
+          表示カウントから投稿者本人のリアクションは除外しています。
+        </p>
+        <OwnerReactionSummaries articles={myArticles} snaps={mySnaps} />
       </SectionCard>
 
       <SectionCard eyebrow="APPLICATIONS" title="応募履歴">

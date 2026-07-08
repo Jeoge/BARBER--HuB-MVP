@@ -78,6 +78,7 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
         currentUserId={currentUserId}
         initialCount={snap.thanks_count}
         initiallyThanked={snap.viewer_has_thanked}
+        showCount={false}
         actions={
           <span className="flex items-center gap-1.5">
             <SnapCommentButton snapId={snap.id} currentUserId={currentUserId} />
