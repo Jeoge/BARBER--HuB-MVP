@@ -2,6 +2,7 @@ import { ArrowLeft, FilePenLine, Save, Send, Sparkles, UserRoundPen } from "luci
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignupRequiredCard } from "@/components/AuthGate";
+import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getAccountProfile } from "@/lib/supabase/profiles";
@@ -169,10 +170,10 @@ export default async function ArticlePostPage({ searchParams }: ArticlePostPageP
             <Save aria-hidden="true" size={17} />
             下書き
           </button>
-          <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+          <LoadingSubmitButton pendingText="投稿中..." className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
             <Send aria-hidden="true" size={17} />
             投稿する
-          </button>
+          </LoadingSubmitButton>
         </div>
       </form>
     </PageChrome>

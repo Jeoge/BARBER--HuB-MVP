@@ -19,6 +19,7 @@ import {
   backroomDateLabel,
   backroomExcerpt,
   listUserBackroomPosts,
+  normalizeBackroomCategory,
   type BackroomPostWithAuthor,
 } from "@/lib/supabase/backroom";
 import { listFollowingProfiles } from "@/lib/supabase/follows";
@@ -151,10 +152,10 @@ function MyBackroomList({ posts }: { posts: BackroomPostWithAuthor[] }) {
   if (posts.length === 0) {
     return (
       <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
-        <p className="text-sm font-black text-ink">まだ自分のBack Room投稿はありません</p>
-        <p className="mt-1 text-xs font-medium leading-relaxed text-mute">営業後トークや相談を投稿すると、ここに表示されます。</p>
+        <p className="text-sm font-black text-ink">まだ自分のBack Roomスレッドはありません</p>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-mute">営業後トークや相談のスレッドを立てると、ここに表示されます。</p>
         <Link href="/post/backroom" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
-          Back Roomに投稿
+          スレッドを立てる
         </Link>
       </div>
     );
@@ -165,7 +166,7 @@ function MyBackroomList({ posts }: { posts: BackroomPostWithAuthor[] }) {
       {posts.map((post) => (
         <Link key={post.id} href={`/backroom/${post.id}`} className="rounded-[8px] border border-line bg-neutral-50 p-3">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{post.category}</span>
+            <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{normalizeBackroomCategory(post.category)}</span>
             <span className="text-[0.66rem] font-bold text-mute">{backroomDateLabel(post)}</span>
             <span className="text-[0.66rem] font-bold text-mute">コメント {post.comment_count}</span>
           </div>
@@ -458,10 +459,10 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         )}
       </SectionCard>
 
-      <SectionCard eyebrow="MY BACK ROOM" title="自分のBack Room投稿">
+      <SectionCard eyebrow="MY BACK ROOM" title="自分のBack Roomスレッド">
         {myBackroomPostsError ? (
           <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-            自分のBack Room投稿を読み込めませんでした。
+            自分のBack Roomスレッドを読み込めませんでした。
           </div>
         ) : (
           <MyBackroomList posts={myBackroomPosts} />

@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { commentTimeLabel, countSnapComments, listSnapComments, type SnapComment } from "@/lib/supabase/comments";
 
 const pill =
-  "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-line/80 bg-white px-3 text-[0.7rem] font-black text-ink/78 transition hover:border-blush/25 hover:bg-blushSoft/50";
+  "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-line/80 bg-white px-3 text-[0.7rem] font-black text-ink/78 transition hover:border-blush/25 hover:bg-blushSoft/50 active:scale-[0.98]";
 
 function initial(name: string | null) {
   return (name?.trim().slice(0, 1) || "?").toUpperCase();
@@ -140,7 +140,7 @@ export function SnapCommentButton({ snapId, currentUserId }: { snapId: string; c
                             type="button"
                             onClick={() => removeComment(comment.id)}
                             disabled={isPending}
-                            className="mt-1.5 inline-flex items-center gap-1 text-[0.66rem] font-bold text-mute transition hover:text-red-600"
+                            className="mt-1.5 inline-flex items-center gap-1 text-[0.66rem] font-bold text-mute transition hover:text-red-600 active:scale-[0.98] disabled:opacity-50"
                           >
                             <Trash2 aria-hidden="true" size={12} />
                             削除
@@ -177,7 +177,7 @@ export function SnapCommentButton({ snapId, currentUserId }: { snapId: string; c
                   type="submit"
                   disabled={isPending || text.trim().length === 0}
                   aria-label="送信"
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-white transition disabled:opacity-40"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-white transition active:scale-95 disabled:opacity-40"
                 >
                   <Send aria-hidden="true" size={18} />
                 </button>

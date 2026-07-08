@@ -2,9 +2,11 @@ import { ArrowLeft, Send, ShieldCheck, Sparkles, UserRoundPen } from "lucide-rea
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignupRequiredCard } from "@/components/AuthGate";
+import { BackroomSetupRequiredCard } from "@/components/BackroomSetupRequiredCard";
+import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { pathWithParams } from "@/lib/auth/redirects";
-import { BACKROOM_CATEGORIES } from "@/lib/supabase/backroom";
+import { BACKROOM_CATEGORIES, getBackroomProfile } from "@/lib/supabase/backroom";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { createBackroomPostAction } from "./actions";
@@ -86,6 +88,22 @@ export default async function BackroomPostPage({ searchParams }: BackroomPostPag
     redirect(pathWithParams("/mypage/profile/edit", { error: "プロフィール情報を確認できませんでした。保存後にBack Room投稿をお試しください。" }));
   }
 
+  const { profile: backroomProfile } = await getBackroomProfile(supabase, user.id);
+
+  if (backroomProfile == null) {
+    return (
+      <PageChrome>
+        <section className="px-4 pt-4">
+          <Link href="/backroom" className="inline-flex items-center gap-1.5 text-sm font-black text-ink transition active:scale-[0.98]">
+            <ArrowLeft aria-hidden="true" size={17} />
+            Back Roomへ戻る
+          </Link>
+        </section>
+        <BackroomSetupRequiredCard next="/post/backroom" />
+      </PageChrome>
+    );
+  }
+
   return (
     <PageChrome>
       <section className="px-4 pt-4">
@@ -97,10 +115,10 @@ export default async function BackroomPostPage({ searchParams }: BackroomPostPag
           <div className="grid h-11 w-11 place-items-center rounded-full bg-blushSoft text-blush">
             <ShieldCheck aria-hidden="true" size={22} />
           </div>
-          <p className="mt-3 text-[0.68rem] font-black uppercase tracking-[0.14em] text-blush">BACK ROOM POST</p>
-          <h1 className="mt-1 text-[1.5rem] font-black leading-tight text-ink">Back Roomに投稿</h1>
+          <p className="mt-3 text-[0.68rem] font-black uppercase tracking-[0.14em] text-blush">BACK ROOM THREAD</p>
+          <h1 className="mt-1 text-[1.5rem] font-black leading-tight text-ink">スレッドを立てる</h1>
           <p className="mt-2 text-[0.86rem] font-medium leading-relaxed text-mute">
-            営業後に、少しだけ本音で話せる場所。通常の記事より軽く、相談や雑談を残せます。
+            カテゴリーを選んで、営業後に話したい相談や雑談のスレッドを立てられます。
           </p>
           <div className="mt-3 flex items-start gap-2 rounded-[8px] bg-blushSoft p-3">
             <Sparkles aria-hidden="true" size={17} className="mt-0.5 shrink-0 text-blush" />
@@ -117,7 +135,7 @@ export default async function BackroomPostPage({ searchParams }: BackroomPostPag
         ) : null}
 
         <label className="grid gap-2">
-          <span className="text-sm font-black text-ink">タイトル</span>
+        <span className="text-sm font-black text-ink">スレッドタイトル</span>
           <input
             name="title"
             maxLength={120}
@@ -139,7 +157,7 @@ export default async function BackroomPostPage({ searchParams }: BackroomPostPag
         </label>
 
         <label className="grid gap-2">
-          <span className="text-sm font-black text-ink">本文</span>
+          <span className="text-sm font-black text-ink">最初の本文</span>
           <textarea
             name="body"
             rows={9}
@@ -154,10 +172,10 @@ export default async function BackroomPostPage({ searchParams }: BackroomPostPag
           タイトル・カテゴリー・本文は必須です。個人名や店舗名を出した攻撃、晒しは避けてください。
         </div>
 
-        <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+        <LoadingSubmitButton pendingText="作成中..." className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
           <Send aria-hidden="true" size={17} />
-          投稿する
-        </button>
+          スレッドを作成
+        </LoadingSubmitButton>
       </form>
     </PageChrome>
   );

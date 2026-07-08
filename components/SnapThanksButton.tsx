@@ -8,7 +8,7 @@ import { toggleSnapThanksAction, type SnapThanksState } from "@/app/snap/actions
 import { pathWithParams } from "@/lib/auth/redirects";
 
 const buttonBase =
-  "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.7rem] font-black transition";
+  "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.7rem] font-black transition active:scale-[0.98] disabled:cursor-not-allowed";
 
 function SubmitThanksButton({ thanked }: { thanked: boolean }) {
   const { pending } = useFormStatus();

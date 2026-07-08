@@ -5,6 +5,7 @@ import {
   UserRoundPlus,
 } from "lucide-react";
 import Link from "next/link";
+import { PendingLink } from "./PendingLink";
 
 export function BackyardSection() {
   return (
@@ -12,8 +13,10 @@ export function BackyardSection() {
       <div className="rounded-[10px] border border-line/80 bg-white p-4 shadow-[0_12px_32px_rgba(17,17,17,0.045)]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-ink bg-ink px-3 py-1.5 text-[0.64rem] font-black tracking-[0.04em] text-white shadow-[0_8px_20px_rgba(17,17,17,0.08)]">
-              <LockKeyhole aria-hidden="true" size={12} />
+            <div className="inline-flex items-center gap-2 rounded-full border border-ink bg-ink px-3 py-1.5 text-[0.64rem] font-black tracking-[0.04em] text-white shadow-[0_0_0_3px_rgba(255,59,134,0.1),0_8px_20px_rgba(17,17,17,0.08)]">
+              <span className="grid h-6 w-6 place-items-center rounded-full bg-white/10 ring-2 ring-blush/35">
+                <LockKeyhole aria-hidden="true" size={15} strokeWidth={2.6} />
+              </span>
               会員限定
             </div>
             <h2 className="editorial-serif mt-3 text-[1.52rem] leading-none text-ink">Back Room</h2>
@@ -25,20 +28,20 @@ export function BackyardSection() {
         </div>
 
         <div className="mt-5 grid grid-cols-[1fr_auto] gap-2">
-          <Link href="/backroom" className="inline-flex h-11 items-center justify-center gap-1.5 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
+          <PendingLink href="/backroom" pendingLabel="入室中..." className="inline-flex h-11 items-center justify-center gap-1.5 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
             Back Roomに入る
             <ArrowRight aria-hidden="true" size={15} />
-          </Link>
-          <Link
-            href="/backyard/setup?next=/backroom"
+          </PendingLink>
+          <PendingLink
+            href="/backroom/setup?next=/backroom"
             className="inline-flex h-11 w-11 items-center justify-center rounded-[8px] border border-line bg-white text-ink"
             aria-label="Back Room用ニックネームを設定する"
           >
             <UserRoundPlus aria-hidden="true" size={18} />
-          </Link>
+          </PendingLink>
         </div>
 
-        <Link href="/backyard/setup?next=/backroom" className="mt-2 inline-flex text-[0.68rem] font-bold text-mute">
+        <Link href="/backroom/setup?next=/backroom" className="mt-2 inline-flex text-[0.68rem] font-bold text-mute transition active:scale-[0.98]">
           ニックネーム未設定の方は参加設定へ
         </Link>
       </div>

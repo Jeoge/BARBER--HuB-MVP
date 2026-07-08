@@ -2,6 +2,7 @@ import { Bookmark, MessageCircle, Send, Sparkles, ThumbsUp } from "lucide-react"
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { createArticleCommentAction, toggleArticleReactionAction } from "@/app/articles/actions";
+import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { pathWithParams } from "@/lib/auth/redirects";
 import type { ArticleComment, ArticleMetrics } from "@/lib/supabase/articles";
 
@@ -17,7 +18,7 @@ type ArticleEngagementPanelProps = {
 };
 
 const reactionButtonBase =
-  "inline-flex h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.72rem] font-black transition";
+  "inline-flex h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.72rem] font-black transition active:scale-[0.98]";
 
 const reactionConfig = {
   like: {
@@ -65,7 +66,7 @@ function LoginReactionLink({ articleId, label, count, children }: { articleId: s
   return (
     <Link
       href={pathWithParams("/login", { next: `/articles/${articleId}`, message: `${label}にはログインしてください。` })}
-      className={reactionButtonBase + " border-line/80 bg-white text-ink/78"}
+            className={reactionButtonBase + " border-line/80 bg-white text-ink/78"}
     >
       {children}
       <span>{label}</span>
@@ -123,11 +124,11 @@ export function ArticleEngagementPanel({
             <form key={reactionType} action={toggleArticleReactionAction}>
               <input type="hidden" name="articleId" value={articleId} />
               <input type="hidden" name="reactionType" value={reactionType} />
-              <button type="submit" aria-pressed={pressed} className={reactionButtonBase + pressedClass}>
+              <LoadingSubmitButton pendingText="保存中..." className={reactionButtonBase + pressedClass}>
                 <Icon aria-hidden="true" size={15} strokeWidth={1.9} fill={pressed && reactionType !== "thanks" ? "currentColor" : "none"} className={reactionType === "thanks" ? "text-blush" : ""} />
                 <span>{config.label}</span>
                 <span className={pressed ? "text-ink" : "text-mute"}>{count}</span>
-              </button>
+              </LoadingSubmitButton>
             </form>
           );
         })}
@@ -176,10 +177,10 @@ export function ArticleEngagementPanel({
               placeholder="経験や気づきをコメントする"
               className="resize-none rounded-[8px] border border-line bg-neutral-50 px-3 py-2.5 text-sm font-medium leading-relaxed text-ink outline-none placeholder:text-mute/70 focus:border-ink/30 focus:bg-white"
             />
-            <button type="submit" className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
+            <LoadingSubmitButton pendingText="コメント中..." className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
               <Send aria-hidden="true" size={15} />
               コメントする
-            </button>
+            </LoadingSubmitButton>
           </form>
         )}
 

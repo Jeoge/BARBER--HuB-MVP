@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, ImagePlus, MapPin, Save } from "lucide-react";
+import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
@@ -186,10 +187,10 @@ export default async function ProfileEditPage({ searchParams }: ProfileEditPageP
           <Field name="booking_url" label="予約リンク" defaultValue={profile?.booking_url} placeholder="https://..." />
         </div>
 
-        <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink text-sm font-black text-white">
+        <LoadingSubmitButton pendingText="保存中..." className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink text-sm font-black text-white">
           <Save aria-hidden="true" size={17} />
           保存する
-        </button>
+        </LoadingSubmitButton>
       </form>
     </PageChrome>
   );

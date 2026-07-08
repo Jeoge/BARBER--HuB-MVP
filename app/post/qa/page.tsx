@@ -2,6 +2,7 @@ import { ArrowLeft, HelpCircle, Send, Sparkles, UserRoundPen } from "lucide-reac
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignupRequiredCard } from "@/components/AuthGate";
+import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getAccountProfile } from "@/lib/supabase/profiles";
@@ -150,10 +151,10 @@ export default async function QaPostPage({ searchParams }: QaPostPageProps) {
           />
         </label>
 
-        <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+        <LoadingSubmitButton pendingText="投稿中..." className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
           <Send aria-hidden="true" size={17} />
           質問を投稿する
-        </button>
+        </LoadingSubmitButton>
       </form>
     </PageChrome>
   );

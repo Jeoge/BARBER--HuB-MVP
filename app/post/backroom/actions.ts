@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
-import { isBackroomCategory } from "@/lib/supabase/backroom";
+import { getBackroomProfile, isBackroomCategory, normalizeBackroomCategory } from "@/lib/supabase/backroom";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
@@ -76,9 +76,25 @@ export async function createBackroomPostAction(formData: FormData) {
     redirectToBackroomPost({ error: "プロフィール設定後にBack Roomへ投稿できます。" });
   }
 
+  const { profile: backroomProfile, error: backroomProfileError } = await getBackroomProfile(supabase, user.id);
+
+  if (backroomProfileError) {
+    console.error("Back Room member profile lookup failed", {
+      userId: user.id,
+      userEmail: user.email ?? null,
+      message: errorMessage(backroomProfileError),
+    });
+    redirectToBackroomPost({ error: "Back Room参加設定を確認できませんでした。Supabase SQL Editorで最新migrationを実行してください。" });
+  }
+
+  if (backroomProfile == null) {
+    redirect(pathWithParams("/backroom/setup", { next: "/post/backroom", error: "Back Room専用ニックネームを設定してください。" }));
+  }
+
   const title = cleanText(formData.get("title"));
   const body = cleanText(formData.get("body"));
-  const category = cleanText(formData.get("category"));
+  const categoryInput = cleanText(formData.get("category"));
+  const category = normalizeBackroomCategory(categoryInput);
 
   if (!title) {
     redirectToBackroomPost({ error: "タイトルを入力してください。" });
