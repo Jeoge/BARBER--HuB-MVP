@@ -122,6 +122,30 @@ type SnapReactionRow = {
   reaction_type: string;
 };
 
+function errorCode(error: unknown) {
+  return error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : "";
+}
+
+function errorMessage(error: unknown) {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") return error.message;
+  if (error instanceof Error) return error.message;
+  return String(error || "");
+}
+
+export function isMissingSnapReactionsTableError(error: unknown) {
+  const message = errorMessage(error).toLowerCase();
+
+  return (
+    errorCode(error) === "PGRST205" ||
+    (message.includes("snap_reactions") &&
+      (message.includes("could not find the table") ||
+        message.includes("schema cache") ||
+        message.includes("does not exist") ||
+        message.includes("relation") ||
+        message.includes("not found")))
+  );
+}
+
 async function withReactionSummaries(supabase: SupabaseClient, snaps: SnapWithAuthor[], viewerId?: string | null) {
   const snapIds = snaps.map((snap) => snap.id).filter((id) => id.length > 0);
 
@@ -136,6 +160,10 @@ async function withReactionSummaries(supabase: SupabaseClient, snaps: SnapWithAu
       .returns<SnapReactionRow[]>();
 
     if (error) {
+      if (isMissingSnapReactionsTableError(error)) {
+        return snaps;
+      }
+
       console.error("Snap reactions select failed", {
         message: error.message,
       });
@@ -164,8 +192,12 @@ async function withReactionSummaries(supabase: SupabaseClient, snaps: SnapWithAu
       viewer_has_thanked: viewerId != null && viewerId !== snap.author_id && viewerThankedSnapIds.has(snap.id),
     }));
   } catch (error) {
+    if (isMissingSnapReactionsTableError(error)) {
+      return snaps;
+    }
+
     console.error("Snap reactions select threw", {
-      message: error instanceof Error ? error.message : String(error),
+      message: errorMessage(error),
     });
     return snaps;
   }
