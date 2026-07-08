@@ -330,20 +330,15 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
             <p className="text-[0.66rem] font-black uppercase tracking-[0.12em] text-blush">HIRING</p>
             <h2 className="mt-1 text-lg font-black text-ink">このサロンは見学・応募を受付中</h2>
             <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
-              投稿やSnapでお店の雰囲気を見て、気になったら見学へ。
+              投稿やSnapでお店の雰囲気を見て、気になったら求人詳細の直接連絡先を確認してください。
             </p>
             <div className="mt-3 grid gap-2">
               <Link href={`/jobs/${profile.jobId}`} className="inline-flex h-11 items-center justify-center rounded-[8px] bg-ink px-3 text-sm font-black text-white">
                 このサロンの求人を見る
               </Link>
-              <div className="grid grid-cols-2 gap-2">
-                <Link href={`/jobs/${profile.jobId}/apply?type=tour`} className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
-                  見学を申し込む
-                </Link>
-                <Link href={`/jobs/${profile.jobId}/apply?type=interview`} className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
-                  面接を申し込む
-                </Link>
-              </div>
+              <Link href={`/jobs/${profile.jobId}/apply`} className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
+                直接連絡先を見る
+              </Link>
             </div>
           </div>
         </section>

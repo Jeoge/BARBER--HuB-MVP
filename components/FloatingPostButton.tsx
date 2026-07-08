@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, FilePenLine, FileText, MessageSquare, Plus, ShieldCheck, Video, X } from "lucide-react";
+import { BriefcaseBusiness, Camera, FilePenLine, FileText, MessageSquare, Plus, ShieldCheck, Video, X } from "lucide-react";
 import { useState } from "react";
 import { AuthGateLink } from "./AuthGate";
 
@@ -9,6 +9,7 @@ const postItems = [
   { label: "経験記事を書く", icon: FilePenLine, href: "/post/article" },
   { label: "Q&Aで相談する", icon: MessageSquare, href: "/post/qa" },
   { label: "Back Roomに投稿", icon: ShieldCheck, href: "/post/backroom", kind: "backyard" as const, signupNextHref: "/post/backroom" },
+  { label: "求人を掲載する", icon: BriefcaseBusiness, href: "/post/job", kind: "jobs" as const, signupNextHref: "/post/job" },
   { label: "講習会レポートを書く", icon: Video, href: "/post/seminar" },
 ];
 

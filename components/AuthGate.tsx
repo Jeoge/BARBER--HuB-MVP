@@ -32,7 +32,7 @@ const copyMap: Record<GateKind, Copy> = {
     title: "求人掲載には会員登録が必要です",
     body: "BARBER HUBでは、理容業界に関心のある学生・理容師へ求人情報を届けられます。掲載を始めるには無料登録が必要です。",
     cta: "無料で会員登録する",
-    href: "/signup?next=/jobs/register",
+    href: "/signup?next=/post/job",
   },
 };
 
@@ -44,7 +44,7 @@ type AuthRequiredModalProps = {
 
 function defaultNextForKind(kind: GateKind) {
   if (kind === "backyard") return "/backroom";
-  if (kind === "jobs") return "/jobs/register";
+  if (kind === "jobs") return "/post/job";
   return "/mypage";
 }
 
