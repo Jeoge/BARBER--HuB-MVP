@@ -24,7 +24,7 @@ export function SafetyChecklist({
   title = "投稿前の確認",
   body,
   items,
-  rulesHref = "/community-guidelines",
+  rulesHref = "/guidelines",
   rulesLabel = "投稿ガイドライン",
   onRequiredCompleteChange,
 }: SafetyChecklistProps) {

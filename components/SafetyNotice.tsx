@@ -13,7 +13,7 @@ type SafetyNoticeProps = {
 export function SafetyNotice({
   title = "安心して使うための確認",
   children,
-  href = "/community-guidelines",
+  href = "/guidelines",
   linkLabel = "投稿ガイドライン",
   tone = "neutral",
 }: SafetyNoticeProps) {

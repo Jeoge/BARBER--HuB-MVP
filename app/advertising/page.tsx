@@ -75,7 +75,7 @@ export default async function AdvertisingPage({ searchParams }: AdvertisingPageP
       </section>
 
       <section className="px-4 pt-5">
-        <SafetyNotice title="広告・協賛の掲載方針" href="/ad-policy" linkLabel="広告・PRポリシー" tone="blush">
+        <SafetyNotice title="広告・協賛の掲載方針" href="/advertising/policy" linkLabel="広告・PRポリシー" tone="blush">
           BARBER HUBでは、広告・PR・協賛・公式告知であることが分かる表記を行います。掲載による応募数、売上、集客効果を保証するものではありません。
         </SafetyNotice>
       </section>

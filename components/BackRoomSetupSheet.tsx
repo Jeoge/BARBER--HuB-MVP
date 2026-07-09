@@ -148,7 +148,7 @@ export function BackRoomSetupSheet() {
             Back Room Rulesを確認しました。
           </label>
         </div>
-        <Link href="/backyard-rules" className="mt-3 inline-flex text-xs font-black text-blush">
+        <Link href="/backroom/rules" className="mt-3 inline-flex text-xs font-black text-blush">
           Back Room Rulesを確認する
         </Link>
       </div>

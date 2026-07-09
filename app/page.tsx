@@ -6,6 +6,7 @@ import { FloatingPostButton } from "@/components/FloatingPostButton";
 import { Header } from "@/components/Header";
 import { HorizontalRail } from "@/components/HorizontalRail";
 import { LiveEditorialCover } from "@/components/LiveEditorialCover";
+import { LegalLinks } from "@/components/LegalLinks";
 import { MainFeature } from "@/components/MainFeature";
 import { QASection } from "@/components/QASection";
 import { SnapSection } from "@/components/SnapSection";
@@ -33,6 +34,7 @@ export default function Home() {
       <HorizontalRail title="メーカー新商品" items={articles.filter((article) => article.category === "メーカー新商品")} />
       <HorizontalRail title="講習会" items={seminars} hrefPrefix="/seminars" />
       <HorizontalRail title="学生・求人" items={jobs} hrefPrefix="/jobs" />
+      <LegalLinks />
       <FloatingPostButton />
       <BottomNavigation />
     </main>
