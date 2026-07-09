@@ -228,7 +228,7 @@ export default async function AdvertisingApplyPage({ searchParams }: Advertising
           title="広告・協賛問い合わせ前の確認"
           body="掲載内容は運営確認後に掲載します。広告・PR・協賛であることが分かる表記を行い、掲載による応募数・売上・集客効果を保証するものではありません。"
           items={advertisingSafetyItems}
-          rulesHref="/ad-policy"
+          rulesHref="/advertising/policy"
           rulesLabel="広告・PRポリシー"
           pendingText="送信中..."
           className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white"

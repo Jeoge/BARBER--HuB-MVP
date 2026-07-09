@@ -1,4 +1,5 @@
 import { AlertCircle, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 import { PageChrome } from "./PageChrome";
 import { PageHeaderBlock } from "./PageHeaderBlock";
 import type { LegalPage } from "@/lib/legalPages";
@@ -28,11 +29,23 @@ export function LegalPageContent({ page }: LegalPageContentProps) {
         ))}
       </section>
 
+      {page.relatedLinks && page.relatedLinks.length > 0 ? (
+        <section className="px-4 pt-5">
+          <div className="grid grid-cols-2 gap-2">
+            {page.relatedLinks.map((link) => (
+              <Link key={link.href} href={link.href} className="inline-flex min-h-11 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-center text-xs font-black text-ink shadow-sm">
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="px-4 pt-5">
         <div className="flex items-start gap-2 rounded-[8px] border border-blush/20 bg-blushSoft p-3">
           <AlertCircle aria-hidden="true" size={17} className="mt-0.5 shrink-0 text-blush" />
           <p className="text-[0.72rem] font-bold leading-relaxed text-mute">
-            このページはMVP用の仮文章です。正式公開前に内容を確認・更新します。
+            内容はサービスの運用状況に合わせて更新する場合があります。重要な判断が必要な場合は、当事者間で確認してください。
           </p>
         </div>
       </section>
