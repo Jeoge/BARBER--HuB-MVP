@@ -78,7 +78,7 @@ export default async function QaDetailPage({ params, searchParams }: QaDetailPag
           </p>
           {questionError ? (
             <p className="mt-3 rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
-              Supabase SQL Editorで最新migrationが適用済みか確認してください。
+              時間をおいて再読み込みしてください。
             </p>
           ) : null}
           <Link href="/qa" className="mt-5 inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
@@ -144,7 +144,7 @@ export default async function QaDetailPage({ params, searchParams }: QaDetailPag
         ) : null}
         {answersError ? (
           <div className="mt-3 rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
-            回答を読み込めませんでした。最新migrationを確認してください。
+            回答を読み込めませんでした。時間をおいて再読み込みしてください。
           </div>
         ) : null}
         <div className="mt-3 grid gap-2">

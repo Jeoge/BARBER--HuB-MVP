@@ -32,7 +32,7 @@ function saveErrorMessage(error: unknown) {
   const message = errorMessage(error).toLowerCase();
 
   if (message.includes("relation") && message.includes("qa_questions")) {
-    return "Q&A投稿に必要なSQLが未適用です。Supabase SQL Editorで最新migrationを実行してください。";
+    return "質問を保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("foreign key")) {
@@ -40,7 +40,7 @@ function saveErrorMessage(error: unknown) {
   }
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "質問を保存できませんでした。権限設定を確認してください。";
+    return "質問を保存できませんでした。時間をおいて再度お試しください。";
   }
 
   return "質問を保存できませんでした。入力内容を確認して、もう一度お試しください。";
@@ -68,7 +68,6 @@ export async function createQaQuestionAction(formData: FormData) {
   if (profileError) {
     console.error("Q&A post profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: profileError.message,
     });
     redirectToQaPost({ error: "プロフィール情報を確認できませんでした。時間をおいて再度お試しください。" });
@@ -133,7 +132,6 @@ export async function createQaQuestionAction(formData: FormData) {
   if (error) {
     console.error("Q&A question insert failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: error.message,
     });
     redirectToQaPost({ error: saveErrorMessage(error) });

@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { allowedImageContentType, isAllowedImageFile, safeUploadFileName } from "@/lib/imageValidation";
 import { getPostPermissionRedirect } from "@/lib/permissions";
 import { isSafetyConfirmed, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
 import { getAccountProfile } from "@/lib/supabase/profiles";
@@ -39,11 +40,11 @@ function uploadErrorMessage(error: unknown) {
   const message = supabaseMessage(error);
 
   if (message.includes("bucket") || message.includes("not found")) {
-    return "画像アップロードに失敗しました。Storage bucket「snap-images」が見つからない可能性があります。";
+    return "画像アップロードに失敗しました。しばらく時間をおいて再度お試しください。";
   }
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "画像アップロードに失敗しました。Storageの権限設定を確認してください。";
+    return "画像アップロードに失敗しました。しばらく時間をおいて再度お試しください。";
   }
 
   return "画像アップロードに失敗しました。しばらく時間をおいて再度お試しください。";
@@ -53,7 +54,7 @@ function profileErrorMessage(error: unknown) {
   const message = supabaseMessage(error);
 
   if (message.includes("row-level security") || message.includes("permission")) {
-    return "プロフィール情報を確認できませんでした。profilesテーブルの権限設定を確認してください。";
+    return "プロフィール情報を確認できませんでした。しばらく時間をおいて再度お試しください。";
   }
 
   return "プロフィール情報を確認できませんでした。しばらく時間をおいて再度お試しください。";
@@ -70,7 +71,7 @@ function insertErrorMessage(error: unknown, hadUploadedImage: boolean) {
   }
 
   if (message.includes("row-level security") || message.includes("permission")) {
-    return `${prefix}snapsテーブルの権限設定を確認してください。`;
+    return `${prefix}しばらく時間をおいて再度お試しください。`;
   }
 
   if (message.includes("null value") && message.includes("id")) {
@@ -82,44 +83,6 @@ function insertErrorMessage(error: unknown, hadUploadedImage: boolean) {
   }
 
   return `${prefix}しばらく時間をおいて再度お試しください。`;
-}
-
-function safeFileName(fileName: string, contentType: string) {
-  const extensionFromType = contentType.split("/")[1]?.replace(/[^a-z0-9]/gi, "").toLowerCase();
-  const filePart = fileName.split(/[/\\]/).pop() || "";
-  const extensionFromName = filePart.includes(".")
-    ? filePart.split(".").pop()?.replace(/[^a-z0-9]/gi, "").toLowerCase()
-    : "";
-  const extension = extensionFromName || extensionFromType || "jpg";
-  const baseName = filePart.replace(/\.[^.]+$/, "");
-  const normalizedBase = baseName
-    .normalize("NFKD")
-    .replace(/[^\w.-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase();
-  const safeBase = normalizedBase || "snap";
-
-  return `${safeBase.slice(0, 72)}.${extension}`.slice(0, 90);
-}
-
-function isLikelyImageFile(file: File) {
-  if (file.type.startsWith("image/")) return true;
-  return /\.(avif|gif|heic|heif|jpeg|jpg|png|webp)$/i.test(file.name);
-}
-
-function contentTypeForUpload(file: File) {
-  if (file.type) return file.type;
-  const extension = file.name.split(".").pop()?.toLowerCase();
-
-  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
-  if (extension === "png") return "image/png";
-  if (extension === "webp") return "image/webp";
-  if (extension === "gif") return "image/gif";
-  if (extension === "heic") return "image/heic";
-  if (extension === "heif") return "image/heif";
-
-  return "application/octet-stream";
 }
 
 export async function createSnapAction(formData: FormData) {
@@ -157,7 +120,6 @@ export async function createSnapAction(formData: FormData) {
   } catch (error) {
     console.error("Snap profile lookup threw", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: errorMessage(error),
     });
     redirectToSnapPost({ error: "プロフィール情報を確認できませんでした。しばらく時間をおいて再度お試しください。" });
@@ -168,7 +130,6 @@ export async function createSnapAction(formData: FormData) {
   if (profileError) {
     console.error("Snap profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: errorMessage(profileError),
     });
     redirectToSnapPost({ error: profileErrorMessage(profileError) });
@@ -208,7 +169,7 @@ export async function createSnapAction(formData: FormData) {
   }
 
   if (image instanceof File && image.size > 0) {
-    if (!isLikelyImageFile(image)) {
+    if (!isAllowedImageFile(image)) {
       redirectToSnapPost({ error: "画像ファイルだけアップロードできます。" });
     }
 
@@ -216,8 +177,13 @@ export async function createSnapAction(formData: FormData) {
       redirectToSnapPost({ error: "画像は10MB以下にしてください。" });
     }
 
-    const uploadContentType = contentTypeForUpload(image);
-    const uploadPath = `${user.id}/${Date.now()}-${randomUUID()}-${safeFileName(image.name, uploadContentType)}`;
+    const uploadContentType = allowedImageContentType(image);
+
+    if (uploadContentType == null) {
+      redirectToSnapPost({ error: "画像ファイルだけアップロードできます。" });
+    }
+
+    const uploadPath = `${user.id}/${Date.now()}-${randomUUID()}-${safeUploadFileName(image.name, uploadContentType, "snap")}`;
     let uploadResult: Awaited<ReturnType<ReturnType<typeof supabase.storage.from>["upload"]>>;
 
     try {
@@ -231,7 +197,6 @@ export async function createSnapAction(formData: FormData) {
     } catch (error) {
       console.error("Snap image upload threw", {
         userId: user.id,
-        userEmail: user.email ?? null,
         uploadPath,
         message: errorMessage(error),
       });
@@ -243,7 +208,6 @@ export async function createSnapAction(formData: FormData) {
     if (uploadError) {
       console.error("Snap image upload failed", {
         userId: user.id,
-        userEmail: user.email ?? null,
         uploadPath,
         message: uploadError.message,
       });
@@ -278,7 +242,6 @@ export async function createSnapAction(formData: FormData) {
   } catch (error) {
     console.error("Snap insert threw", {
       userId: user.id,
-      userEmail: user.email ?? null,
       profileId: profile.id,
       hasImage: Boolean(imagePath),
       message: errorMessage(error),
@@ -312,7 +275,6 @@ export async function createSnapAction(formData: FormData) {
   if (error) {
     console.error("Snap insert failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       profileId: profile.id,
       hasImage: Boolean(imagePath),
       message: error.message,
@@ -344,9 +306,5 @@ export async function createSnapAction(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/snap");
   revalidatePath("/mypage");
-  console.log("Snap insert succeeded; redirecting to /snap", {
-    userId: user.id,
-    hasImage: Boolean(imagePath),
-  });
   redirect(pathWithParams("/snap", { posted: "1" }));
 }

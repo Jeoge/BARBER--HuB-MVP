@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 type JobFormMode = "create" | "update";
 
 const JOB_RELATION_ERROR =
-  "求人保存に必要なjob_postsテーブルが見つかりません。Supabase SQL Editorで最新migrationを実行してください。";
+  "求人を保存できませんでした。時間をおいて再度お試しください。";
 const JOB_SAFETY_FIELDS = ["jobFactsConfirmed", "jobDirectContactConfirmed", "jobNoGuaranteeConfirmed"];
 
 function cleanText(value: FormDataEntryValue | null) {
@@ -83,7 +83,7 @@ function saveErrorMessage(error: unknown) {
   }
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "求人を保存できませんでした。店舗情報の登録状態またはjob_postsの権限設定を確認してください。";
+    return "求人を保存できませんでした。店舗情報を確認して、もう一度お試しください。";
   }
 
   if (message.includes("safety_confirmed_at") || message.includes("guidelines_confirmed") || message.includes("pr_disclosure_checked")) {
@@ -196,7 +196,6 @@ async function requireJobPoster(redirectPath: string) {
   if (profileError) {
     console.error("Job post profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: profileError.message,
     });
     redirectToJobForm(redirectPath, "プロフィール情報を確認できませんでした。時間をおいて再度お試しください。");
@@ -237,7 +236,6 @@ async function saveJobPost(formData: FormData, mode: JobFormMode) {
     if (error) {
       console.error("Job post insert failed", {
         userId: user.id,
-        userEmail: user.email ?? null,
         message: error.message,
       });
       redirectToJobForm(redirectPath, saveErrorMessage(error));
@@ -270,7 +268,6 @@ async function saveJobPost(formData: FormData, mode: JobFormMode) {
   if (error) {
     console.error("Job post update failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       jobId,
       message: error.message,
     });
@@ -310,7 +307,6 @@ export async function closeJobPostAction(formData: FormData) {
   if (error) {
     console.error("Job post close failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       jobId,
       message: error.message,
     });

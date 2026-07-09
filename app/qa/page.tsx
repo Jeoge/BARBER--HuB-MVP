@@ -84,7 +84,7 @@ export default async function QaPage() {
       <section className="grid gap-3 px-4 pt-4">
         {error ? (
           <div className="rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
-            Q&Aを読み込めませんでした。Supabase SQL Editorで最新migrationが適用済みか確認してください。
+            Q&Aを読み込めませんでした。時間をおいて再読み込みしてください。
           </div>
         ) : null}
         {questions.length === 0 ? (

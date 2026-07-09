@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { allowedImageContentType, isAllowedImageFile, safeUploadFileName } from "@/lib/imageValidation";
 import { createClient } from "@/lib/supabase/server";
 
 const MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -42,44 +43,6 @@ function errorMessage(error: unknown) {
   return "";
 }
 
-function isLikelyImageFile(file: File) {
-  if (file.type.startsWith("image/")) return true;
-  return /\.(avif|gif|heic|heif|jpeg|jpg|png|webp)$/i.test(file.name);
-}
-
-function contentTypeForUpload(file: File) {
-  if (file.type) return file.type;
-  const extension = file.name.split(".").pop()?.toLowerCase();
-
-  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
-  if (extension === "png") return "image/png";
-  if (extension === "webp") return "image/webp";
-  if (extension === "gif") return "image/gif";
-  if (extension === "heic") return "image/heic";
-  if (extension === "heif") return "image/heif";
-
-  return "application/octet-stream";
-}
-
-function safeFileName(fileName: string, contentType: string) {
-  const extensionFromType = contentType.split("/")[1]?.replace(/[^a-z0-9]/gi, "").toLowerCase();
-  const filePart = fileName.split(/[/\\]/).pop() || "";
-  const extensionFromName = filePart.includes(".")
-    ? filePart.split(".").pop()?.replace(/[^a-z0-9]/gi, "").toLowerCase()
-    : "";
-  const extension = extensionFromName || extensionFromType || "jpg";
-  const baseName = filePart.replace(/\.[^.]+$/, "");
-  const normalizedBase = baseName
-    .normalize("NFKD")
-    .replace(/[^\w.-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase();
-  const safeBase = normalizedBase || "profile";
-
-  return `${safeBase.slice(0, 72)}.${extension}`.slice(0, 90);
-}
-
 async function uploadProfileImage({
   supabase,
   file,
@@ -91,7 +54,7 @@ async function uploadProfileImage({
   userId: string;
   kind: "avatar" | "cover";
 }) {
-  if (!isLikelyImageFile(file)) {
+  if (!isAllowedImageFile(file)) {
     return { url: null, error: "画像ファイルだけアップロードできます。" };
   }
 
@@ -99,8 +62,13 @@ async function uploadProfileImage({
     return { url: null, error: "プロフィール画像は1枚5MB以下で選択してください。" };
   }
 
-  const contentType = contentTypeForUpload(file);
-  const uploadPath = `${userId}/${kind}-${Date.now()}-${randomUUID()}-${safeFileName(file.name, contentType)}`;
+  const contentType = allowedImageContentType(file);
+
+  if (contentType == null) {
+    return { url: null, error: "画像ファイルだけアップロードできます。" };
+  }
+
+  const uploadPath = `${userId}/${kind}-${Date.now()}-${randomUUID()}-${safeUploadFileName(file.name, contentType, "profile")}`;
   const { error: uploadError } = await supabase.storage.from(PROFILE_IMAGE_BUCKET).upload(uploadPath, file, {
     cacheControl: "3600",
     upsert: false,
@@ -114,7 +82,7 @@ async function uploadProfileImage({
       uploadPath,
       message: uploadError.message,
     });
-    return { url: null, error: "プロフィール画像のアップロードに失敗しました。Storage設定を確認してください。" };
+    return { url: null, error: "プロフィール画像のアップロードに失敗しました。しばらく時間をおいて再度お試しください。" };
   }
 
   const { data } = supabase.storage.from(PROFILE_IMAGE_BUCKET).getPublicUrl(uploadPath);
@@ -126,7 +94,7 @@ function profileSaveErrorMessage(error: unknown) {
   const message = errorMessage(error).toLowerCase();
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "プロフィールを保存できませんでした。profilesテーブルの権限設定を確認してください。";
+    return "プロフィールを保存できませんでした。しばらく時間をおいて再度お試しください。";
   }
 
   if (
@@ -136,7 +104,7 @@ function profileSaveErrorMessage(error: unknown) {
     message.includes("instagram_url") ||
     message.includes("hotpepper_url")
   ) {
-    return "お店情報とSNSリンクの保存に必要なprofilesカラムが未適用です。Supabase SQL Editorで最新migrationを実行してください。";
+    return "プロフィールを保存できませんでした。入力内容を確認して、もう一度お試しください。";
   }
 
   return "プロフィールを保存できませんでした。入力内容を確認して、もう一度お試しください。";
@@ -174,10 +142,9 @@ export async function saveProfileAction(formData: FormData) {
   if (existingError) {
     console.error("Profile lookup before save failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: existingError.message,
     });
-    redirectToEdit("プロフィールの確認に失敗しました。profilesテーブルの権限設定を確認してください。");
+    redirectToEdit("プロフィールの確認に失敗しました。しばらく時間をおいて再度お試しください。");
   }
 
   const avatarImage = formData.get("avatar_image");
@@ -232,7 +199,6 @@ export async function saveProfileAction(formData: FormData) {
   if (error) {
     console.error("Profile upsert failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: error.message,
     });
     redirectToEdit(profileSaveErrorMessage(error));

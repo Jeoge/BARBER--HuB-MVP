@@ -139,7 +139,7 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
     if (isMissingSnapReactionsTableError(existingError)) {
       return {
         ...previousState,
-        error: "Thanks機能の準備中です。snap_reactionsテーブルのmigration適用状況を確認してください。",
+        error: "Thanks機能の準備中です。しばらく時間をおいて再度お試しください。",
       };
     }
 
@@ -161,7 +161,7 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
       if (isMissingSnapReactionsTableError(deleteError)) {
         return {
           ...previousState,
-          error: "Thanks機能の準備中です。snap_reactionsテーブルのmigration適用状況を確認してください。",
+          error: "Thanks機能の準備中です。しばらく時間をおいて再度お試しください。",
         };
       }
 
@@ -198,7 +198,7 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
     if (isMissingSnapReactionsTableError(insertError)) {
       return {
         ...previousState,
-        error: "Thanks機能の準備中です。snap_reactionsテーブルのmigration適用状況を確認してください。",
+        error: "Thanks機能の準備中です。しばらく時間をおいて再度お試しください。",
       };
     }
 

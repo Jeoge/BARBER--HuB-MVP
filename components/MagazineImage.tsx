@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { safeDisplayImageSrc } from "@/lib/imageValidation";
 import { VisualTile } from "./VisualTile";
 
 type MagazineImageProps = {
@@ -13,15 +14,16 @@ type MagazineImageProps = {
 
 export function MagazineImage({ src, alt, variant = "news", className = "", imageClassName = "" }: MagazineImageProps) {
   const [failed, setFailed] = useState(false);
+  const imageSrc = safeDisplayImageSrc(src);
 
-  if (src == null || src.length === 0 || failed) {
+  if (imageSrc == null || failed) {
     return <VisualTile variant={variant} className={className} />;
   }
 
   return (
     <div className={"relative overflow-hidden rounded-[7px] bg-neutral-900 " + className}>
       <img
-        src={src}
+        src={imageSrc}
         alt={alt}
         className={"h-full w-full object-cover object-center " + imageClassName}
         loading="lazy"

@@ -56,11 +56,11 @@ function saveErrorMessage(error: unknown) {
   const message = errorMessage(error).toLowerCase();
 
   if (message.includes("relation") && message.includes("advertising_inquiries")) {
-    return "広告・協賛問い合わせの保存に必要なSQLが未適用です。Supabase SQL Editorで最新migrationを実行してください。";
+    return "問い合わせを保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "問い合わせを保存できませんでした。advertising_inquiriesテーブルの権限設定を確認してください。";
+    return "問い合わせを保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("safety_confirmed_at") || message.includes("guidelines_confirmed") || message.includes("pr_disclosure_checked")) {
@@ -96,7 +96,6 @@ export async function createAdvertisingInquiryAction(formData: FormData) {
   if (profileError) {
     console.error("Advertising inquiry profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: profileError.message,
     });
   }
@@ -163,7 +162,6 @@ export async function createAdvertisingInquiryAction(formData: FormData) {
   if (error) {
     console.error("Advertising inquiry insert failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: error.message,
     });
     redirectToApply(saveErrorMessage(error));

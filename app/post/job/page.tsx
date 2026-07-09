@@ -82,7 +82,7 @@ export default async function JobPostPage({ searchParams }: JobPostPageProps) {
         <PageHeaderBlock eyebrow="JOB REGISTER" title="求人を掲載する" body="プロフィール情報を確認できませんでした。" />
         <AccessCard
           title="プロフィール確認に失敗しました"
-          body="時間をおいて再読み込みしてください。SQL未適用の場合は、profiles関連のmigrationも確認してください。"
+          body="時間をおいて再読み込みしてください。"
           primaryHref="/mypage"
           primaryLabel="マイページへ"
         />

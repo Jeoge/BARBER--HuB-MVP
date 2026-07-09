@@ -850,7 +850,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         <SectionCard eyebrow="SALON ADMIN" title="求人掲載管理">
           {salonJobPostingsError ? (
             <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-              求人を読み込めませんでした。job_postsテーブルのmigration適用状況を確認してください。
+              求人を読み込めませんでした。時間をおいて再読み込みしてください。
             </div>
           ) : (
             <MyJobPostList jobs={salonJobPostings} canCreate={canUseJobPosting} />
@@ -861,7 +861,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
       <SectionCard eyebrow="SUCCESSION ADMIN" title="開業・承継掲載管理">
         {mySuccessionPostsError ? (
           <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-            開業・承継情報を読み込めませんでした。succession_postsテーブルのmigration適用状況を確認してください。
+            開業・承継情報を読み込めませんでした。時間をおいて再読み込みしてください。
           </div>
         ) : (
           <MySuccessionPostList posts={mySuccessionPosts} canCreate={canUseSuccessionPosting} />

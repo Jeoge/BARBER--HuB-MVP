@@ -10,5 +10,5 @@ export function hasSafetyConfirmations(formData: FormData, names: string[]) {
 export const SAFETY_CONFIRMATION_ERROR = "安心して掲載するため、投稿前の確認欄にチェックしてください。";
 
 export function safetyMigrationErrorMessage(target: string) {
-  return `${target}を保存できませんでした。安全確認の保存カラムが未適用です。Supabase SQL Editorで最新migrationを実行してください。`;
+  return `${target}を保存できませんでした。入力内容を確認して、もう一度お試しください。`;
 }

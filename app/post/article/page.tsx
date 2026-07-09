@@ -90,7 +90,6 @@ export default async function ArticlePostPage({ searchParams }: ArticlePostPageP
   if (profileError) {
     console.error("Article post page profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: profileError.message,
     });
   }

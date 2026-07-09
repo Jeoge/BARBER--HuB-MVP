@@ -77,7 +77,6 @@ export default async function BackroomPostPage({ searchParams }: BackroomPostPag
   if (profileError) {
     console.error("Back Room post page profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: profileError.message,
     });
   }

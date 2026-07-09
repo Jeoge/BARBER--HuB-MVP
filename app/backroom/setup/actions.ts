@@ -27,11 +27,11 @@ function saveErrorMessage(error: unknown) {
   const message = errorMessage(error).toLowerCase();
 
   if (message.includes("relation") && message.includes("backroom_profiles")) {
-    return "Back Room参加設定に必要なSQLが未適用です。Supabase SQL Editorで最新migrationを実行してください。";
+    return "Back Room参加設定を保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "Back Room参加設定を保存できませんでした。backroom_profilesの権限設定を確認してください。";
+    return "Back Room参加設定を保存できませんでした。時間をおいて再度お試しください。";
   }
 
   return "Back Room参加設定を保存できませんでした。入力内容を確認して、もう一度お試しください。";

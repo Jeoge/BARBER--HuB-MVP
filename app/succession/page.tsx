@@ -8,7 +8,7 @@ function successionListErrorMessage(error: unknown) {
     const message = error.message.toLowerCase();
 
     if (message.includes("relation") && message.includes("succession")) {
-      return "開業・承継情報の表示に必要なsuccession_postsテーブルが見つかりません。Supabase SQL Editorで最新migrationを実行してください。";
+      return "開業・承継情報を読み込めませんでした。時間をおいて再読み込みしてください。";
     }
   }
 
