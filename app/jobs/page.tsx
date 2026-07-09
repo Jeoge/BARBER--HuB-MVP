@@ -8,7 +8,7 @@ function jobListErrorMessage(error: unknown) {
     const message = error.message.toLowerCase();
 
     if (message.includes("relation") && message.includes("job_posts")) {
-      return "求人表示に必要なjob_postsテーブルが見つかりません。Supabase SQL Editorで最新migrationを実行してください。";
+      return "求人情報を読み込めませんでした。時間をおいて再読み込みしてください。";
     }
   }
 

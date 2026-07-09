@@ -33,7 +33,7 @@ function articleSaveErrorMessage(error: unknown) {
   const message = errorMessage(error).toLowerCase();
 
   if (message.includes("relation") && message.includes("articles")) {
-    return "記事保存に必要なarticlesテーブルが見つかりません。Supabase SQL Editorで最新migrationを実行してください。";
+    return "記事を保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("foreign key")) {
@@ -41,7 +41,7 @@ function articleSaveErrorMessage(error: unknown) {
   }
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "記事を保存できませんでした。articlesテーブルの権限設定を確認してください。";
+    return "記事を保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("safety_confirmed_at") || message.includes("guidelines_confirmed") || message.includes("pr_disclosure_checked")) {
@@ -73,7 +73,6 @@ export async function createArticleAction(formData: FormData) {
   if (profileError) {
     console.error("Article post profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: profileError.message,
     });
     redirectToArticlePost({ error: "プロフィール情報を確認できませんでした。時間をおいて再度お試しください。" });
@@ -138,7 +137,6 @@ export async function createArticleAction(formData: FormData) {
   if (error) {
     console.error("Article insert failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: error.message,
     });
     redirectToArticlePost({ error: articleSaveErrorMessage(error) });

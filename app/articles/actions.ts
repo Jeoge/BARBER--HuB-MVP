@@ -35,7 +35,7 @@ function reactionErrorMessage(error: unknown) {
   const message = errorMessage(error).toLowerCase();
 
   if (message.includes("relation") && message.includes("article_reactions")) {
-    return "リアクション保存に必要なSQLが未適用です。";
+    return "リアクションを保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("foreign key")) {
@@ -43,7 +43,7 @@ function reactionErrorMessage(error: unknown) {
   }
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "リアクションを保存できませんでした。権限設定を確認してください。";
+    return "リアクションを保存できませんでした。時間をおいて再度お試しください。";
   }
 
   return "リアクションを保存できませんでした。";
@@ -53,7 +53,7 @@ function commentErrorMessage(error: unknown) {
   const message = errorMessage(error).toLowerCase();
 
   if (message.includes("relation") && message.includes("article_comments")) {
-    return "コメント保存に必要なSQLが未適用です。";
+    return "コメントを保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("foreign key")) {
@@ -61,7 +61,7 @@ function commentErrorMessage(error: unknown) {
   }
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "コメントを保存できませんでした。権限設定を確認してください。";
+    return "コメントを保存できませんでした。時間をおいて再度お試しください。";
   }
 
   return "コメントを保存できませんでした。";

@@ -64,7 +64,6 @@ export default async function SnapPostPage({ searchParams }: SnapPostPageProps) 
   if (profileError) {
     console.error("Snap post page profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: profileError.message,
     });
   }
@@ -95,7 +94,7 @@ export default async function SnapPostPage({ searchParams }: SnapPostPageProps) 
       {profileError ? (
         <section className="px-4 pt-4">
           <div className="rounded-[10px] border border-red-200 bg-red-50 p-4 text-sm font-black leading-relaxed text-red-700">
-            プロフィール情報を確認できませんでした。profilesテーブルの権限設定を確認してください。
+            プロフィール情報を確認できませんでした。しばらく時間をおいて再度お試しください。
           </div>
         </section>
       ) : profile == null ? (

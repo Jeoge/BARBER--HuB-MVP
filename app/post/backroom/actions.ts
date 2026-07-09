@@ -34,7 +34,7 @@ function saveErrorMessage(error: unknown) {
   const message = errorMessage(error).toLowerCase();
 
   if (message.includes("relation") && message.includes("backroom_posts")) {
-    return "Back Room投稿に必要なSQLが未適用です。Supabase SQL Editorで最新migrationを実行してください。";
+    return "Back Room投稿を保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("foreign key")) {
@@ -42,7 +42,7 @@ function saveErrorMessage(error: unknown) {
   }
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "Back Room投稿を保存できませんでした。権限設定を確認してください。";
+    return "Back Room投稿を保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("safety_confirmed_at") || message.includes("guidelines_confirmed") || message.includes("pr_disclosure_checked")) {
@@ -74,7 +74,6 @@ export async function createBackroomPostAction(formData: FormData) {
   if (profileError) {
     console.error("Back Room post profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: profileError.message,
     });
     redirectToBackroomPost({ error: "プロフィール情報を確認できませんでした。時間をおいて再度お試しください。" });
@@ -95,10 +94,9 @@ export async function createBackroomPostAction(formData: FormData) {
   if (backroomProfileError) {
     console.error("Back Room member profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: errorMessage(backroomProfileError),
     });
-    redirectToBackroomPost({ error: "Back Room参加設定を確認できませんでした。Supabase SQL Editorで最新migrationを実行してください。" });
+    redirectToBackroomPost({ error: "Back Room参加設定を確認できませんでした。時間をおいて再度お試しください。" });
   }
 
   if (backroomProfile == null) {
@@ -157,7 +155,6 @@ export async function createBackroomPostAction(formData: FormData) {
   if (error) {
     console.error("Back Room post insert failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: error.message,
     });
     redirectToBackroomPost({ error: saveErrorMessage(error) });

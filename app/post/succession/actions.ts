@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 type SuccessionFormMode = "create" | "update";
 
 const SUCCESSION_RELATION_ERROR =
-  "開業・承継情報の保存に必要なsuccession_postsテーブルが見つかりません。Supabase SQL Editorで最新migrationを実行してください。";
+  "開業・承継情報を保存できませんでした。時間をおいて再度お試しください。";
 const SUCCESSION_SAFETY_FIELDS = [
   "successionPublicPrivateConfirmed",
   "successionSensitiveInfoConfirmed",
@@ -100,7 +100,7 @@ function saveErrorMessage(error: unknown) {
   }
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "開業・承継情報を保存できませんでした。succession_postsの権限設定を確認してください。";
+    return "開業・承継情報を保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("safety_confirmed_at") || message.includes("guidelines_confirmed") || message.includes("pr_disclosure_checked")) {
@@ -203,7 +203,6 @@ async function requireSuccessionPoster(redirectPath: string) {
   if (profileError) {
     console.error("Succession post profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: profileError.message,
     });
     redirectToSuccessionForm(redirectPath, "プロフィール情報を確認できませんでした。時間をおいて再度お試しください。");
@@ -244,7 +243,6 @@ async function saveSuccessionPost(formData: FormData, mode: SuccessionFormMode) 
     if (error) {
       console.error("Succession post insert failed", {
         userId: user.id,
-        userEmail: user.email ?? null,
         message: error.message,
       });
       redirectToSuccessionForm(redirectPath, saveErrorMessage(error));
@@ -266,7 +264,6 @@ async function saveSuccessionPost(formData: FormData, mode: SuccessionFormMode) 
     if (privateError) {
       console.error("Succession private insert failed", {
         userId: user.id,
-        userEmail: user.email ?? null,
         postId: id,
         message: privateError.message,
       });
@@ -295,7 +292,6 @@ async function saveSuccessionPost(formData: FormData, mode: SuccessionFormMode) 
   if (error) {
     console.error("Succession post update failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       postId,
       message: error.message,
     });
@@ -316,7 +312,6 @@ async function saveSuccessionPost(formData: FormData, mode: SuccessionFormMode) 
   if (privateError) {
     console.error("Succession private upsert failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       postId,
       message: privateError.message,
     });
@@ -355,7 +350,6 @@ export async function closeSuccessionPostAction(formData: FormData) {
   if (error) {
     console.error("Succession post close failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       postId,
       message: error.message,
     });

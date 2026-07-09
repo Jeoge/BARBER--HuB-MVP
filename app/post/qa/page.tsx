@@ -72,7 +72,6 @@ export default async function QaPostPage({ searchParams }: QaPostPageProps) {
   if (profileError) {
     console.error("Q&A post page profile lookup failed", {
       userId: user.id,
-      userEmail: user.email ?? null,
       message: profileError.message,
     });
   }

@@ -29,7 +29,7 @@ function answerErrorMessage(error: unknown) {
   const message = errorMessage(error).toLowerCase();
 
   if (message.includes("relation") && message.includes("qa_answers")) {
-    return "回答保存に必要なSQLが未適用です。";
+    return "回答を保存できませんでした。時間をおいて再度お試しください。";
   }
 
   if (message.includes("foreign key")) {
@@ -37,7 +37,7 @@ function answerErrorMessage(error: unknown) {
   }
 
   if (message.includes("row-level security") || message.includes("permission") || message.includes("unauthorized")) {
-    return "回答を保存できませんでした。権限設定を確認してください。";
+    return "回答を保存できませんでした。時間をおいて再度お試しください。";
   }
 
   return "回答を保存できませんでした。";

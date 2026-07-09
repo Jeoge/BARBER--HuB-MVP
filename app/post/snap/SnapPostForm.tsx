@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { SafetyChecklist } from "@/components/SafetyChecklist";
+import { isAllowedImageFile } from "@/lib/imageValidation";
 import { createSnapAction } from "./actions";
 
 const categories = ["技術", "道具", "営業メモ", "集客", "日常", "編集部へ共有"];
@@ -62,11 +63,6 @@ export function SnapPostForm({
     };
   }, [selectedImagePreviewUrl]);
 
-  function isLikelyImageFile(file: File) {
-    if (file.type.startsWith("image/")) return true;
-    return /\.(avif|gif|heic|heif|jpeg|jpg|png|webp)$/i.test(file.name);
-  }
-
   function isHeicLike(file: File) {
     return file.type === "image/heic" || file.type === "image/heif" || /\.(heic|heif)$/i.test(file.name);
   }
@@ -103,7 +99,7 @@ export function SnapPostForm({
       return;
     }
 
-    if (!isLikelyImageFile(file)) {
+    if (!isAllowedImageFile(file)) {
       setImageError("画像ファイルだけアップロードできます。");
       event.target.value = "";
       return;
