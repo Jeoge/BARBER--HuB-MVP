@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, Building2, FilePenLine, LogOut, Megaphone, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
+import { BadgeCheck, BriefcaseBusiness, Building2, FilePenLine, LogOut, MapPin, Megaphone, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
@@ -27,6 +27,7 @@ import {
 } from "@/lib/supabase/backroom";
 import { listFollowingProfiles } from "@/lib/supabase/follows";
 import { getMySnapStats } from "@/lib/supabase/insights";
+import { listOwnedVerifiedBarberShops, shopAreaLabel, type BarberShop } from "@/lib/supabase/barber-shops";
 import { jobAreaLabel, jobStatusLabel, listUserJobPosts, type JobPost } from "@/lib/supabase/jobs";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import {
@@ -79,7 +80,7 @@ function SectionCard({ title, eyebrow, children }: { title: string; eyebrow?: st
 }
 
 type MyPageProps = {
-  searchParams?: Promise<{ profile?: string; snap?: string; snapError?: string; job?: string; jobError?: string; succession?: string; successionError?: string }>;
+  searchParams?: Promise<{ profile?: string; snap?: string; snapError?: string; job?: string; jobError?: string; succession?: string; successionError?: string; store?: string; storeError?: string }>;
 };
 
 function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
@@ -392,6 +393,50 @@ function MyJobPostList({ jobs, canCreate }: { jobs: JobPost[]; canCreate: boolea
   );
 }
 
+function MyVerifiedStoreList({ shops }: { shops: BarberShop[] }) {
+  if (shops.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+        認証済み店舗はまだありません。店舗検索からオーナー認証を申請できます。
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-2.5">
+      {shops.map((shop) => (
+        <article key={shop.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex items-start gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-blush">
+              <BadgeCheck aria-hidden="true" size={17} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">認証済み</span>
+                <span className="inline-flex items-center gap-1 text-[0.66rem] font-bold text-mute">
+                  <MapPin aria-hidden="true" size={12} />
+                  {shopAreaLabel(shop)}
+                </span>
+              </div>
+              <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{shop.name}</p>
+              <p className="mt-1 line-clamp-1 text-xs font-semibold text-mute">{shop.address}</p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Link href={`/stores/${shop.id}`} className="inline-flex h-9 items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-ink">
+              表示
+            </Link>
+            <Link href={`/mypage/stores/${shop.id}/edit`} className="inline-flex h-9 items-center justify-center gap-1 rounded-[8px] border border-line bg-white text-xs font-black text-ink">
+              <Pencil aria-hidden="true" size={13} />
+              編集
+            </Link>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function MySuccessionPostList({ posts, canCreate }: { posts: SuccessionPublicPost[]; canCreate: boolean }) {
   if (posts.length === 0) {
     return (
@@ -503,6 +548,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
     ? await listUserJobPosts(supabase, user.id, 30)
     : { jobs: [], error: null };
   const { posts: mySuccessionPosts, error: mySuccessionPostsError } = await listUserSuccessionPosts(supabase, user.id, 30);
+  const { shops: verifiedBarberShops, error: verifiedBarberShopsError } = await listOwnedVerifiedBarberShops(supabase, user.id, 20);
   const articleThanksPoints = myArticles.reduce((sum, article) => sum + article.thanks_count, 0);
   const thanksPoints = stats.thanksReceived + articleThanksPoints;
   const nextRewardAt = (Math.floor(thanksPoints / 100) + 1) * 100;
@@ -559,6 +605,16 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           {params?.successionError ? (
             <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
               {params.successionError}
+            </p>
+          ) : null}
+          {params?.store === "updated" ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              店舗情報を保存しました。
+            </p>
+          ) : null}
+          {params?.storeError ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              {params.storeError}
             </p>
           ) : null}
           <div className="mt-3 flex items-center gap-3">
@@ -802,6 +858,18 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           </div>
         )}
       </SectionCard>
+
+      {verifiedBarberShopsError || verifiedBarberShops.length > 0 ? (
+        <SectionCard eyebrow="STORE DIRECTORY" title="店舗ディレクトリ管理">
+          {verifiedBarberShopsError ? (
+            <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+              認証済み店舗を読み込めませんでした。時間をおいて再読み込みしてください。
+            </div>
+          ) : (
+            <MyVerifiedStoreList shops={verifiedBarberShops} />
+          )}
+        </SectionCard>
+      ) : null}
 
       <SectionCard eyebrow="MEMO" title="自分用メモ">
         <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
