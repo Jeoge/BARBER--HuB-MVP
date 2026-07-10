@@ -38,7 +38,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.109.1
 
       - name: Check Supabase migration files
         run: node scripts/check-supabase-migrations.mjs
@@ -49,15 +49,28 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-          SUPABASE_BACKUP_CONFIRMED_AT: ${{ vars.SUPABASE_BACKUP_CONFIRMED_AT }}
         run: |
           set -euo pipefail
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_PROJECT_REF"
           test -n "$SUPABASE_DB_PASSWORD"
           test -n "$SUPABASE_PUBLISHABLE_KEY"
-          test -n "$SUPABASE_BACKUP_CONFIRMED_AT"
           echo "Required production secrets are present."
+
+      - name: Check Supabase CLI version
+        run: supabase --version
+
+      - name: Require backup confirmation before apply
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true') }}
+        env:
+          SUPABASE_BACKUP_CONFIRMED_AT: ${{ vars.SUPABASE_BACKUP_CONFIRMED_AT }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SUPABASE_BACKUP_CONFIRMED_AT" ]; then
+            echo "SUPABASE_BACKUP_CONFIRMED_AT is required before applying production migrations."
+            echo "Do not set a placeholder value. Confirm the actual backup/export plan first."
+            exit 1
+          fi
           echo "Production backup confirmation is recorded."
 
       - name: Link production Supabase project

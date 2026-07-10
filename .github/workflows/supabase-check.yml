@@ -35,11 +35,19 @@ jobs:
         with:
           version: 9.15.9
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Check Supabase migration files
         run: pnpm run supabase:migrations:check
+
+      - name: Check Supabase CLI version
+        run: supabase --version
 
       - name: Build
         run: pnpm run build
