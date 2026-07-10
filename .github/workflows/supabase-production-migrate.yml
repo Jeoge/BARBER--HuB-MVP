@@ -1,0 +1,120 @@
+name: Supabase production migration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch:
+    inputs:
+      dry_run_only:
+        description: "Only show pending migrations; do not apply them."
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-production-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply approved production migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Check Supabase migration files
+        run: node scripts/check-supabase-migrations.mjs
+
+      - name: Confirm required secrets exist
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_BACKUP_CONFIRMED_AT: ${{ vars.SUPABASE_BACKUP_CONFIRMED_AT }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_PROJECT_REF"
+          test -n "$SUPABASE_DB_PASSWORD"
+          test -n "$SUPABASE_PUBLISHABLE_KEY"
+          test -n "$SUPABASE_BACKUP_CONFIRMED_AT"
+          echo "Required production secrets are present."
+          echo "Production backup confirmation is recorded."
+
+      - name: Link production Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Show remote migration status
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase migration list --linked
+
+      - name: Dry-run pending migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push --dry-run --yes
+
+      - name: Stop before apply when dry-run only is requested
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true' }}
+        run: |
+          echo "dry_run_only=true; production migrations were not applied."
+          echo "### Supabase production migration" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Dry-run completed. No production migration was applied." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Apply production migrations
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true') }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push --yes
+
+      - name: Confirm no pending migrations remain
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true') }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push --dry-run --yes
+
+      - name: Run production health check
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true') }}
+        env:
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: node scripts/verify-supabase-production-health.mjs
+
+      - name: Write summary
+        if: always()
+        run: |
+          echo "### Supabase production migration" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Environment: production" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Trigger: ${{ github.event_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Dry-run only: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Seeds are not applied by this workflow." >> "$GITHUB_STEP_SUMMARY"
+          echo "- This workflow never runs supabase db reset." >> "$GITHUB_STEP_SUMMARY"

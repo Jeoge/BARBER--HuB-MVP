@@ -1,0 +1,56 @@
+name: Supabase checks
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/supabase-check.yml"
+      - ".github/workflows/supabase-production-migrate.yml"
+      - "docs/SUPABASE_DEPLOYMENT.md"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "scripts/**"
+      - "supabase/config.toml"
+      - "supabase/migrations/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate migrations and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check Supabase migration files
+        run: pnpm run supabase:migrations:check
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Note lint status
+        run: |
+          echo "The repository currently defines lint as 'next lint'."
+          echo "Next 16 no longer supports this invocation in this repo, so build is the blocking code check here."
+          echo "When lint is replaced with a valid ESLint command, make this workflow run it as a blocking step."
+
+      - name: Confirm production is untouched
+        run: |
+          echo "This pull_request workflow does not receive production Supabase secrets."
+          echo "It does not run 'supabase link', 'supabase db push', or any production database command."
