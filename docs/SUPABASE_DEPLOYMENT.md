@@ -119,7 +119,28 @@ supabase db push --include-seed
 
 workflow内では`node scripts/run-supabase-db-command.mjs`を通して実行し、connection stringやpasswordをログへ出さないようにします。
 
-Supabase DashboardでDBパスワードを表示できず`Reset password`しか出ない場合、既存パスワードは復元できません。必要なら新しいDBパスワードへリセットし、DashboardのSession pooler connection string内のpassword部分へ反映したうえで、connection string全体をGitHub Environment Secretへ登録します。値はチャット、PR本文、ログへ貼らないでください。
+`--db-url`へ渡すconnection stringはpercent-encodedである必要があります。DB passwordに記号が含まれる場合は、password部分だけをURLエンコードしてから`SUPABASE_DB_URL`へ入れてください。connection string全体をURLエンコードしてはいけません。
+
+特に次のような文字がpasswordに含まれる場合はURLエンコードが必要です。
+
+```text
+@ : / ? # [ ] ! $ & ' ( ) * + , ; = % space
+```
+
+例:
+
+```text
+@ -> %40
+: -> %3A
+/ -> %2F
+? -> %3F
+# -> %23
++ -> %2B
+% -> %25
+space -> %20
+```
+
+Supabase DashboardでDBパスワードを表示できず`Reset password`しか出ない場合、既存パスワードは復元できません。必要なら新しいDBパスワードへリセットし、DashboardのSession pooler connection string内のpassword部分へURLエンコード済みのpasswordを反映したうえで、connection string全体をGitHub Environment Secretへ登録します。値はチャット、PR本文、ログへ貼らないでください。
 
 Environment Variable:
 
@@ -181,7 +202,7 @@ postgres://postgres.<PROJECT_REF>:PASSWORD@....pooler.supabase.com:5432/postgres
 
 6. connection stringに`[YOUR-PASSWORD]`などのplaceholderが含まれる場合は、実際のDatabase passwordへ置き換えます。
 7. Database passwordが不明でDashboardに`Reset password`しかない場合は、必要に応じて新しいDatabase passwordへリセットし、その値をconnection stringへ反映します。
-8. passwordに記号が含まれる場合は、Dashboardの案内に従うかURLエンコードして、connection stringとして壊れない形にします。
+8. passwordに記号が含まれる場合は、password部分だけをURLエンコードして、connection stringとして壊れない形にします。
 9. 完成したconnection string全体をGitHub Environment Secretへ入力します。
 10. 既存アプリがDB passwordを直接使っていないことを確認します。BARBER HUBのNext.js/Vercel接続は通常Supabase URLとpublishable keyを使うため、このリセットはアプリの公開API接続とは別です。
 
@@ -190,6 +211,22 @@ Secret名:
 ```text
 SUPABASE_DB_URL
 ```
+
+PowerShellでpassword部分だけをURLエンコードする場合:
+
+```powershell
+$securePassword = Read-Host "Database password" -AsSecureString
+$bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
+try {
+  $password = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+  [uri]::EscapeDataString($password)
+} finally {
+  [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+  Remove-Variable password, securePassword -ErrorAction SilentlyContinue
+}
+```
+
+表示されたエンコード済み文字列を、Session pooler connection stringのpassword部分だけに入れます。この出力もSecret扱いなので、チャット、PR本文、Git、Actions Artifact、公開メモへ貼らないでください。オンラインURLエンコードサービスには入力しないでください。
 
 ### 4. Publishable keyを登録
 
