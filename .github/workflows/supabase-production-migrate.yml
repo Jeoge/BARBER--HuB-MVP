@@ -47,15 +47,20 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
           set -euo pipefail
           test -n "$SUPABASE_ACCESS_TOKEN"
           test -n "$SUPABASE_PROJECT_REF"
-          test -n "$SUPABASE_DB_PASSWORD"
+          test -n "$SUPABASE_DB_URL"
           test -n "$SUPABASE_PUBLISHABLE_KEY"
           echo "Required production secrets are present."
+
+      - name: Mask Supabase DB URL
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: echo "::add-mask::$SUPABASE_DB_URL"
 
       - name: Check Supabase CLI version
         run: supabase --version
@@ -77,20 +82,24 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+        run: |
+          set -euo pipefail
+          printf '\n' | supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Validate Session pooler DB URL
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/validate-supabase-db-url.mjs
 
       - name: Show remote migration status
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase migration list --linked --password "$SUPABASE_DB_PASSWORD"
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/run-supabase-db-command.mjs migration list
 
       - name: Dry-run pending migrations
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase db push --dry-run --yes --password "$SUPABASE_DB_PASSWORD"
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/run-supabase-db-command.mjs db push --dry-run --yes
 
       - name: Stop before apply when dry-run only is requested
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true' }}
@@ -103,16 +112,14 @@ jobs:
       - name: Apply production migrations
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true') }}
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase db push --yes --password "$SUPABASE_DB_PASSWORD"
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/run-supabase-db-command.mjs db push --yes
 
       - name: Confirm no pending migrations remain
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true') }}
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase db push --dry-run --yes --password "$SUPABASE_DB_PASSWORD"
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/run-supabase-db-command.mjs db push --dry-run --yes
 
       - name: Run production health check
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true') }}
