@@ -78,11 +78,11 @@ workflowは`environment: production`を使います。GitHub側の`Production` E
 本番workflowはApprove後に次を実行します。
 
 ```sh
-supabase link --project-ref "$SUPABASE_PROJECT_REF"
-supabase migration list --linked
-supabase db push --dry-run --yes
-supabase db push --yes
-supabase db push --dry-run --yes
+supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+supabase migration list --linked --password "$SUPABASE_DB_PASSWORD"
+supabase db push --dry-run --yes --password "$SUPABASE_DB_PASSWORD"
+supabase db push --yes --password "$SUPABASE_DB_PASSWORD"
+supabase db push --dry-run --yes --password "$SUPABASE_DB_PASSWORD"
 node scripts/verify-supabase-production-health.mjs
 ```
 
@@ -105,6 +105,17 @@ supabase db push --include-seed
 - `SUPABASE_PUBLISHABLE_KEY`
 
 `SUPABASE_PUBLISHABLE_KEY`は公開可能キーですが、Actionsではログへ出さないためEnvironment Secretとして扱います。
+
+`SUPABASE_DB_PASSWORD`は本番Postgresへ接続するために必要です。`SUPABASE_ACCESS_TOKEN`はSupabase Management API用、`SUPABASE_PROJECT_REF`は対象Project識別用であり、Postgres自体の認証にはなりません。
+
+このworkflowでは、DBパスワードを次のCLIコマンドへ渡します。
+
+- `supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"`
+- `supabase migration list --linked --password "$SUPABASE_DB_PASSWORD"`
+- `supabase db push --dry-run --yes --password "$SUPABASE_DB_PASSWORD"`
+- `supabase db push --yes --password "$SUPABASE_DB_PASSWORD"`
+
+Supabase DashboardでDBパスワードを表示できず`Reset password`しか出ない場合は、既存パスワードを復元するのではなく、新しいDBパスワードへリセットして、その値をGitHub Environment Secretへ登録します。値はチャット、PR本文、ログへ貼らないでください。
 
 Environment Variable:
 
@@ -152,12 +163,13 @@ Secret名:
 SUPABASE_PROJECT_REF
 ```
 
-### 3. Database Passwordを確認または再設定
+### 3. Database Passwordを再設定して登録
 
 1. Supabase Dashboardで本番Projectを開きます。
 2. Database settingsを開きます。
-3. Database passwordを確認します。分からない場合は再設定します。
-4. GitHub Secretへ入力します。
+3. `Reset password`から新しいDatabase passwordを設定します。
+4. 新しいpasswordをGitHub Secretへ入力します。
+5. 既存アプリがDB passwordを直接使っていないことを確認します。BARBER HUBのNext.js/Vercel接続は通常Supabase URLとpublishable keyを使うため、このリセットはアプリの公開API接続とは別です。
 
 Secret名:
 
@@ -277,8 +289,8 @@ Supabase CLIの`db push`は、ローカルの`supabase/migrations`とremoteの`s
 例:
 
 ```sh
-supabase link --project-ref "$SUPABASE_PROJECT_REF"
-supabase migration repair 202607100001 --status applied
+supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+supabase migration repair 202607100001 --status applied --password "$SUPABASE_DB_PASSWORD"
 ```
 
 `migration repair`はSQLを実行せず、migration履歴だけを修正します。実体確認なしに`applied`へしないでください。

@@ -78,19 +78,19 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 
       - name: Show remote migration status
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase migration list --linked
+        run: supabase migration list --linked --password "$SUPABASE_DB_PASSWORD"
 
       - name: Dry-run pending migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase db push --dry-run --yes
+        run: supabase db push --dry-run --yes --password "$SUPABASE_DB_PASSWORD"
 
       - name: Stop before apply when dry-run only is requested
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true' }}
@@ -105,14 +105,14 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase db push --yes
+        run: supabase db push --yes --password "$SUPABASE_DB_PASSWORD"
 
       - name: Confirm no pending migrations remain
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true') }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase db push --dry-run --yes
+        run: supabase db push --dry-run --yes --password "$SUPABASE_DB_PASSWORD"
 
       - name: Run production health check
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run_only == 'true') }}
