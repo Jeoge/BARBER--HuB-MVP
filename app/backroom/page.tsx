@@ -76,7 +76,7 @@ export default async function BackroomPage({ searchParams }: BackroomPageProps) 
         <PageHeaderBlock
           eyebrow="BACK ROOM"
           title="Back Room"
-          body="理美容業界の営業後コミュニティ。営業後に、少しだけ本音で話せる会員限定の場所です。"
+          body="理美容業界の営業後コミュニティ。"
         />
         <SignupRequiredCard kind="backyard" />
       </PageChrome>
