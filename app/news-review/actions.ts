@@ -65,18 +65,22 @@ export async function runNewsDraftIngestAction() {
     redirect(`/news-review?error=${encodeURIComponent("Supabase管理用の環境変数が未設定です。")}`);
   }
 
+  let result: Awaited<ReturnType<typeof runNewsDraftPipeline>>;
+
   try {
-    const result = await runNewsDraftPipeline();
-    const params = new URLSearchParams({
-      fetched: String(result.fetchedCount),
-      duplicate: String(result.duplicateCount),
-      skipped: String(result.skippedCount),
-      generated: String(result.generatedCount),
-      failed: String(result.failedCount),
-    });
-    revalidatePath("/news-review");
-    redirect(`/news-review?run=1&${params.toString()}`);
+    result = await runNewsDraftPipeline();
   } catch {
     redirect(`/news-review?error=${encodeURIComponent("ニュース収集を実行できませんでした。環境変数とSupabase migrationを確認してください。")}`);
   }
+
+  const params = new URLSearchParams({
+    fetched: String(result.fetchedCount),
+    duplicate: String(result.duplicateCount),
+    skipped: String(result.skippedCount),
+    generated: String(result.generatedCount),
+    failed: String(result.failedCount),
+  });
+
+  revalidatePath("/news-review");
+  redirect(`/news-review?run=1&${params.toString()}`);
 }
