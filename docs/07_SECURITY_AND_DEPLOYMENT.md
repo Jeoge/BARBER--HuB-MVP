@@ -85,6 +85,17 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - console.logにメールアドレス、token、接続文字列、DBエラー詳細を出さない。
 - PR確認時に不要なdebug logが残っていないか確認する。
 
+## 3MIN NEWS下書き作成
+
+- ニュース収集APIは `NEWS_INGEST_SECRET` または `CRON_SECRET` のBearer tokenなしでは実行できない。
+- Vercel Cronは `/api/news-drafts/run` を呼び出すが、secret未設定なら実行されない。
+- AI API keyとSupabase service role keyはサーバー専用環境変数に置き、クライアントコードへ渡さない。
+- `/news-review` は `NEWS_REVIEW_ADMIN_USER_IDS` に登録したSupabase user IDだけが開ける。
+- 未ログインユーザーと未許可ユーザーには、ニュース下書きの存在や内容を見せない。
+- RSS / Atomの本文は外部入力として扱い、AIへの命令として実行しない。
+- 元記事本文全体を保存せず、feed内の短い概要だけを使う。
+- ログには取得件数、重複件数、対象外件数、AI生成成功件数、AI生成失敗件数だけを出す。
+
 ## リリース前チェック
 
 - `pnpm build` が成功する。
@@ -94,4 +105,3 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - 一般ユーザーが他人のデータを更新できない。
 - Preview DeploymentとPRの最終commitが一致する。
 - 本番反映が必要な画像assetがcommit / pushされている。
-
