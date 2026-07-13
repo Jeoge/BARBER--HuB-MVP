@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { runNewsDraftPipeline } from "@/lib/news-drafts/ingest";
+import { isSafePublicSourceUrl } from "@/lib/news-drafts/public-news";
 import { requireNewsReviewAdmin } from "@/lib/news-drafts/review";
 import { createSupabaseAdminClient, getSupabaseAdminConfigStatus } from "@/lib/supabase/admin";
 
@@ -70,17 +71,22 @@ export async function saveNewsDraftAction(formData: FormData) {
 
   if (status === "approved") {
     const missing: string[] = [];
+    const sourceUrl = cleanText(currentDraft.source_url, 1000);
     if (!payload.draft_title) missing.push("タイトル");
     if (!payload.draft_summary) missing.push("要約");
     if (!payload.draft_body) missing.push("本文");
     if (!payload.morning_tip) missing.push("朝礼で使う文章");
     if (!payload.conversation_tip) missing.push("お客様との会話用の文章");
     if (!category) missing.push("カテゴリー");
-    if (!cleanText(currentDraft.source_url, 1000)) missing.push("元記事URL");
+    if (!sourceUrl) missing.push("元記事URL");
     if (!cleanText(currentDraft.source_name, 200)) missing.push("情報元名");
 
     if (missing.length > 0) {
       redirect(`/news-review?id=${encodeURIComponent(id)}&error=${encodeURIComponent(`公開に必要な項目が不足しています: ${missing.join("、")}`)}`);
+    }
+
+    if (!isSafePublicSourceUrl(sourceUrl)) {
+      redirect(`/news-review?id=${encodeURIComponent(id)}&error=${encodeURIComponent("元記事URLが安全なhttpまたはhttps形式ではありません。")}`);
     }
 
     if (currentDraft.generation_error) {

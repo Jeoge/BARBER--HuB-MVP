@@ -39,6 +39,7 @@ as $$
     and length(btrim(coalesce(news_drafts.category, ''))) > 0
     and length(btrim(coalesce(news_drafts.source_name, ''))) > 0
     and length(btrim(coalesce(news_drafts.source_url, ''))) > 0
+    and btrim(news_drafts.source_url) ~* '^https?://'
   order by news_drafts.reviewed_at desc nulls last, news_drafts.updated_at desc, news_drafts.created_at desc
   limit least(greatest(coalesce(news_limit, 4), 1), 20)
 $$;
@@ -85,6 +86,7 @@ as $$
     and length(btrim(coalesce(news_drafts.category, ''))) > 0
     and length(btrim(coalesce(news_drafts.source_name, ''))) > 0
     and length(btrim(coalesce(news_drafts.source_url, ''))) > 0
+    and btrim(news_drafts.source_url) ~* '^https?://'
   limit 1
 $$;
 

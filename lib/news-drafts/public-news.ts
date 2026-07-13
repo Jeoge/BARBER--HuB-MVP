@@ -42,11 +42,28 @@ function timeLabel(value: string | null | undefined) {
   if (!value) return "公開中";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "公開中";
-  return new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit" }).format(date);
+  return new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(date);
 }
 
 export function isUuid(value: string) {
   return UUID_PATTERN.test(value);
+}
+
+export function getSafePublicSourceUrl(value: string | null | undefined) {
+  const sourceUrl = cleanText(value);
+  if (!sourceUrl) return null;
+
+  try {
+    const url = new URL(sourceUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function isSafePublicSourceUrl(value: string | null | undefined) {
+  return getSafePublicSourceUrl(value) != null;
 }
 
 function toPublicNewsItem(row: PublicNewsRow): PublicNewsItem | null {
@@ -58,7 +75,7 @@ function toPublicNewsItem(row: PublicNewsRow): PublicNewsItem | null {
   const conversationTip = cleanText(row.conversation_tip);
   const category = cleanText(row.category);
   const sourceName = cleanText(row.source_name);
-  const sourceUrl = cleanText(row.source_url);
+  const sourceUrl = getSafePublicSourceUrl(row.source_url);
 
   if (!isUuid(id) || !title || !summary || !body || !morningTip || !conversationTip || !category || !sourceName || !sourceUrl) {
     return null;

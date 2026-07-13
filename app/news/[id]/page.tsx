@@ -56,8 +56,8 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
         </section>
 
         <div className="mt-5 space-y-4 text-[0.92rem] font-medium leading-relaxed text-ink">
-          {item.body.split(/\n{2,}/).map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
+          {item.body.split(/\n{2,}/).map((paragraph, index) => (
+            <p key={`${index}-${paragraph}`}>{paragraph}</p>
           ))}
         </div>
 
