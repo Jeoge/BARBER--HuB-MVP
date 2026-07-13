@@ -12,6 +12,7 @@ import { QASection } from "@/components/QASection";
 import { SnapSection } from "@/components/SnapSection";
 import { SponsorSection } from "@/components/SponsorSection";
 import { StoreDirectoryProvider, StoreDirectoryStatsCard, StoreSearchHeaderButton } from "@/components/StoreDirectorySearch";
+import { composeNewsWithFallback, listPublicNews } from "@/lib/news-drafts/public-news";
 import { articles, jobs, seminars } from "@/lib/mockData";
 import { sponsorsForPlacement } from "@/lib/sponsors";
 import { getPublicBarberShopCount } from "@/lib/supabase/barber-shops";
@@ -19,7 +20,10 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function Home() {
   const supabase = await createClient();
-  const { count: storeCount, error: storeCountError } = await getPublicBarberShopCount(supabase);
+  const [{ count: storeCount, error: storeCountError }, { news: approvedNews, error: publicNewsError }] = await Promise.all([
+    getPublicBarberShopCount(supabase),
+    listPublicNews(supabase, 4),
+  ]);
 
   if (storeCountError) {
     console.error("Store directory count lookup failed", {
@@ -27,12 +31,18 @@ export default async function Home() {
     });
   }
 
+  if (publicNewsError) {
+    console.error("Public news lookup failed");
+  }
+
+  const homeNews = composeNewsWithFallback(approvedNews, 4);
+
   return (
     <StoreDirectoryProvider>
       <main className="mx-auto min-h-screen max-w-[430px] overflow-x-hidden bg-white pb-40 shadow-[0_0_70px_rgba(17,17,17,0.06)]">
         <Header action={<StoreSearchHeaderButton />} />
         <CategoryNavigation />
-        <LiveEditorialCover />
+        <LiveEditorialCover newsItems={homeNews} />
         <SnapSection />
         <SponsorSection
           eyebrow="Sponsored"

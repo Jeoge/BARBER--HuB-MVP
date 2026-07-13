@@ -24,8 +24,8 @@ type NewsReviewPageProps = {
 const tabs = [
   { id: "waiting_generation", label: "AI生成待ち" },
   { id: "pending_review", label: "確認待ち" },
-  { id: "approved", label: "approved" },
-  { id: "rejected", label: "rejected" },
+  { id: "approved", label: "公開中" },
+  { id: "rejected", label: "非掲載" },
   { id: "error", label: "生成エラー" },
 ] as const;
 
@@ -38,8 +38,8 @@ function dateLabel(value: string | null | undefined) {
 
 function statusLabel(draft: NewsDraftRecord) {
   if (draft.generation_error) return "生成エラー";
-  if (draft.status === "approved") return "approved";
-  if (draft.status === "rejected") return "rejected";
+  if (draft.status === "approved") return "公開中";
+  if (draft.status === "rejected") return "非掲載";
   if (!draft.draft_title) return "AI生成待ち";
   return "確認待ち";
 }
@@ -218,9 +218,10 @@ function DetailForm({ draft }: { draft: NewsDraftRecord | null }) {
       </section>
 
       <div className="flex flex-wrap gap-2">
+        <p className="basis-full text-xs font-bold text-mute">承認すると公開されます。</p>
         <button name="intent" value="approve" className="inline-flex h-11 items-center gap-2 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
           <CheckCircle2 aria-hidden="true" size={17} />
-          承認
+          承認して公開
         </button>
         <button name="intent" value="pending" className="inline-flex h-11 items-center gap-2 rounded-[8px] border border-line bg-white px-4 text-sm font-black text-ink">
           <Clock3 aria-hidden="true" size={17} />
@@ -260,7 +261,7 @@ export default async function NewsReviewPage({ searchParams }: NewsReviewPagePro
           </div>
           <h1 className="mt-3 text-2xl font-black leading-tight">3MIN NEWS 下書き確認</h1>
           <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
-            AI下書きはここで確認・修正します。承認しても、今回のPRではトップページには表示されません。
+            AI下書きはここで確認・修正します。承認するとトップページの3MIN NEWSに公開されます。
           </p>
         </div>
         <form action={runNewsDraftIngestAction}>

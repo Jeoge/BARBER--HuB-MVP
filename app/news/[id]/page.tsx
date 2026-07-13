@@ -1,11 +1,22 @@
 import { Newspaper, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { PageChrome } from "@/components/PageChrome";
+import { getPublicNewsById, isUuid, listRelatedPublicNews, type PublicNewsItem } from "@/lib/news-drafts/public-news";
 import { findNews, news } from "@/lib/mockData";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function NewsDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const item = findNews(id);
+  const supabase = await createClient();
+  const publicNewsResult = isUuid(id) ? await getPublicNewsById(supabase, id) : { news: null, error: null };
+  const fallbackNews = isUuid(id) ? null : findNews(id);
+  const item = publicNewsResult.news ?? fallbackNews;
+  const relatedResult = await listRelatedPublicNews(supabase, id, 3);
+  const relatedNews = relatedResult.news;
+
+  if (publicNewsResult.error || relatedResult.error) {
+    console.error("Public news detail lookup failed");
+  }
 
   if (item == null) {
     return (
@@ -45,8 +56,22 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
         </section>
 
         <div className="mt-5 space-y-4 text-[0.92rem] font-medium leading-relaxed text-ink">
-          <p>{item.body}</p>
+          {item.body.split(/\n{2,}/).map((paragraph, index) => (
+            <p key={`${index}-${paragraph}`}>{paragraph}</p>
+          ))}
         </div>
+
+        {isPublicNewsItem(item) ? (
+          <section className="mt-5 rounded-[8px] border border-line bg-white p-3 shadow-sm">
+            <p className="text-xs font-black text-mute">情報元</p>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <p className="min-w-0 truncate text-sm font-bold text-ink">{item.sourceName}</p>
+              <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-xs font-black text-blush">
+                情報元を確認
+              </a>
+            </div>
+          </section>
+        ) : null}
 
         <div className="mt-5 grid gap-3">
           <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-3">
@@ -66,11 +91,9 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
       <section className="px-4 pt-7">
         <h2 className="text-base font-black text-ink">関連ニュース</h2>
         <div className="mt-3 grid gap-2">
-          {news
-            .filter((related) => related.id !== item.id)
-            .slice(0, 3)
+          {(relatedNews.length > 0 ? relatedNews : news.filter((related) => related.id !== item.id).slice(0, 3))
             .map((related) => (
-              <Link key={related.id} href={`/news/${related.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
+              <Link key={`${"origin" in related ? related.origin : "fallback"}-${related.id}`} href={`/news/${related.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
                 <p className="text-sm font-black leading-snug text-ink">{related.title}</p>
                 <p className="mt-1 text-xs font-bold text-mute">{related.summary}</p>
               </Link>
@@ -79,4 +102,8 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ id:
       </section>
     </PageChrome>
   );
+}
+
+function isPublicNewsItem(item: unknown): item is PublicNewsItem {
+  return Boolean(item && typeof item === "object" && "sourceUrl" in item && "sourceName" in item);
 }

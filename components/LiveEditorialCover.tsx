@@ -4,6 +4,7 @@ import { ChevronRight, Newspaper } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { articles, news, posts, qaItems } from "@/lib/mockData";
+import type { NewsItem } from "@/lib/mockData";
 import { MagazineImage } from "./MagazineImage";
 import { ProfileMiniLink } from "./ProfileMiniLink";
 
@@ -53,7 +54,22 @@ function variantForPick(pick: (typeof editorPickItems)[number]) {
   return "accent" in pick.item ? pick.item.accent : "haircut";
 }
 
-export function LiveEditorialCover() {
+export type LiveEditorialNewsItem = NewsItem & {
+  sourceName?: string;
+  sourceUrl?: string;
+  reviewedAt?: string | null;
+  origin?: "approved" | "fallback";
+};
+
+type LiveEditorialCoverProps = {
+  newsItems?: LiveEditorialNewsItem[];
+};
+
+function newsKey(item: LiveEditorialNewsItem) {
+  return `${item.origin ?? "fallback"}-${item.id}`;
+}
+
+export function LiveEditorialCover({ newsItems }: LiveEditorialCoverProps) {
   const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -70,6 +86,8 @@ export function LiveEditorialCover() {
 
   const lead = state.picks[0];
   const highlights = state.picks.slice(1, 3);
+  const displayedNews = newsItems && newsItems.length > 0 ? newsItems.slice(0, 4) : news.slice(0, 4);
+  const leadNews = displayedNews[0];
 
   return (
     <section className="px-4 pt-3">
@@ -107,13 +125,13 @@ export function LiveEditorialCover() {
       <div className="mt-2.5 rounded-[8px] border border-line/80 bg-white px-3 py-2.5 shadow-[0_6px_18px_rgba(17,17,17,0.025)]">
         <div className="mb-1.5 flex items-center justify-between gap-3">
           <p className="editorial-label text-[0.82rem] uppercase text-blush">3MIN NEWS</p>
-          <Link href={`/news/${news[0]?.id ?? ""}`} className="text-xs font-medium text-blush">
+          <Link href={`/news/${leadNews?.id ?? ""}`} className="text-xs font-medium text-blush">
             もっと読む
           </Link>
         </div>
         <div className="grid gap-1.5">
-          {news.slice(0, 4).map((item) => (
-            <Link key={item.id} href={`/news/${item.id}`} className="flex items-center gap-2">
+          {displayedNews.map((item) => (
+            <Link key={newsKey(item)} href={`/news/${item.id}`} className="flex items-center gap-2">
               <Newspaper aria-hidden="true" size={12} className="shrink-0 text-mute" />
               <p className="min-w-0 flex-1 truncate text-[0.76rem] font-semibold text-ink">{newsTitles[item.id] ?? item.title}</p>
             </Link>
