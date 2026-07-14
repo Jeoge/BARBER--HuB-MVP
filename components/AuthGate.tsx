@@ -99,19 +99,19 @@ function AuthRequiredModal({ kind = "default", targetHref, onClose }: AuthRequir
               <p className="mt-2 text-sm font-medium leading-relaxed text-mute">{copy.body}</p>
             </div>
           </div>
-          <button aria-label="閉じる" className="grid h-8 w-8 place-items-center rounded-full bg-neutral-50" onClick={onClose}>
+          <button aria-label="閉じる" className="grid h-8 w-8 place-items-center rounded-full bg-neutral-50 transition active:scale-[0.98] active:opacity-70" onClick={onClose}>
             <X aria-hidden="true" size={17} />
           </button>
         </div>
         <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-          <Link href={signupHref} className="inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
+          <Link href={signupHref} className="inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white transition active:scale-[0.98] active:opacity-70">
             {copy.cta}
           </Link>
-          <Link href={loginHref} className="inline-flex h-11 items-center justify-center rounded-[8px] border border-line bg-white px-4 text-sm font-black text-ink">
+          <Link href={loginHref} className="inline-flex h-11 items-center justify-center rounded-[8px] border border-line bg-white px-4 text-sm font-black text-ink transition active:scale-[0.98] active:opacity-70">
             ログイン
           </Link>
         </div>
-        <button className="mt-2 h-10 w-full rounded-[8px] text-xs font-black text-mute" onClick={onClose}>
+        <button className="mt-2 h-10 w-full rounded-[8px] text-xs font-black text-mute transition active:opacity-70" onClick={onClose}>
           あとで見る
         </button>
       </div>

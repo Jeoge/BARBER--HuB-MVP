@@ -8,7 +8,7 @@ import { toggleSnapReactionAction, type SnapReactionState, type SnapReactionType
 import { pathWithParams } from "@/lib/auth/redirects";
 
 const buttonBase =
-  "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.7rem] font-black transition active:scale-[0.98] disabled:cursor-not-allowed";
+  "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.7rem] font-black transition active:scale-[0.98] disabled:active:scale-100 disabled:cursor-not-allowed";
 
 const reactionConfig = {
   thanks: {
@@ -95,7 +95,7 @@ export function SnapThanksButton({
       <div className={wrapperClass}>
         <Link
           href={pathWithParams("/login", { next: nextPath, message: `${config.label}するにはログインしてください。` })}
-          className={buttonBase + " border-line/80 bg-white text-ink/78"}
+          className={buttonBase + " border-line/80 bg-white text-ink/78 active:opacity-70"}
         >
           <Icon aria-hidden="true" size={15} strokeWidth={1.9} className={reactionType === "thanks" ? "text-blush" : ""} />
           {config.label}

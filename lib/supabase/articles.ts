@@ -77,7 +77,6 @@ export type ArticleReactionCountRow = {
 
 type ArticleCommentCountRow = {
   article_id: string;
-  user_id: string;
 };
 
 export const articleSelect = `
@@ -256,7 +255,7 @@ export async function getArticleEngagement(supabase: SupabaseClient, articleId: 
   try {
     const { data, error } = await supabase
       .from("article_comments")
-      .select("article_id, user_id")
+      .select("article_id")
       .eq("article_id", articleId)
       .eq("is_deleted", false)
       .returns<ArticleCommentCountRow[]>();
@@ -267,7 +266,7 @@ export async function getArticleEngagement(supabase: SupabaseClient, articleId: 
         message: error.message,
       });
     } else {
-      metrics.comment_count = (data ?? []).filter((comment) => authorId == null || comment.user_id !== authorId).length;
+      metrics.comment_count = (data ?? []).length;
     }
   } catch (error) {
     console.error("Article engagement comments select threw", {
@@ -324,7 +323,7 @@ async function withArticleEngagement(supabase: SupabaseClient, articles: Article
   try {
     const { data, error } = await supabase
       .from("article_comments")
-      .select("article_id, user_id")
+      .select("article_id")
       .in("article_id", articleIds)
       .eq("is_deleted", false)
       .returns<ArticleCommentCountRow[]>();
@@ -335,9 +334,6 @@ async function withArticleEngagement(supabase: SupabaseClient, articles: Article
       });
     } else {
       (data ?? []).forEach((comment) => {
-        const authorId = authorByArticleId.get(comment.article_id);
-        if (authorId != null && comment.user_id === authorId) return;
-
         commentByArticleId.set(comment.article_id, (commentByArticleId.get(comment.article_id) ?? 0) + 1);
       });
     }

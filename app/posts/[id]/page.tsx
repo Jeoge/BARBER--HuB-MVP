@@ -106,7 +106,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                   showCount={false}
                   nextPath={`/posts/${dbSnap.id}`}
                 />
-                <SnapCommentButton snapId={dbSnap.id} currentUserId={user?.id} />
+                <SnapCommentButton snapId={dbSnap.id} currentUserId={user?.id} showCount initialCount={dbSnap.comment_count} />
                 <SnapSaveButton snapId={dbSnap.id} currentUserId={user?.id} nextPath={`/posts/${dbSnap.id}`} />
               </div>
             }
@@ -114,7 +114,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
           <Link
             href={pathWithParams("/contact", { topic: "report", targetUrl: `/posts/${dbSnap.id}` })}
-            className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute"
+            className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute transition active:scale-[0.98] active:opacity-70"
           >
             <Flag aria-hidden="true" size={14} />
             通報
@@ -193,7 +193,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
         <Link
           href={pathWithParams("/contact", { topic: "report", targetUrl: `/posts/${id}` })}
-          className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute"
+          className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute transition active:scale-[0.98] active:opacity-70"
         >
           <Flag aria-hidden="true" size={14} />
           通報

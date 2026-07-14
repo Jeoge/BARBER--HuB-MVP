@@ -9,7 +9,7 @@ import { useCommentSheetFabHidden } from "@/components/useCommentSheetFabHidden"
 import { addSnapCommentAction, deleteSnapCommentAction } from "@/lib/actions/comments";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/client";
-import { commentTimeLabel, countSnapComments, listSnapComments, type SnapComment } from "@/lib/supabase/comments";
+import { commentTimeLabel, listSnapComments, type SnapComment } from "@/lib/supabase/comments";
 
 const pill =
   "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-line/80 bg-white px-3 text-[0.7rem] font-black text-ink/78 transition hover:border-blush/25 hover:bg-blushSoft/50 active:scale-[0.98]";
@@ -22,14 +22,16 @@ export function SnapCommentButton({
   snapId,
   currentUserId,
   showCount = false,
+  initialCount = 0,
 }: {
   snapId: string;
   currentUserId?: string | null;
   showCount?: boolean;
+  initialCount?: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [count, setCount] = useState<number | null>(null);
+  const [count, setCount] = useState(initialCount);
   const [comments, setComments] = useState<SnapComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState("");
@@ -40,19 +42,9 @@ export function SnapCommentButton({
   const submittingRef = useRef(false);
   useCommentSheetFabHidden(open);
 
-  // 必要な画面でだけコメント数を表示する。公開Snapカードでは数字を出さない。
   useEffect(() => {
-    if (!showCount) return;
-    let active = true;
-    const supabase = createClient();
-    (async () => {
-      const c = await countSnapComments(supabase, snapId);
-      if (active) setCount(c);
-    })();
-    return () => {
-      active = false;
-    };
-  }, [showCount, snapId]);
+    setCount(initialCount);
+  }, [initialCount]);
 
   useEffect(() => {
     const textarea = textareaRef.current;
@@ -118,13 +110,12 @@ export function SnapCommentButton({
     <>
       <button type="button" onClick={openSheet} aria-label="コメントを見る" className={pill}>
         <MessageCircle aria-hidden="true" size={15} strokeWidth={1.9} />
-        コメント
-        {showCount && count != null && count > 0 ? <span className="tabular-nums">{count}</span> : null}
+        {showCount ? `コメント ${count}` : "コメント"}
       </button>
 
       {open ? (
         <div className="fixed inset-0 z-50 flex flex-col justify-end" role="dialog" aria-modal="true">
-          <button type="button" aria-label="閉じる" onClick={() => setOpen(false)} className="absolute inset-0 bg-ink/40" />
+          <button type="button" aria-label="閉じる" onClick={() => setOpen(false)} className="absolute inset-0 bg-ink/40 active:opacity-70" />
 
           <div className="relative flex max-h-[85vh] flex-col rounded-t-[18px] bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.18)]">
             <div className="mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-line" />
@@ -134,7 +125,7 @@ export function SnapCommentButton({
                 type="button"
                 aria-label="閉じる"
                 onClick={() => setOpen(false)}
-                className="grid h-8 w-8 place-items-center rounded-full bg-neutral-100 text-mute"
+                className="grid h-8 w-8 place-items-center rounded-full bg-neutral-100 text-mute transition active:scale-[0.98] active:opacity-70"
               >
                 <X aria-hidden="true" size={18} />
               </button>
@@ -170,7 +161,8 @@ export function SnapCommentButton({
                             type="button"
                             onClick={() => removeComment(comment.id)}
                             disabled={isPending}
-                            className="mt-1.5 inline-flex items-center gap-1 text-[0.66rem] font-bold text-mute transition hover:text-red-600 active:scale-[0.98] disabled:opacity-50"
+                            aria-busy={isPending}
+                            className="mt-1.5 inline-flex items-center gap-1 text-[0.66rem] font-bold text-mute transition hover:text-red-600 active:scale-[0.98] disabled:active:scale-100 disabled:opacity-50"
                           >
                             <Trash2 aria-hidden="true" size={12} />
                             削除
@@ -189,7 +181,7 @@ export function SnapCommentButton({
               <div className="border-t border-line px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
                 <Link
                   href={pathWithParams("/login", { next: `/posts/${snapId}`, message: "コメントするにはログインしてください。" })}
-                  className="flex h-11 items-center justify-center rounded-full bg-ink text-sm font-black text-white"
+                  className="flex h-11 items-center justify-center rounded-full bg-ink text-sm font-black text-white transition active:scale-[0.98] active:opacity-70"
                 >
                   ログインしてコメントする
                 </Link>
@@ -209,7 +201,8 @@ export function SnapCommentButton({
                     type="submit"
                     disabled={isPending || submitting || text.trim().length === 0}
                     aria-label="送信"
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-white transition active:scale-95 disabled:opacity-40"
+                    aria-busy={isPending || submitting}
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-white transition active:scale-[0.98] active:opacity-70 disabled:active:scale-100 disabled:active:opacity-40 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Send aria-hidden="true" size={18} />
                   </button>

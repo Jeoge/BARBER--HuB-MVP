@@ -22,7 +22,7 @@ export function BottomNavigation() {
         {navItems.map(({ label, displayLabel, href, icon: Icon, auth }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           const className =
-            "flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-[8px] text-[0.57rem] font-medium " +
+            "flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-[8px] text-[0.57rem] font-medium transition active:opacity-70 " +
             (active ? "text-blush/90" : "text-ink/68");
 
           const content = (
