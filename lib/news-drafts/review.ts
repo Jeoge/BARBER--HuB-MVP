@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export type NewsDraftStatus = "pending" | "approved" | "rejected";
 export type NewsDraftRiskLevel = "low" | "medium" | "high";
+export type NewsDraftTitleAngle = "work" | "personal" | "conversation";
+export type NewsDraftTitleCandidates = Partial<Record<NewsDraftTitleAngle, string | null>>;
 
 export type NewsDraftRecord = {
   id: string;
@@ -20,6 +22,8 @@ export type NewsDraftRecord = {
   relevance_score: number | null;
   relevance_reason: string | null;
   draft_title: string | null;
+  title_candidates: NewsDraftTitleCandidates | null;
+  primary_angle: NewsDraftTitleAngle | null;
   draft_summary: string | null;
   draft_body: string | null;
   morning_tip: string | null;
@@ -88,6 +92,8 @@ export async function listNewsDrafts(supabase: SupabaseClient, limit = 80) {
       relevance_score,
       relevance_reason,
       draft_title,
+      title_candidates,
+      primary_angle,
       draft_summary,
       draft_body,
       morning_tip,
