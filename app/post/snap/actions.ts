@@ -4,14 +4,31 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
-import { allowedImageContentType, isAllowedImageFile, safeUploadFileName } from "@/lib/imageValidation";
+import { allowedSnapUploadContentType, snapUploadFileExtension } from "@/lib/imageValidation";
 import { getPostPermissionRedirect } from "@/lib/permissions";
 import { isSafetyConfirmed, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_SNAP_IMAGE_COUNT = 4;
+const MAX_TOTAL_COMPRESSED_IMAGE_SIZE = 4 * 1024 * 1024;
 const SNAP_IMAGE_BUCKET = "snap-images";
+
+type SnapUploadContentType = "image/jpeg" | "image/webp";
+
+type PreparedSnapImage = {
+  file: File;
+  displayOrder: number;
+  contentType: SnapUploadContentType;
+  byteSize: number;
+  width: number | null;
+  height: number | null;
+};
+
+type UploadedSnapImage = PreparedSnapImage & {
+  storagePath: string;
+  publicUrl: string;
+};
 
 function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -30,6 +47,138 @@ function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
 
   return String(error || "");
+}
+
+function ascii(bytes: Uint8Array, start: number, end: number) {
+  return String.fromCharCode(...bytes.slice(start, end));
+}
+
+function readUint24LittleEndian(bytes: Uint8Array, offset: number) {
+  return bytes[offset] + (bytes[offset + 1] << 8) + (bytes[offset + 2] << 16);
+}
+
+function isJpeg(bytes: Uint8Array) {
+  return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+}
+
+function isWebp(bytes: Uint8Array) {
+  return bytes.length >= 16 && ascii(bytes, 0, 4) === "RIFF" && ascii(bytes, 8, 12) === "WEBP";
+}
+
+function jpegDimensions(bytes: Uint8Array) {
+  if (!isJpeg(bytes)) return null;
+
+  let offset = 2;
+
+  while (offset + 9 < bytes.length) {
+    if (bytes[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+
+    const marker = bytes[offset + 1];
+    offset += 2;
+
+    if (marker === 0xd9 || marker === 0xda) break;
+    if (offset + 2 > bytes.length) break;
+
+    const segmentLength = (bytes[offset] << 8) + bytes[offset + 1];
+
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) break;
+
+    const isStartOfFrame =
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc;
+
+    if (isStartOfFrame && segmentLength >= 7) {
+      const height = (bytes[offset + 3] << 8) + bytes[offset + 4];
+      const width = (bytes[offset + 5] << 8) + bytes[offset + 6];
+
+      return width > 0 && height > 0 ? { width, height } : null;
+    }
+
+    offset += segmentLength;
+  }
+
+  return null;
+}
+
+function webpDimensions(bytes: Uint8Array) {
+  if (!isWebp(bytes) || bytes.length < 30) return null;
+
+  const chunkType = ascii(bytes, 12, 16);
+
+  if (chunkType === "VP8X" && bytes.length >= 30) {
+    return {
+      width: readUint24LittleEndian(bytes, 24) + 1,
+      height: readUint24LittleEndian(bytes, 27) + 1,
+    };
+  }
+
+  if (chunkType === "VP8L" && bytes.length >= 25 && bytes[20] === 0x2f) {
+    const bits = bytes[21] | (bytes[22] << 8) | (bytes[23] << 16) | (bytes[24] << 24);
+    return {
+      width: (bits & 0x3fff) + 1,
+      height: ((bits >> 14) & 0x3fff) + 1,
+    };
+  }
+
+  if (chunkType === "VP8 " && bytes.length >= 30 && bytes[23] === 0x9d && bytes[24] === 0x01 && bytes[25] === 0x2a) {
+    return {
+      width: (bytes[26] | (bytes[27] << 8)) & 0x3fff,
+      height: (bytes[28] | (bytes[29] << 8)) & 0x3fff,
+    };
+  }
+
+  return null;
+}
+
+function imageDimensions(bytes: Uint8Array, contentType: SnapUploadContentType) {
+  return contentType === "image/webp" ? webpDimensions(bytes) : jpegDimensions(bytes);
+}
+
+function hasExpectedImageSignature(bytes: Uint8Array, contentType: SnapUploadContentType) {
+  return contentType === "image/webp" ? isWebp(bytes) : isJpeg(bytes);
+}
+
+async function prepareSnapImages(images: File[]): Promise<PreparedSnapImage[]> {
+  const preparedImages: PreparedSnapImage[] = [];
+  let totalByteSize = 0;
+
+  for (const [index, image] of images.entries()) {
+    const contentType = allowedSnapUploadContentType(image);
+
+    if (contentType == null) {
+      throw new Error("unsupported_type");
+    }
+
+    const bytes = new Uint8Array(await image.arrayBuffer());
+    totalByteSize += bytes.byteLength;
+
+    if (totalByteSize > MAX_TOTAL_COMPRESSED_IMAGE_SIZE) {
+      throw new Error("total_too_large");
+    }
+
+    if (!hasExpectedImageSignature(bytes, contentType)) {
+      throw new Error("invalid_signature");
+    }
+
+    const dimensions = imageDimensions(bytes, contentType);
+
+    preparedImages.push({
+      file: image,
+      displayOrder: index,
+      contentType,
+      byteSize: bytes.byteLength,
+      width: dimensions?.width ?? null,
+      height: dimensions?.height ?? null,
+    });
+  }
+
+  return preparedImages;
 }
 
 function supabaseMessage(error: unknown) {
@@ -83,6 +232,99 @@ function insertErrorMessage(error: unknown, hadUploadedImage: boolean) {
   }
 
   return `${prefix}しばらく時間をおいて再度お試しください。`;
+}
+
+async function removeUploadedSnapImages(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  paths: string[],
+  reason: string
+) {
+  if (paths.length === 0) return;
+
+  try {
+    const { error } = await supabase.storage.from(SNAP_IMAGE_BUCKET).remove(paths);
+
+    if (error) {
+      console.error("Snap image cleanup failed", {
+        userId,
+        reason,
+        count: paths.length,
+        message: error.message,
+      });
+    }
+  } catch (error) {
+    console.error("Snap image cleanup threw", {
+      userId,
+      reason,
+      count: paths.length,
+      message: errorMessage(error),
+    });
+  }
+}
+
+async function cleanupCreatedSnapAfterImageFailure(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  {
+    snapId,
+    userId,
+    uploadedPaths,
+    reason,
+  }: {
+    snapId: string;
+    userId: string;
+    uploadedPaths: string[];
+    reason: string;
+  }
+) {
+  try {
+    const { error } = await supabase
+      .from("snap_images")
+      .delete()
+      .eq("snap_id", snapId);
+
+    if (error) {
+      console.error("Snap image rows cleanup failed", {
+        snapId,
+        userId,
+        reason,
+        message: error.message,
+      });
+    }
+  } catch (error) {
+    console.error("Snap image rows cleanup threw", {
+      snapId,
+      userId,
+      reason,
+      message: errorMessage(error),
+    });
+  }
+
+  try {
+    const { error } = await supabase
+      .from("snaps")
+      .update({ is_deleted: true, is_published: false, updated_at: new Date().toISOString() })
+      .eq("id", snapId)
+      .eq("author_id", userId);
+
+    if (error) {
+      console.error("Snap cleanup soft delete failed", {
+        snapId,
+        userId,
+        reason,
+        message: error.message,
+      });
+    }
+  } catch (error) {
+    console.error("Snap cleanup soft delete threw", {
+      snapId,
+      userId,
+      reason,
+      message: errorMessage(error),
+    });
+  }
+
+  await removeUploadedSnapImages(supabase, userId, uploadedPaths, reason);
 }
 
 export async function createSnapAction(formData: FormData) {
@@ -156,9 +398,9 @@ export async function createSnapAction(formData: FormData) {
   const caption = cleanText(formData.get("caption"));
   const category = cleanText(formData.get("category")) || "日常";
   const region = cleanText(formData.get("region")) || profile.region || "";
-  const image = formData.get("image");
-  let imageUrl: string | null = null;
-  let imagePath: string | null = null;
+  const submittedImages = formData
+    .getAll("images")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
   if (!caption) {
     redirectToSnapPost({ error: "本文を入力してください。" });
@@ -168,31 +410,38 @@ export async function createSnapAction(formData: FormData) {
     redirectToSnapPost({ error: SAFETY_CONFIRMATION_ERROR });
   }
 
-  if (image instanceof File && image.size > 0) {
-    if (!isAllowedImageFile(image)) {
-      redirectToSnapPost({ error: "画像ファイルだけアップロードできます。" });
-    }
+  if (submittedImages.length > MAX_SNAP_IMAGE_COUNT) {
+    redirectToSnapPost({ error: "画像は4枚まで選択できます。" });
+  }
 
-    if (image.size > MAX_IMAGE_SIZE) {
-      redirectToSnapPost({ error: "画像は10MB以下にしてください。" });
-    }
+  let preparedImages: PreparedSnapImage[] = [];
 
-    const uploadContentType = allowedImageContentType(image);
+  try {
+    preparedImages = await prepareSnapImages(submittedImages);
+  } catch (error) {
+    console.error("Snap compressed image validation failed", {
+      userId: user.id,
+      imageCount: submittedImages.length,
+      message: errorMessage(error),
+    });
+    redirectToSnapPost({ error: "画像を圧縮できませんでした。別の写真をお試しください。" });
+  }
 
-    if (uploadContentType == null) {
-      redirectToSnapPost({ error: "画像ファイルだけアップロードできます。" });
-    }
+  const snapId = randomUUID();
+  const uploadedImages: UploadedSnapImage[] = [];
 
-    const uploadPath = `${user.id}/${Date.now()}-${randomUUID()}-${safeUploadFileName(image.name, uploadContentType, "snap")}`;
+  for (const image of preparedImages) {
+    const extension = snapUploadFileExtension(image.contentType);
+    const uploadPath = `${user.id}/${snapId}/${image.displayOrder}-${Date.now()}-${randomUUID()}.${extension}`;
     let uploadResult: Awaited<ReturnType<ReturnType<typeof supabase.storage.from>["upload"]>>;
 
     try {
       uploadResult = await supabase.storage
         .from(SNAP_IMAGE_BUCKET)
-        .upload(uploadPath, image, {
-          cacheControl: "3600",
+        .upload(uploadPath, image.file, {
+          cacheControl: "604800",
           upsert: false,
-          contentType: uploadContentType,
+          contentType: image.contentType,
         });
     } catch (error) {
       console.error("Snap image upload threw", {
@@ -200,6 +449,12 @@ export async function createSnapAction(formData: FormData) {
         uploadPath,
         message: errorMessage(error),
       });
+      await removeUploadedSnapImages(
+        supabase,
+        user.id,
+        [...uploadedImages.map((uploadedImage) => uploadedImage.storagePath), uploadPath],
+        "upload throw"
+      );
       redirectToSnapPost({ error: "画像アップロードに失敗しました。画像形式または容量を確認してください。" });
     }
 
@@ -211,27 +466,38 @@ export async function createSnapAction(formData: FormData) {
         uploadPath,
         message: uploadError.message,
       });
+      await removeUploadedSnapImages(
+        supabase,
+        user.id,
+        [...uploadedImages.map((uploadedImage) => uploadedImage.storagePath), uploadPath],
+        "upload error"
+      );
       redirectToSnapPost({ error: uploadErrorMessage(uploadError) });
     }
 
     const { data: publicUrlData } = supabase.storage.from(SNAP_IMAGE_BUCKET).getPublicUrl(uploadPath);
-    imageUrl = publicUrlData.publicUrl;
-    imagePath = uploadPath;
+
+    uploadedImages.push({
+      ...image,
+      storagePath: uploadPath,
+      publicUrl: publicUrlData.publicUrl,
+    });
   }
 
   const now = new Date().toISOString();
+  const primaryImage = uploadedImages[0] ?? null;
   let insertResult: Awaited<ReturnType<ReturnType<typeof supabase.from>["insert"]>>;
 
   try {
     insertResult = await supabase.from("snaps").insert({
-      id: randomUUID(),
+      id: snapId,
       author_id: user.id,
       caption,
       category,
       region: region || null,
-      image_url: imageUrl,
-      image_path: imagePath,
-      is_published: true,
+      image_url: primaryImage?.publicUrl ?? null,
+      image_path: primaryImage?.storagePath ?? null,
+      is_published: uploadedImages.length === 0,
       is_deleted: false,
       safety_confirmed_at: now,
       guidelines_confirmed: true,
@@ -243,29 +509,16 @@ export async function createSnapAction(formData: FormData) {
     console.error("Snap insert threw", {
       userId: user.id,
       profileId: profile.id,
-      hasImage: Boolean(imagePath),
+      imageCount: uploadedImages.length,
       message: errorMessage(error),
     });
 
-    if (imagePath) {
-      try {
-        const { error: removeError } = await supabase.storage.from(SNAP_IMAGE_BUCKET).remove([imagePath]);
-
-        if (removeError) {
-          console.error("Snap image cleanup failed after insert throw", {
-            userId: user.id,
-            imagePath,
-            message: removeError.message,
-          });
-        }
-      } catch (cleanupError) {
-        console.error("Snap image cleanup threw after insert throw", {
-          userId: user.id,
-          imagePath,
-          message: errorMessage(cleanupError),
-        });
-      }
-    }
+    await removeUploadedSnapImages(
+      supabase,
+      user.id,
+      uploadedImages.map((uploadedImage) => uploadedImage.storagePath),
+      "snap insert throw"
+    );
 
     redirectToSnapPost({ error: "Snapの保存に失敗しました。少し時間をおいて再度お試しください。" });
   }
@@ -276,35 +529,114 @@ export async function createSnapAction(formData: FormData) {
     console.error("Snap insert failed", {
       userId: user.id,
       profileId: profile.id,
-      hasImage: Boolean(imagePath),
+      imageCount: uploadedImages.length,
       message: error.message,
     });
 
-    if (imagePath) {
-      try {
-        const { error: removeError } = await supabase.storage.from(SNAP_IMAGE_BUCKET).remove([imagePath]);
+    await removeUploadedSnapImages(
+      supabase,
+      user.id,
+      uploadedImages.map((uploadedImage) => uploadedImage.storagePath),
+      "snap insert error"
+    );
 
-        if (removeError) {
-          console.error("Snap image cleanup failed after insert error", {
-            userId: user.id,
-            imagePath,
-            message: removeError.message,
-          });
-        }
-      } catch (cleanupError) {
-        console.error("Snap image cleanup threw after insert error", {
-          userId: user.id,
-          imagePath,
-          message: errorMessage(cleanupError),
-        });
-      }
+    redirectToSnapPost({ error: insertErrorMessage(error, uploadedImages.length > 0) });
+  }
+
+  if (uploadedImages.length > 0) {
+    const imageRows = uploadedImages.map((image) => ({
+      snap_id: snapId,
+      storage_path: image.storagePath,
+      public_url: image.publicUrl,
+      display_order: image.displayOrder,
+      width: image.width,
+      height: image.height,
+      byte_size: image.byteSize,
+      mime_type: image.contentType,
+    }));
+
+    let imageInsertError: { message: string } | null = null;
+
+    try {
+      const imageInsertResult = await supabase.from("snap_images").insert(imageRows);
+      imageInsertError = imageInsertResult.error;
+    } catch (error) {
+      console.error("Snap image rows insert threw", {
+        snapId,
+        userId: user.id,
+        imageCount: uploadedImages.length,
+        message: errorMessage(error),
+      });
+      await cleanupCreatedSnapAfterImageFailure(supabase, {
+        snapId,
+        userId: user.id,
+        uploadedPaths: uploadedImages.map((uploadedImage) => uploadedImage.storagePath),
+        reason: "image row insert throw",
+      });
+      redirectToSnapPost({ error: "Snapの保存に失敗しました。少し時間をおいて再度お試しください。" });
     }
 
-    redirectToSnapPost({ error: insertErrorMessage(error, Boolean(imagePath)) });
+    if (imageInsertError) {
+      console.error("Snap image rows insert failed", {
+        snapId,
+        userId: user.id,
+        imageCount: uploadedImages.length,
+        message: imageInsertError.message,
+      });
+      await cleanupCreatedSnapAfterImageFailure(supabase, {
+        snapId,
+        userId: user.id,
+        uploadedPaths: uploadedImages.map((uploadedImage) => uploadedImage.storagePath),
+        reason: "image row insert error",
+      });
+      redirectToSnapPost({ error: insertErrorMessage(imageInsertError, true) });
+    }
+
+    let publishError: { message: string } | null = null;
+
+    try {
+      const publishResult = await supabase
+        .from("snaps")
+        .update({ is_published: true, updated_at: now })
+        .eq("id", snapId)
+        .eq("author_id", user.id);
+      publishError = publishResult.error;
+    } catch (error) {
+      console.error("Snap publish after images threw", {
+        snapId,
+        userId: user.id,
+        imageCount: uploadedImages.length,
+        message: errorMessage(error),
+      });
+      await cleanupCreatedSnapAfterImageFailure(supabase, {
+        snapId,
+        userId: user.id,
+        uploadedPaths: uploadedImages.map((uploadedImage) => uploadedImage.storagePath),
+        reason: "publish after images throw",
+      });
+      redirectToSnapPost({ error: "Snapの保存に失敗しました。少し時間をおいて再度お試しください。" });
+    }
+
+    if (publishError) {
+      console.error("Snap publish after images failed", {
+        snapId,
+        userId: user.id,
+        imageCount: uploadedImages.length,
+        message: publishError.message,
+      });
+      await cleanupCreatedSnapAfterImageFailure(supabase, {
+        snapId,
+        userId: user.id,
+        uploadedPaths: uploadedImages.map((uploadedImage) => uploadedImage.storagePath),
+        reason: "publish after images error",
+      });
+      redirectToSnapPost({ error: insertErrorMessage(publishError, true) });
+    }
   }
 
   revalidatePath("/");
   revalidatePath("/snap");
   revalidatePath("/mypage");
+  revalidatePath(`/posts/${snapId}`);
   redirect(pathWithParams("/snap", { posted: "1" }));
 }

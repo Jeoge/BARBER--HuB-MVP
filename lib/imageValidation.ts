@@ -21,6 +21,30 @@ const EXTENSION_TO_MIME_TYPE: Record<string, AllowedImageMimeType> = {
   webp: "image/webp",
 };
 
+const SNAP_SOURCE_MIME_TYPES = {
+  "image/heic": "heic",
+  "image/heif": "heif",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+} as const;
+
+const SNAP_SOURCE_EXTENSION_TO_MIME_TYPE: Record<string, keyof typeof SNAP_SOURCE_MIME_TYPES> = {
+  heic: "image/heic",
+  heif: "image/heif",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
+const SNAP_UPLOAD_MIME_TYPES = {
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+} as const;
+
+type SnapUploadMimeType = keyof typeof SNAP_UPLOAD_MIME_TYPES;
+
 function extensionFromName(fileName: string) {
   const filePart = fileName.split(/[/\\]/).pop() || "";
   const extension = filePart.includes(".") ? filePart.split(".").pop() : "";
@@ -41,6 +65,38 @@ export function allowedImageContentType(file: Pick<File, "name" | "type">) {
 
 export function isAllowedImageFile(file: Pick<File, "name" | "type">) {
   return allowedImageContentType(file) != null;
+}
+
+export function allowedSnapSourceContentType(file: Pick<File, "name" | "type">) {
+  const declaredType = file.type.trim().toLowerCase();
+
+  if (declaredType) {
+    return declaredType in SNAP_SOURCE_MIME_TYPES ? (declaredType as keyof typeof SNAP_SOURCE_MIME_TYPES) : null;
+  }
+
+  const extension = extensionFromName(file.name);
+  return SNAP_SOURCE_EXTENSION_TO_MIME_TYPE[extension] ?? null;
+}
+
+export function isAllowedSnapSourceImageFile(file: Pick<File, "name" | "type">) {
+  return allowedSnapSourceContentType(file) != null;
+}
+
+export function allowedSnapUploadContentType(file: Pick<File, "name" | "type">) {
+  const declaredType = file.type.trim().toLowerCase();
+
+  if (declaredType) {
+    return declaredType in SNAP_UPLOAD_MIME_TYPES ? (declaredType as SnapUploadMimeType) : null;
+  }
+
+  const extension = extensionFromName(file.name);
+  const contentType = extension === "jpg" || extension === "jpeg" ? "image/jpeg" : extension === "webp" ? "image/webp" : null;
+
+  return contentType;
+}
+
+export function snapUploadFileExtension(contentType: SnapUploadMimeType) {
+  return SNAP_UPLOAD_MIME_TYPES[contentType];
 }
 
 export function safeUploadFileName(fileName: string, contentType: AllowedImageMimeType, fallbackBase: string) {

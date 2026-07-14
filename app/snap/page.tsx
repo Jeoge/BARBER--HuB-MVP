@@ -3,7 +3,7 @@ import { SnapCard } from "@/components/SnapCard";
 import { MagazinePageHeader, MagazineRail, MagazineSectionHeading } from "@/components/MagazineListLayout";
 import { PageChrome } from "@/components/PageChrome";
 import { createClient } from "@/lib/supabase/server";
-import { listPublishedSnaps, snapAuthorMeta, snapAuthorName } from "@/lib/supabase/snaps";
+import { listPublishedSnaps, primarySnapImageUrl, snapAuthorMeta, snapAuthorName } from "@/lib/supabase/snaps";
 
 type SnapPageProps = {
   searchParams?: Promise<{ posted?: string }>;
@@ -16,7 +16,7 @@ export default async function SnapPage({ searchParams }: SnapPageProps) {
     data: { user },
   } = await supabase.auth.getUser();
   const { snaps, error } = await listPublishedSnaps(supabase, 30, user?.id);
-  const featuredSnaps = snaps.filter((snap) => snap.image_url).slice(0, 3);
+  const featuredSnaps = snaps.filter((snap) => primarySnapImageUrl(snap)).slice(0, 3);
 
   return (
     <PageChrome>
@@ -36,7 +36,7 @@ export default async function SnapPage({ searchParams }: SnapPageProps) {
           label: snap.category ?? "日常",
           title: snap.caption ?? "",
           description: [snapAuthorName(snap), snapAuthorMeta(snap)].filter(Boolean).join(" / "),
-          imageUrl: snap.image_url ?? undefined,
+          imageUrl: primarySnapImageUrl(snap) ?? undefined,
           variant: "news",
           imageClassName: "object-[center_38%]",
         }))}

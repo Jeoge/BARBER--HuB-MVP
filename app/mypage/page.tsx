@@ -6,9 +6,9 @@ import { logoutAction } from "@/app/auth/actions";
 import { deleteMySnapAction } from "@/app/mypage/actions";
 import { closeJobPostAction } from "@/app/post/job/actions";
 import { closeSuccessionPostAction } from "@/app/post/succession/actions";
-import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { SnapImageCarousel } from "@/components/SnapImageCarousel";
 import { canCreateJob, canCreateSuccession, classifyAccountType, getAccountTypeLabel } from "@/lib/accountTypes";
 import { pathWithParams } from "@/lib/auth/redirects";
 import {
@@ -40,7 +40,7 @@ import {
 } from "@/lib/supabase/qa";
 import { listSavedSnaps } from "@/lib/supabase/saved";
 import { createClient } from "@/lib/supabase/server";
-import { listMySnapReactionCounts, listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
+import { listMySnapReactionCounts, listUserSnaps, snapDateLabel, snapDisplayImages, type SnapWithAuthor } from "@/lib/supabase/snaps";
 import {
   listUserSuccessionPosts,
   successionAreaLabel,
@@ -98,14 +98,24 @@ function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
 
   return (
     <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
-      {snaps.map((snap) => (
-        <article key={snap.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
-          <div className="flex gap-3">
-            {snap.image_url ? (
-              <Link href={`/posts/${snap.id}`} className="h-20 w-16 shrink-0">
-                <MagazineImage src={snap.image_url} alt={snap.caption ?? "Snap"} variant="news" className="h-full w-full" />
-              </Link>
-            ) : null}
+      {snaps.map((snap) => {
+        const images = snapDisplayImages(snap);
+
+        return (
+          <article key={snap.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+            <div className="flex gap-3">
+              {images.length > 0 ? (
+                <div className="h-20 w-16 shrink-0">
+                  <SnapImageCarousel
+                    images={images}
+                    alt={snap.caption ?? "Snap"}
+                    href={`/posts/${snap.id}`}
+                    variant="news"
+                    className="h-full w-full"
+                    compactIndicators
+                  />
+                </div>
+              ) : null}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{snap.category ?? "日常"}</span>
@@ -126,7 +136,8 @@ function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
             </button>
           </form>
         </article>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -817,25 +828,32 @@ export default async function MyPage({ searchParams }: MyPageProps) {
               <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
                 保存したSnapはまだありません。
               </div>
-            ) : (
-              <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
-                {savedSnapList.map((snap) => (
-                  <Link key={snap.id} href={`/posts/${snap.id}`} className="flex gap-3 rounded-[8px] border border-line bg-neutral-50 p-3">
-                    {snap.image_url ? (
-                      <div className="h-16 w-14 shrink-0">
-                        <MagazineImage src={snap.image_url} alt={snap.caption ?? "Snap"} variant="news" className="h-full w-full" />
-                      </div>
-                    ) : null}
-                    <div className="min-w-0 flex-1">
-                      <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{snap.category ?? "日常"}</span>
-                      <p className="mt-1 line-clamp-2 break-words text-sm font-semibold leading-relaxed text-ink">
-                        {snap.caption?.trim() || "本文なしのSnapです。"}
-                      </p>
+              ) : (
+                <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
+                  {savedSnapList.map((snap) => (
+                    <div key={snap.id} className="flex gap-3 rounded-[8px] border border-line bg-neutral-50 p-3">
+                      {snap.images.length > 0 ? (
+                        <div className="h-16 w-14 shrink-0">
+                          <SnapImageCarousel
+                            images={snap.images}
+                            alt={snap.caption ?? "Snap"}
+                            href={`/posts/${snap.id}`}
+                            variant="news"
+                            className="h-full w-full"
+                            compactIndicators
+                          />
+                        </div>
+                      ) : null}
+                      <Link href={`/posts/${snap.id}`} className="min-w-0 flex-1">
+                        <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{snap.category ?? "日常"}</span>
+                        <p className="mt-1 line-clamp-2 break-words text-sm font-semibold leading-relaxed text-ink">
+                          {snap.caption?.trim() || "本文なしのSnapです。"}
+                        </p>
+                      </Link>
                     </div>
-                  </Link>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
           </div>
         </div>
       </SectionCard>

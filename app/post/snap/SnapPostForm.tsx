@@ -5,11 +5,15 @@ import Link from "next/link";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { SafetyChecklist } from "@/components/SafetyChecklist";
-import { isAllowedImageFile } from "@/lib/imageValidation";
+import { isAllowedSnapSourceImageFile } from "@/lib/imageValidation";
 import { createSnapAction } from "./actions";
 
 const categories = ["技術", "道具", "営業メモ", "集客", "日常", "編集部へ共有"];
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_SOURCE_IMAGE_SIZE = 25 * 1024 * 1024;
+const MAX_IMAGE_COUNT = 4;
+const MAX_TOTAL_COMPRESSED_BYTES = 4 * 1024 * 1024;
+const TARGET_IMAGE_BYTES = 900 * 1024;
+const IMAGE_LONG_EDGE_STEPS = [1600, 1400, 1200, 1000, 800] as const;
 const imageInputId = "snap-image-input";
 const snapSafetyItems = [
   {
@@ -18,9 +22,35 @@ const snapSafetyItems = [
   },
 ];
 
-function SubmitButton({ disabledByValidation }: { disabledByValidation: boolean }) {
+type SelectedSnapImage = {
+  id: string;
+  sourceFile: File;
+  file: File;
+  previewUrl: string;
+  width: number;
+  height: number;
+  byteSize: number;
+  mimeType: string;
+};
+
+type LoadedImage = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  close?: () => void;
+};
+
+function SubmitButton({
+  disabledByValidation,
+  busy,
+  busyLabel,
+}: {
+  disabledByValidation: boolean;
+  busy: boolean;
+  busyLabel: string;
+}) {
   const { pending } = useFormStatus();
-  const disabled = pending || disabledByValidation;
+  const disabled = pending || busy || disabledByValidation;
 
   return (
     <button
@@ -32,9 +62,188 @@ function SubmitButton({ disabledByValidation }: { disabledByValidation: boolean 
       }
     >
       <Send aria-hidden="true" size={17} />
-      {pending ? "投稿中..." : "投稿する"}
+      {pending || busy ? busyLabel : "投稿する"}
     </button>
   );
+}
+
+function makeImageId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function isHeicLike(file: File) {
+  return file.type === "image/heic" || file.type === "image/heif" || /\.(heic|heif)$/i.test(file.name);
+}
+
+function fileSizeLabel(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: "image/webp" | "image/jpeg", quality: number) {
+  return new Promise<Blob | null>((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), type, quality);
+  });
+}
+
+async function waitForPaint() {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
+
+async function loadImageSource(file: File): Promise<LoadedImage> {
+  if ("createImageBitmap" in window) {
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        close: () => bitmap.close(),
+      };
+    } catch {
+      // Fall back to HTMLImageElement decoding below.
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.decoding = "async";
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve({
+        source: image,
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("decode failed"));
+    };
+    image.src = objectUrl;
+  });
+}
+
+function makeCompressedFile(blob: Blob, index: number) {
+  const extension = blob.type === "image/webp" ? "webp" : "jpg";
+
+  return new File([blob], `snap-${index + 1}.${extension}`, {
+    type: blob.type,
+    lastModified: Date.now(),
+  });
+}
+
+async function compressSourceImage(file: File, index: number, totalCount: number): Promise<SelectedSnapImage> {
+  const decoded = await loadImageSource(file);
+
+  try {
+    if (decoded.width <= 0 || decoded.height <= 0) {
+      throw new Error("invalid dimensions");
+    }
+
+    const sourceLongEdge = Math.max(decoded.width, decoded.height);
+    const initialLongEdge = Math.min(sourceLongEdge, IMAGE_LONG_EDGE_STEPS[0]);
+    const targetLongEdges = [
+      initialLongEdge,
+      ...IMAGE_LONG_EDGE_STEPS.slice(1).filter((longEdge) => longEdge < initialLongEdge),
+    ];
+    const targetBytes = Math.min(TARGET_IMAGE_BYTES, Math.floor(MAX_TOTAL_COMPRESSED_BYTES / Math.max(totalCount, 1)));
+    const hardBytes = Math.floor(MAX_TOTAL_COMPRESSED_BYTES / Math.max(totalCount, 1));
+    const qualities = [0.84, 0.76, 0.68, 0.6, 0.52, 0.44];
+    let best: { blob: Blob; width: number; height: number } | null = null;
+    let webpSupported = false;
+
+    for (const targetLongEdge of targetLongEdges) {
+      const scale = targetLongEdge / sourceLongEdge;
+      const width = Math.max(1, Math.round(decoded.width * scale));
+      const height = Math.max(1, Math.round(decoded.height * scale));
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d", { alpha: false });
+
+      if (context == null) {
+        throw new Error("canvas unavailable");
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      context.drawImage(decoded.source, 0, 0, width, height);
+
+      for (const quality of qualities) {
+        const webp = await canvasToBlob(canvas, "image/webp", quality);
+
+        if (webp?.type === "image/webp") {
+          webpSupported = true;
+
+          if (best == null || webp.size < best.blob.size) {
+            best = { blob: webp, width, height };
+          }
+
+          if (webp.size <= targetBytes) {
+            return {
+              id: makeImageId(),
+              sourceFile: file,
+              file: makeCompressedFile(webp, index),
+              previewUrl: URL.createObjectURL(webp),
+              width,
+              height,
+              byteSize: webp.size,
+              mimeType: webp.type,
+            };
+          }
+        }
+      }
+
+      if (!webpSupported || (best != null && best.blob.size > hardBytes)) {
+        for (const quality of qualities) {
+          const jpeg = await canvasToBlob(canvas, "image/jpeg", quality);
+
+          if (jpeg?.type === "image/jpeg") {
+            if (best == null || jpeg.size < best.blob.size) {
+              best = { blob: jpeg, width, height };
+            }
+
+            if (jpeg.size <= targetBytes) {
+              return {
+                id: makeImageId(),
+                sourceFile: file,
+                file: makeCompressedFile(jpeg, index),
+                previewUrl: URL.createObjectURL(jpeg),
+                width,
+                height,
+                byteSize: jpeg.size,
+                mimeType: jpeg.type,
+              };
+            }
+          }
+        }
+      }
+    }
+
+    if (best != null && best.blob.size <= hardBytes) {
+      return {
+        id: makeImageId(),
+        sourceFile: file,
+        file: makeCompressedFile(best.blob, index),
+        previewUrl: URL.createObjectURL(best.blob),
+        width: best.width,
+        height: best.height,
+        byteSize: best.blob.size,
+        mimeType: best.blob.type,
+      };
+    }
+  } finally {
+    decoded.close?.();
+  }
+
+  throw new Error("compression failed");
 }
 
 export function SnapPostForm({
@@ -47,75 +256,126 @@ export function SnapPostForm({
   posted?: boolean;
 }) {
   const [caption, setCaption] = useState("");
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
-  const [selectedImagePreviewUrl, setSelectedImagePreviewUrl] = useState("");
+  const [selectedImages, setSelectedImages] = useState<SelectedSnapImage[]>([]);
   const [imageError, setImageError] = useState("");
-  const [previewError, setPreviewError] = useState("");
+  const [imageNotice, setImageNotice] = useState("");
+  const [compressionStatus, setCompressionStatus] = useState("");
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [safetyReady, setSafetyReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const selectedImagesRef = useRef<SelectedSnapImage[]>([]);
   const captionRequired = caption.trim().length === 0;
 
   useEffect(() => {
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
+
+  useEffect(() => {
     return () => {
-      if (selectedImagePreviewUrl) {
-        URL.revokeObjectURL(selectedImagePreviewUrl);
-      }
+      selectedImagesRef.current.forEach((image) => URL.revokeObjectURL(image.previewUrl));
     };
-  }, [selectedImagePreviewUrl]);
+  }, []);
 
-  function isHeicLike(file: File) {
-    return file.type === "image/heic" || file.type === "image/heif" || /\.(heic|heif)$/i.test(file.name);
+  function replaceSelectedImages(nextImages: SelectedSnapImage[]) {
+    setSelectedImages((current) => {
+      current.forEach((image) => URL.revokeObjectURL(image.previewUrl));
+      return nextImages;
+    });
   }
 
-  function fileSizeLabel(bytes: number) {
-    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
-  }
-
-  function clearSelectedImage() {
-    if (selectedImagePreviewUrl) {
-      URL.revokeObjectURL(selectedImagePreviewUrl);
-    }
-    setSelectedImageFile(null);
-    setSelectedImagePreviewUrl("");
+  function removeSelectedImage(imageId: string) {
+    setSelectedImages((current) => {
+      const target = current.find((image) => image.id === imageId);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return current.filter((image) => image.id !== imageId);
+    });
     setImageError("");
-    setPreviewError("");
+    setImageNotice("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   }
 
-  function checkImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (selectedImagePreviewUrl) {
-      URL.revokeObjectURL(selectedImagePreviewUrl);
-    }
-    setSelectedImageFile(null);
-    setSelectedImagePreviewUrl("");
-    setImageError("");
-    setPreviewError("");
+  async function compressAndSetImages(sourceFiles: File[]) {
+  const compressed: SelectedSnapImage[] = [];
+  const totalCount = sourceFiles.length;
 
-    if (!file) {
+  try {
+    for (let index = 0; index < totalCount; index += 1) {
+      setCompressionStatus(`画像を圧縮しています... ${index + 1} / ${totalCount}`);
+      await waitForPaint();
+      compressed.push(await compressSourceImage(sourceFiles[index], index, totalCount));
+    }
+  } catch (error) {
+    compressed.forEach((image) => URL.revokeObjectURL(image.previewUrl));
+    throw error;
+  }
+
+    const totalBytes = compressed.reduce((sum, image) => sum + image.byteSize, 0);
+
+    if (totalBytes > MAX_TOTAL_COMPRESSED_BYTES) {
+      compressed.forEach((image) => URL.revokeObjectURL(image.previewUrl));
+      throw new Error("total too large");
+    }
+
+    replaceSelectedImages(compressed);
+    setCompressionStatus("");
+  }
+
+  async function checkImages(event: ChangeEvent<HTMLInputElement>) {
+    const pickedFiles = Array.from(event.target.files ?? []);
+    setImageError("");
+    setImageNotice("");
+
+    if (pickedFiles.length === 0) {
       setImageError("画像を選択できませんでした。");
       return;
     }
 
-    if (!isAllowedImageFile(file)) {
-      setImageError("画像ファイルだけアップロードできます。");
+    const remainingSlots = MAX_IMAGE_COUNT - selectedImages.length;
+
+    if (remainingSlots <= 0) {
+      setImageNotice("画像は4枚まで選択できます。");
       event.target.value = "";
       return;
     }
 
-    if (file.size > MAX_IMAGE_SIZE) {
-      setImageError("画像は10MB以下で選択してください。");
-      event.target.value = "";
-      return;
+    const filesToAdd = pickedFiles.slice(0, remainingSlots);
+
+    if (pickedFiles.length > remainingSlots) {
+      setImageNotice("画像は4枚まで選択できます。");
     }
 
-    setSelectedImageFile(file);
-    setSelectedImagePreviewUrl(URL.createObjectURL(file));
+    for (const file of filesToAdd) {
+      if (!isAllowedSnapSourceImageFile(file)) {
+        setImageError("この写真形式は利用できません。JPEG、PNG、WebPまたはスクリーンショットをお試しください。");
+        event.target.value = "";
+        return;
+      }
 
-    if (isHeicLike(file)) {
-      setPreviewError("この写真形式は表示できない可能性があります。スクリーンショット、JPEG、PNG画像でお試しください。");
+      if (file.size > MAX_SOURCE_IMAGE_SIZE) {
+        setImageError("画像を圧縮できませんでした。別の写真をお試しください。");
+        event.target.value = "";
+        return;
+      }
+    }
+
+    const nextSourceFiles = [...selectedImages.map((image) => image.sourceFile), ...filesToAdd].slice(0, MAX_IMAGE_COUNT);
+
+    try {
+      setIsCompressing(true);
+      await compressAndSetImages(nextSourceFiles);
+    } catch {
+      setImageError(
+        filesToAdd.some(isHeicLike)
+          ? "この写真形式は利用できません。JPEG、PNG、WebPまたはスクリーンショットをお試しください。"
+          : "画像を圧縮できませんでした。別の写真をお試しください。"
+      );
+    } finally {
+      setIsCompressing(false);
+      setCompressionStatus("");
+      event.target.value = "";
     }
   }
 
@@ -125,8 +385,30 @@ export function SnapPostForm({
     return "";
   }, [captionRequired, imageError]);
 
+  const compressedTotalBytes = selectedImages.reduce((sum, image) => sum + image.byteSize, 0);
+  const busyLabel = isCompressing ? "圧縮中..." : "投稿中...";
+
+  async function submitSnap(formData: FormData) {
+    if (captionRequired || imageError || isCompressing || isSubmitting || !safetyReady) return;
+
+    formData.delete("image");
+    formData.delete("images");
+    selectedImages.forEach((image) => {
+      formData.append("images", image.file, image.file.name);
+    });
+
+    setIsSubmitting(true);
+
+    try {
+      await createSnapAction(formData);
+    } catch (submitError) {
+      setIsSubmitting(false);
+      throw submitError;
+    }
+  }
+
   return (
-    <form action={createSnapAction} className="grid gap-4 px-4 pt-4">
+    <form action={submitSnap} className="grid gap-4 px-4 pt-4">
       {posted ? (
         <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-sm font-black leading-relaxed text-ink">
           投稿できました。Snap一覧に表示されます。
@@ -181,57 +463,64 @@ export function SnapPostForm({
       </label>
 
       <div className="grid gap-2">
-        <span className="text-sm font-black text-ink">画像</span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-black text-ink">画像</span>
+          <span className="text-xs font-black text-mute">画像 {selectedImages.length} / {MAX_IMAGE_COUNT}</span>
+        </div>
         <input
           ref={fileInputRef}
           id={imageInputId}
-          name="image"
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          multiple
           className="sr-only"
-          onChange={checkImage}
+          onChange={checkImages}
+          disabled={isCompressing || isSubmitting || selectedImages.length >= MAX_IMAGE_COUNT}
         />
 
-        {selectedImageFile ? (
+        {selectedImages.length > 0 ? (
           <div className="overflow-hidden rounded-[10px] border border-line bg-white p-3 shadow-sm">
-            {selectedImagePreviewUrl ? (
-              <div className="overflow-hidden rounded-[8px] bg-neutral-100">
-                <img
-                  src={selectedImagePreviewUrl}
-                  alt="選択したSnap画像のプレビュー"
-                  className="aspect-[4/5] max-h-[22rem] w-full object-cover"
-                  onError={() => setPreviewError("画像の読み込みに失敗しました。別の画像でお試しください。")}
-                />
-              </div>
-            ) : null}
-            <div className="mt-3">
-              <p className="line-clamp-1 break-all text-sm font-black text-ink">選択済み: {selectedImageFile.name}</p>
-              <p className="mt-1 text-xs font-semibold text-mute">
-                {selectedImageFile.type || "形式不明"} / {fileSizeLabel(selectedImageFile.size)}
-              </p>
+            <div className="grid grid-cols-2 gap-2">
+              {selectedImages.map((image, index) => (
+                <div key={image.id} className="overflow-hidden rounded-[8px] border border-line bg-neutral-50">
+                  <img
+                    src={image.previewUrl}
+                    alt={`選択したSnap画像 ${index + 1}`}
+                    className="aspect-[4/5] w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <div className="p-2">
+                    <p className="line-clamp-1 break-all text-[0.68rem] font-black text-ink">
+                      {index + 1}. {image.sourceFile.name}
+                    </p>
+                    <p className="mt-1 text-[0.64rem] font-semibold text-mute">
+                      {image.mimeType.replace("image/", "").toUpperCase()} / {fileSizeLabel(image.byteSize)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => removeSelectedImage(image.id)}
+                      className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-[8px] border border-line bg-white text-[0.68rem] font-black text-mute"
+                    >
+                      <Trash2 aria-hidden="true" size={14} />
+                      削除
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-            {previewError ? (
-              <p className="mt-2 rounded-[8px] border border-line bg-neutral-50 p-2 text-xs font-bold leading-relaxed text-mute">
-                {previewError}
-              </p>
+            {compressedTotalBytes > 0 ? (
+              <p className="mt-3 text-xs font-bold text-mute">圧縮後 合計 {fileSizeLabel(compressedTotalBytes)}</p>
             ) : null}
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            {selectedImages.length < MAX_IMAGE_COUNT ? (
               <label
                 htmlFor={imageInputId}
-                className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border border-line bg-white text-xs font-black text-ink"
+                className="mt-3 inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border border-line bg-white text-xs font-black text-ink"
               >
                 <ImagePlus aria-hidden="true" size={15} />
-                画像を変更する
+                画像を追加する
               </label>
-              <button
-                type="button"
-                onClick={clearSelectedImage}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[8px] border border-line bg-white text-xs font-black text-mute"
-              >
-                <Trash2 aria-hidden="true" size={15} />
-                画像を削除する
-              </button>
-            </div>
+            ) : null}
           </div>
         ) : (
           <label
@@ -239,10 +528,20 @@ export function SnapPostForm({
             className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-[8px] border border-dashed border-blush/50 bg-blushSoft px-3 py-4 text-sm font-black text-blush"
           >
             <ImagePlus aria-hidden="true" size={24} />
-            画像を1枚追加
-            <span className="text-[0.68rem] font-semibold text-mute">画像なしでも投稿できます / 10MB以下</span>
+            画像を追加
+            <span className="text-[0.68rem] font-semibold text-mute">画像なしでも投稿できます / 最大4枚</span>
           </label>
         )}
+        {compressionStatus ? (
+          <p className="rounded-[8px] border border-line bg-neutral-50 p-2 text-xs font-bold leading-relaxed text-mute">
+            {compressionStatus}
+          </p>
+        ) : null}
+        {imageNotice ? (
+          <p className="rounded-[8px] border border-line bg-neutral-50 p-2 text-xs font-bold leading-relaxed text-mute">
+            {imageNotice}
+          </p>
+        ) : null}
       </div>
 
       {validationMessage ? (
@@ -283,7 +582,11 @@ export function SnapPostForm({
       </div>
 
       {!safetyReady ? <p className="text-[0.68rem] font-bold text-mute">確認欄にチェックすると投稿できます。</p> : null}
-      <SubmitButton disabledByValidation={captionRequired || Boolean(imageError) || !safetyReady} />
+      <SubmitButton
+        disabledByValidation={captionRequired || Boolean(imageError) || isCompressing || !safetyReady}
+        busy={isCompressing || isSubmitting}
+        busyLabel={busyLabel}
+      />
     </form>
   );
 }

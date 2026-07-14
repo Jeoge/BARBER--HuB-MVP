@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { FollowButton } from "@/components/FollowButton";
-import { MagazineImage } from "@/components/MagazineImage";
+import { SnapImageCarousel } from "@/components/SnapImageCarousel";
 import { SnapCommentButton } from "@/components/SnapCommentButton";
 import { SnapSaveButton } from "@/components/SnapSaveButton";
 import { SnapLikeButton, SnapThanksButton } from "@/components/SnapThanksButton";
-import { snapAuthorMeta, snapAuthorName, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
+import { snapAuthorMeta, snapAuthorName, snapDateLabel, snapDisplayImages, type SnapWithAuthor } from "@/lib/supabase/snaps";
 
 function initial(name: string) {
   return name.trim().slice(0, 1).toUpperCase();
@@ -14,7 +14,8 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
   const authorName = snapAuthorName(snap);
   const authorMeta = snapAuthorMeta(snap);
   const caption = snap.caption ?? "";
-  const hasImage = Boolean(snap.image_url);
+  const images = snapDisplayImages(snap);
+  const hasImage = images.length > 0;
   const isOwnSnap = currentUserId != null && snap.author_id === currentUserId;
   const authorHref = `/profiles/${snap.author_id}`;
 
@@ -45,15 +46,14 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
 
       {hasImage ? (
         <div className="mt-3">
-          <Link href={`/posts/${snap.id}`} className="block min-w-0">
-            <MagazineImage
-              src={snap.image_url ?? undefined}
-              alt={caption}
-              variant="news"
-              className={(compact ? "max-h-[18rem] " : "") + "aspect-[4/5] w-full max-w-full"}
-              imageClassName="object-[center_38%]"
-            />
-          </Link>
+          <SnapImageCarousel
+            images={images}
+            alt={caption}
+            href={`/posts/${snap.id}`}
+            variant="news"
+            className={(compact ? "max-h-[18rem] " : "") + "aspect-[4/5] w-full max-w-full"}
+            imageClassName="object-[center_38%]"
+          />
         </div>
       ) : (
         <Link href={`/posts/${snap.id}`} className="mt-3 block rounded-[8px] border border-line bg-neutral-50 p-4">
