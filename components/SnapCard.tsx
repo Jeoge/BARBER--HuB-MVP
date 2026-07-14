@@ -87,7 +87,7 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
               showCount={false}
               nextPath={`/posts/${snap.id}`}
             />
-            <SnapCommentButton snapId={snap.id} currentUserId={currentUserId} />
+            <SnapCommentButton snapId={snap.id} currentUserId={currentUserId} showCount initialCount={snap.comment_count} />
             <SnapSaveButton snapId={snap.id} currentUserId={currentUserId} nextPath={`/posts/${snap.id}`} />
           </div>
         }

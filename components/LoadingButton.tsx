@@ -30,7 +30,7 @@ export function LoadingSubmitButton({
       aria-pressed={ariaPressed}
       className={
         className +
-        " transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 " +
+        " transition active:scale-[0.98] disabled:active:scale-100 disabled:cursor-not-allowed disabled:opacity-60 " +
         (pending ? "pointer-events-none" : "")
       }
     >
