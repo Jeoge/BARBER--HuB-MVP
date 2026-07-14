@@ -5,6 +5,7 @@ import Link from "next/link";
 import { type ReactNode, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { toggleSnapReactionAction, type SnapReactionState, type SnapReactionType } from "@/app/snap/actions";
+import { ThanksActionButton } from "@/components/ThanksActionButton";
 import { pathWithParams } from "@/lib/auth/redirects";
 
 const buttonBase =
@@ -29,6 +30,22 @@ function SubmitReactionButton({ active, reactionType }: { active: boolean; react
   const { pending } = useFormStatus();
   const config = reactionConfig[reactionType];
   const Icon = config.Icon;
+  const className =
+    buttonBase +
+    " " +
+    (active
+      ? "border-blush/25 bg-blushSoft text-ink"
+      : "border-line/80 bg-white text-ink/78 hover:border-blush/25 hover:bg-blushSoft/50") +
+    (pending ? " cursor-wait opacity-70" : "");
+
+  if (reactionType === "thanks") {
+    return (
+      <ThanksActionButton type="submit" active={active} pendingText={config.pendingLabel} className={className}>
+        <Icon aria-hidden="true" size={15} strokeWidth={1.9} className="text-blush" />
+        {config.label}
+      </ThanksActionButton>
+    );
+  }
 
   return (
     <button
@@ -36,21 +53,13 @@ function SubmitReactionButton({ active, reactionType }: { active: boolean; react
       disabled={pending}
       aria-pressed={active}
       aria-busy={pending}
-      className={
-        buttonBase +
-        " " +
-        (active
-          ? "border-blush/25 bg-blushSoft text-ink"
-          : "border-line/80 bg-white text-ink/78 hover:border-blush/25 hover:bg-blushSoft/50") +
-        (pending ? " cursor-wait opacity-70" : "")
-      }
+      className={className}
     >
       <Icon
         aria-hidden="true"
         size={15}
         strokeWidth={1.9}
-        fill={active && reactionType === "like" ? "currentColor" : "none"}
-        className={reactionType === "thanks" ? "text-blush" : ""}
+        fill={active ? "currentColor" : "none"}
       />
       {pending ? config.pendingLabel : config.label}
     </button>

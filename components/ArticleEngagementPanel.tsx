@@ -4,6 +4,7 @@ import { Fragment, type ReactNode } from "react";
 import { createArticleCommentAction, toggleArticleReactionAction } from "@/app/articles/actions";
 import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
+import { ThanksActionButton } from "@/components/ThanksActionButton";
 import { pathWithParams } from "@/lib/auth/redirects";
 import type { ArticleComment, ArticleMetrics } from "@/lib/supabase/articles";
 
@@ -132,10 +133,17 @@ export function ArticleEngagementPanel({
               <form action={toggleArticleReactionAction}>
                 <input type="hidden" name="articleId" value={articleId} />
                 <input type="hidden" name="reactionType" value={reactionType} />
-                <LoadingSubmitButton pendingText="保存中..." className={reactionButtonBase + pressedClass} ariaPressed={pressed}>
-                  <Icon aria-hidden="true" size={15} strokeWidth={1.9} fill={pressed && reactionType !== "thanks" ? "currentColor" : "none"} className={reactionType === "thanks" ? "text-blush" : ""} />
-                  <span>{config.label}</span>
-                </LoadingSubmitButton>
+                {reactionType === "thanks" ? (
+                  <ThanksActionButton type="submit" active={pressed} pendingText="保存中..." className={reactionButtonBase + pressedClass}>
+                    <Icon aria-hidden="true" size={15} strokeWidth={1.9} className="text-blush" />
+                    <span>{config.label}</span>
+                  </ThanksActionButton>
+                ) : (
+                  <LoadingSubmitButton pendingText="保存中..." className={reactionButtonBase + pressedClass} ariaPressed={pressed}>
+                    <Icon aria-hidden="true" size={15} strokeWidth={1.9} fill={pressed ? "currentColor" : "none"} />
+                    <span>{config.label}</span>
+                  </LoadingSubmitButton>
+                )}
               </form>
             );
           })();

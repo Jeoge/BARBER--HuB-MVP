@@ -56,6 +56,70 @@ button:disabled {
   scrollbar-width: none;
 }
 
+.thanks-sparkle-layer {
+  pointer-events: none;
+  position: fixed;
+  z-index: 60;
+  overflow: visible;
+}
+
+.thanks-sparkle-ring {
+  position: absolute;
+  inset: -0.2rem;
+  border: 2px solid rgba(255, 59, 134, 0.36);
+  border-radius: 9999px;
+  opacity: 0;
+  animation: thanks-sparkle-ring 620ms ease-out both;
+}
+
+.thanks-sparkle-particle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.35);
+  animation: thanks-sparkle-burst 620ms cubic-bezier(0.16, 0.84, 0.35, 1) var(--thanks-delay) both;
+  will-change: transform, opacity;
+}
+
+@keyframes thanks-sparkle-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  22% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
+@keyframes thanks-sparkle-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.35) rotate(0deg);
+  }
+  18% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--thanks-x)), calc(-50% + var(--thanks-y))) scale(1.08) rotate(var(--thanks-rotate));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thanks-sparkle-layer {
+    display: none;
+  }
+}
+
 body[data-comment-sheet-open="true"] .global-post-fab {
   display: none;
 }
