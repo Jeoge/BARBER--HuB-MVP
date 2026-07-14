@@ -27,6 +27,8 @@ export function MagazineImage({ src, alt, variant = "news", className = "", imag
         alt={alt}
         className={"h-full w-full object-cover object-center " + imageClassName}
         loading="lazy"
+        decoding="async"
+        sizes="(max-width: 430px) calc(100vw - 2rem), 398px"
         onError={() => setFailed(true)}
       />
     </div>

@@ -7,13 +7,14 @@ import { PageChrome } from "@/components/PageChrome";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
 import { SnapCommentButton } from "@/components/SnapCommentButton";
+import { SnapImageCarousel } from "@/components/SnapImageCarousel";
 import { SnapSaveButton } from "@/components/SnapSaveButton";
 import { SnapLikeButton, SnapThanksButton } from "@/components/SnapThanksButton";
 import { VisualTile } from "@/components/VisualTile";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { findBackyardPost, findPost, posts } from "@/lib/mockData";
 import { createClient } from "@/lib/supabase/server";
-import { getPublishedSnapById, snapAuthorMeta, snapAuthorName, snapDateLabel } from "@/lib/supabase/snaps";
+import { getPublishedSnapById, snapAuthorMeta, snapAuthorName, snapDateLabel, snapDisplayImages } from "@/lib/supabase/snaps";
 import { getPrimaryTopicSlug, getTopicBundle } from "@/lib/topics";
 
 export default async function PostDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -46,6 +47,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
     const authorName = snapAuthorName(dbSnap);
     const authorMeta = snapAuthorMeta(dbSnap);
     const caption = dbSnap.caption ?? "";
+    const images = snapDisplayImages(dbSnap);
     const isOwnSnap = user?.id === dbSnap.author_id;
     const authorHref = `/profiles/${dbSnap.author_id}`;
 
@@ -78,8 +80,14 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
           <p className="mt-4 whitespace-pre-wrap text-[0.94rem] font-medium leading-relaxed text-ink">{caption}</p>
 
-          {dbSnap.image_url ? (
-            <MagazineImage src={dbSnap.image_url} alt={caption} variant="news" className="mt-4 aspect-[4/5]" imageClassName="object-[center_38%]" />
+          {images.length > 0 ? (
+            <SnapImageCarousel
+              images={images}
+              alt={caption}
+              variant="news"
+              className="mt-4 aspect-[4/5]"
+              imageClassName="object-[center_38%]"
+            />
           ) : (
             <div className="mt-4 rounded-[8px] border border-line bg-neutral-50 p-4">
               <p className="text-xs font-black text-blush">TEXT SNAP</p>

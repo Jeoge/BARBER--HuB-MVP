@@ -25,8 +25,33 @@ export type SnapRecord = {
   updated_at: string | null;
 };
 
+export type SnapImageRecord = {
+  id: string;
+  snap_id: string;
+  storage_path: string;
+  public_url: string;
+  display_order: number;
+  width: number | null;
+  height: number | null;
+  byte_size: number | null;
+  mime_type: string | null;
+  created_at: string | null;
+};
+
+export type SnapDisplayImage = {
+  id: string;
+  url: string;
+  storage_path: string | null;
+  display_order: number;
+  width: number | null;
+  height: number | null;
+  byte_size: number | null;
+  mime_type: string | null;
+};
+
 export type SnapWithAuthor = SnapRecord & {
   profiles: SnapAuthorProfile | null;
+  images: SnapDisplayImage[];
   thanks_count: number;
   like_count: number;
   comment_count: number;
@@ -36,6 +61,7 @@ export type SnapWithAuthor = SnapRecord & {
 
 type RawSnapWithAuthor = SnapRecord & {
   profiles: SnapAuthorProfile | SnapAuthorProfile[] | null;
+  snap_images?: SnapImageRecord | SnapImageRecord[] | null;
 };
 
 export const snapSelect = `
@@ -50,6 +76,18 @@ export const snapSelect = `
   is_deleted,
   created_at,
   updated_at,
+  snap_images (
+    id,
+    snap_id,
+    storage_path,
+    public_url,
+    display_order,
+    width,
+    height,
+    byte_size,
+    mime_type,
+    created_at
+  ),
   profiles:author_id (
     id,
     display_name,
@@ -99,10 +137,82 @@ export function snapDateLabel(snap: SnapWithAuthor) {
   }).format(createdAt);
 }
 
+function normalizeSnapImages(snap: RawSnapWithAuthor): SnapDisplayImage[] {
+  const rawImages = Array.isArray(snap.snap_images)
+    ? snap.snap_images
+    : snap.snap_images
+      ? [snap.snap_images]
+      : [];
+  const orderedImages = rawImages
+    .filter((image) => typeof image.public_url === "string" && image.public_url.trim().length > 0)
+    .map((image) => ({
+      id: image.id,
+      url: image.public_url.trim(),
+      storage_path: image.storage_path || null,
+      display_order: Number(image.display_order ?? 0),
+      width: image.width ?? null,
+      height: image.height ?? null,
+      byte_size: image.byte_size ?? null,
+      mime_type: image.mime_type ?? null,
+    }))
+    .sort((first, second) => first.display_order - second.display_order)
+    .slice(0, 4);
+
+  if (orderedImages.length > 0) return orderedImages;
+
+  const fallbackUrl = snap.image_url?.trim();
+
+  if (!fallbackUrl) return [];
+
+  return [
+    {
+      id: `${snap.id}-legacy-image`,
+      url: fallbackUrl,
+      storage_path: snap.image_path ?? null,
+      display_order: 0,
+      width: null,
+      height: null,
+      byte_size: null,
+      mime_type: null,
+    },
+  ];
+}
+
+export function snapDisplayImages(snap: {
+  images?: SnapDisplayImage[] | null;
+  image_url?: string | null;
+  image_path?: string | null;
+  id?: string;
+}) {
+  if (snap.images && snap.images.length > 0) return snap.images.slice(0, 4);
+
+  const fallbackUrl = snap.image_url?.trim();
+
+  if (!fallbackUrl) return [];
+
+  return [
+    {
+      id: `${snap.id ?? "snap"}-legacy-image`,
+      url: fallbackUrl,
+      storage_path: snap.image_path ?? null,
+      display_order: 0,
+      width: null,
+      height: null,
+      byte_size: null,
+      mime_type: null,
+    },
+  ];
+}
+
+export function primarySnapImageUrl(snap: Parameters<typeof snapDisplayImages>[0]) {
+  return snapDisplayImages(snap)[0]?.url ?? null;
+}
+
 function normalizeSnaps(data: unknown): SnapWithAuthor[] {
   return ((data ?? []) as RawSnapWithAuthor[]).map((snap) => ({
     ...snap,
     profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles,
+    images: normalizeSnapImages(snap),
     thanks_count: 0,
     like_count: 0,
     comment_count: 0,
@@ -118,6 +228,7 @@ function normalizeSnap(data: unknown): SnapWithAuthor | null {
   return {
     ...snap,
     profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles,
+    images: normalizeSnapImages(snap),
     thanks_count: 0,
     like_count: 0,
     comment_count: 0,

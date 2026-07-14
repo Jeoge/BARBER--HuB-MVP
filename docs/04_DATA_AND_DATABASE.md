@@ -18,7 +18,7 @@
 | 領域 | テーブル |
 | --- | --- |
 | プロフィール | `profiles` |
-| Snap | `snaps`, `snap_reactions`, `snap_comments`, `saved_snaps` |
+| Snap | `snaps`, `snap_images`, `snap_reactions`, `snap_comments`, `saved_snaps` |
 | フォロー | `follows` |
 | 記事 | `articles`, `article_reactions`, `article_comments` |
 | Back Room | `backroom_profiles`, `backroom_posts`, `backroom_comments` |
@@ -44,6 +44,22 @@
 - 危険なファイル名をそのまま使わない。
 - ユーザーごとのフォルダを使い、本人以外がアップロードできないようにする。
 - public URLやNext/Imageで `undefined` や外部URL起因のクラッシュが起きないようにする。
+- Snapの新規アップロードは圧縮後の `image/webp` または `image/jpeg` に限定する。
+
+## Snap画像
+
+`snaps` には既存互換用の `image_url` / `image_path` が残ります。
+
+複数画像は `snap_images` に保存します。
+
+主な設計:
+
+- 1つのSnapにつき `display_order` 0〜3の最大4枚。
+- 同一Snap内で `display_order` は重複させない。
+- `storage_path`, `public_url`, `width`, `height`, `byte_size`, `mime_type` を保持する。
+- 新規投稿では1枚目を `snaps.image_url` / `snaps.image_path` にも保存し、既存表示との互換性を保つ。
+- 読み取り時は `snap_images` があれば順序順に使い、なければ既存の `image_url` を1枚目として使う。
+- 既存の1枚Snapは自動移行しない。
 
 ## 店舗ディレクトリのDB設計
 
@@ -79,7 +95,8 @@
 - `snap_comments`: 公開中かつ削除されていないSnapのコメントだけをanon / authenticatedが閲覧できる。INSERTはauthenticatedだけで、投稿対象も公開中かつ未削除Snapに限定する。削除は本人のみ。
 - `get_public_snap_comment_counts`: 公開中かつ未削除Snapの `snap_id` と `comment_count` だけをまとめて返す公開集計RPC。個別コメント、本文、user_idは返さない。
 - `saved_snaps`: 本人だけが閲覧・作成・削除でき、削除済みまたは非公開Snapは保存対象にしない。
-- `snap-images`: 本人フォルダだけアップロードできる。
+- `snap_images`: 公開中かつ未削除Snapに属する画像情報だけをanon / authenticatedが閲覧できる。投稿者本人は自分のSnap画像情報を閲覧・追加・更新・削除できる。
+- `snap-images`: 本人フォルダだけアップロードできる。新規Snap画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。
 - `barber_shops`: 公開情報は閲覧可能。編集は認証済みオーナーに限定する。
 - `barber_shop_claims`: 申請者本人が自分の申請を確認・作成できる。
 - 管理者審査はクライアントから直接行わない。
