@@ -66,6 +66,15 @@ type ArticleReactionRow = {
   reaction_type: "like" | "thanks" | "save";
 };
 
+export type ArticleReactionCountRow = {
+  article_id: string;
+  thanks_count: number;
+  like_count: number;
+  save_count: number;
+  comment_count: number;
+  total_count: number;
+};
+
 type ArticleCommentCountRow = {
   article_id: string;
   user_id: string;
@@ -188,43 +197,60 @@ export function articleExcerpt(body: string, maxLength = 72) {
   return `${singleLine.slice(0, maxLength)}...`;
 }
 
+export async function listMyArticleReactionCounts(supabase: SupabaseClient): Promise<ArticleReactionCountRow[]> {
+  const { data, error } = await supabase.rpc("get_my_article_reaction_counts");
+
+  if (error) {
+    console.error("My article reaction counts RPC failed", {
+      message: error.message,
+    });
+    return [];
+  }
+
+  return ((data ?? []) as ArticleReactionCountRow[]).map((counts) => ({
+    ...counts,
+    thanks_count: Number(counts.thanks_count ?? 0),
+    like_count: Number(counts.like_count ?? 0),
+    save_count: Number(counts.save_count ?? 0),
+    comment_count: Number(counts.comment_count ?? 0),
+    total_count: Number(counts.total_count ?? 0),
+  }));
+}
+
 export async function getArticleEngagement(supabase: SupabaseClient, articleId: string, authorId?: string | null, viewerId?: string | null) {
   const metrics: ArticleMetrics = { ...emptyMetrics };
 
-  try {
-    const { data, error } = await supabase
-      .from("article_reactions")
-      .select("article_id, user_id, reaction_type")
-      .eq("article_id", articleId)
-      .returns<ArticleReactionRow[]>();
+  if (viewerId != null) {
+    try {
+      const { data, error } = await supabase
+        .from("article_reactions")
+        .select("article_id, user_id, reaction_type")
+        .eq("article_id", articleId)
+        .eq("user_id", viewerId)
+        .returns<ArticleReactionRow[]>();
 
-    if (error) {
-      console.error("Article engagement reactions select failed", {
+      if (error) {
+        console.error("Article engagement viewer reactions select failed", {
+          articleId,
+          message: error.message,
+        });
+      } else {
+        (data ?? []).forEach((reaction) => {
+          const isAuthorReaction = authorId != null && reaction.user_id === authorId;
+
+          if (reaction.reaction_type === "save" || !isAuthorReaction) {
+            if (reaction.reaction_type === "like") metrics.viewer_has_liked = true;
+            if (reaction.reaction_type === "thanks") metrics.viewer_has_thanked = true;
+            if (reaction.reaction_type === "save") metrics.viewer_has_saved = true;
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Article engagement viewer reactions select threw", {
         articleId,
-        message: error.message,
-      });
-    } else {
-      (data ?? []).forEach((reaction) => {
-        const isAuthorReaction = authorId != null && reaction.user_id === authorId;
-
-        if (!isAuthorReaction) {
-          if (reaction.reaction_type === "like") metrics.like_count += 1;
-          if (reaction.reaction_type === "thanks") metrics.thanks_count += 1;
-          if (reaction.reaction_type === "save") metrics.save_count += 1;
-        }
-
-        if (viewerId && reaction.user_id === viewerId && !isAuthorReaction) {
-          if (reaction.reaction_type === "like") metrics.viewer_has_liked = true;
-          if (reaction.reaction_type === "thanks") metrics.viewer_has_thanked = true;
-          if (reaction.reaction_type === "save") metrics.viewer_has_saved = true;
-        }
+        message: errorMessage(error),
       });
     }
-  } catch (error) {
-    console.error("Article engagement reactions select threw", {
-      articleId,
-      message: errorMessage(error),
-    });
   }
 
   try {
@@ -258,53 +284,41 @@ async function withArticleEngagement(supabase: SupabaseClient, articles: Article
   if (articleIds.length === 0) return articles;
 
   const authorByArticleId = new Map(articles.map((article) => [article.id, article.author_id]));
-  const likeByArticleId = new Map<string, number>();
-  const thanksByArticleId = new Map<string, number>();
-  const saveByArticleId = new Map<string, number>();
   const commentByArticleId = new Map<string, number>();
   const viewerLiked = new Set<string>();
   const viewerThanked = new Set<string>();
   const viewerSaved = new Set<string>();
 
-  try {
-    const { data, error } = await supabase
-      .from("article_reactions")
-      .select("article_id, user_id, reaction_type")
-      .in("article_id", articleIds)
-      .returns<ArticleReactionRow[]>();
+  if (viewerId != null) {
+    try {
+      const { data, error } = await supabase
+        .from("article_reactions")
+        .select("article_id, user_id, reaction_type")
+        .in("article_id", articleIds)
+        .eq("user_id", viewerId)
+        .returns<ArticleReactionRow[]>();
 
-    if (error) {
-      console.error("Article reactions select failed", {
-        message: error.message,
-      });
-    } else {
-      (data ?? []).forEach((reaction) => {
-        const authorId = authorByArticleId.get(reaction.article_id);
-        const isAuthorReaction = authorId != null && reaction.user_id === authorId;
+      if (error) {
+        console.error("Article viewer reactions select failed", {
+          message: error.message,
+        });
+      } else {
+        (data ?? []).forEach((reaction) => {
+          const authorId = authorByArticleId.get(reaction.article_id);
+          const isAuthorReaction = authorId != null && reaction.user_id === authorId;
 
-        if (!isAuthorReaction) {
-          if (reaction.reaction_type === "like") {
-            likeByArticleId.set(reaction.article_id, (likeByArticleId.get(reaction.article_id) ?? 0) + 1);
+          if (reaction.reaction_type === "save" || !isAuthorReaction) {
+            if (reaction.reaction_type === "like") viewerLiked.add(reaction.article_id);
+            if (reaction.reaction_type === "thanks") viewerThanked.add(reaction.article_id);
+            if (reaction.reaction_type === "save") viewerSaved.add(reaction.article_id);
           }
-          if (reaction.reaction_type === "thanks") {
-            thanksByArticleId.set(reaction.article_id, (thanksByArticleId.get(reaction.article_id) ?? 0) + 1);
-          }
-          if (reaction.reaction_type === "save") {
-            saveByArticleId.set(reaction.article_id, (saveByArticleId.get(reaction.article_id) ?? 0) + 1);
-          }
-        }
-
-        if (viewerId && reaction.user_id === viewerId && !isAuthorReaction) {
-          if (reaction.reaction_type === "like") viewerLiked.add(reaction.article_id);
-          if (reaction.reaction_type === "thanks") viewerThanked.add(reaction.article_id);
-          if (reaction.reaction_type === "save") viewerSaved.add(reaction.article_id);
-        }
+        });
+      }
+    } catch (error) {
+      console.error("Article viewer reactions select threw", {
+        message: errorMessage(error),
       });
     }
-  } catch (error) {
-    console.error("Article reactions select threw", {
-      message: errorMessage(error),
-    });
   }
 
   try {
@@ -335,13 +349,10 @@ async function withArticleEngagement(supabase: SupabaseClient, articles: Article
 
   return articles.map((article) => ({
     ...article,
-    like_count: likeByArticleId.get(article.id) ?? 0,
-    thanks_count: thanksByArticleId.get(article.id) ?? 0,
-    save_count: saveByArticleId.get(article.id) ?? 0,
     comment_count: commentByArticleId.get(article.id) ?? 0,
     viewer_has_liked: viewerId != null && viewerId !== article.author_id && viewerLiked.has(article.id),
     viewer_has_thanked: viewerId != null && viewerId !== article.author_id && viewerThanked.has(article.id),
-    viewer_has_saved: viewerId != null && viewerId !== article.author_id && viewerSaved.has(article.id),
+    viewer_has_saved: viewerId != null && viewerSaved.has(article.id),
   }));
 }
 

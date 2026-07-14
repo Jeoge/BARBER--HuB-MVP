@@ -77,7 +77,7 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
         showCount={false}
         nextPath={`/posts/${snap.id}`}
         actions={
-          <span className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
+          <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
             <SnapLikeButton
               snapId={snap.id}
               authorId={snap.author_id}
@@ -89,7 +89,7 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
             />
             <SnapCommentButton snapId={snap.id} currentUserId={currentUserId} />
             <SnapSaveButton snapId={snap.id} currentUserId={currentUserId} nextPath={`/posts/${snap.id}`} />
-          </span>
+          </div>
         }
       />
     </article>

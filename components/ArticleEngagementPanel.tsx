@@ -115,6 +115,7 @@ export function ArticleEngagementPanel({
           const Icon = config.icon;
           const pressed = metrics[config.pressedKey];
           const pressedClass = pressed ? " border-blush/25 bg-blushSoft text-ink" : " border-line/80 bg-white text-ink/78 hover:border-blush/25 hover:bg-blushSoft/50";
+          const blocksOwnCountedReaction = isOwnArticle && reactionType !== "save";
 
           const button = (() => {
             if (currentUserId == null) {
@@ -125,7 +126,7 @@ export function ArticleEngagementPanel({
               );
             }
 
-            if (isOwnArticle) {
+            if (blocksOwnCountedReaction) {
               return (
                 <button
                   type="button"
@@ -161,7 +162,7 @@ export function ArticleEngagementPanel({
       </div>
 
       {isOwnArticle ? (
-        <p className="mt-2 text-[0.68rem] font-semibold text-mute">自分の記事へのリアクションはカウントされません。</p>
+        <p className="mt-2 text-[0.68rem] font-semibold text-mute">自分の記事へのThanks・いいねはカウントされません。</p>
       ) : null}
       {reactionError ? <p className="mt-2 text-[0.72rem] font-black leading-relaxed text-red-600">{reactionError}</p> : null}
 

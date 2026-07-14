@@ -14,6 +14,7 @@ import { pathWithParams } from "@/lib/auth/redirects";
 import {
   articleDateLabel,
   articleExcerpt,
+  listMyArticleReactionCounts,
   listSavedArticles,
   listUserArticles,
   type ArticleWithAuthor,
@@ -26,7 +27,6 @@ import {
   type BackroomPostWithAuthor,
 } from "@/lib/supabase/backroom";
 import { listFollowingProfiles } from "@/lib/supabase/follows";
-import { getMySnapStats } from "@/lib/supabase/insights";
 import { listOwnedVerifiedBarberShops, shopAreaLabel, type BarberShop } from "@/lib/supabase/barber-shops";
 import { jobAreaLabel, jobStatusLabel, listUserJobPosts, type JobPost } from "@/lib/supabase/jobs";
 import { getAccountProfile } from "@/lib/supabase/profiles";
@@ -40,7 +40,7 @@ import {
 } from "@/lib/supabase/qa";
 import { listSavedSnaps } from "@/lib/supabase/saved";
 import { createClient } from "@/lib/supabase/server";
-import { listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
+import { listMySnapReactionCounts, listUserSnaps, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
 import {
   listUserSuccessionPosts,
   successionAreaLabel,
@@ -537,7 +537,10 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const { articles: savedArticles, error: savedArticlesError } = await listSavedArticles(supabase, user.id, 30, user.id);
   const followedProfiles = await listFollowingProfiles(supabase, user.id);
   const savedSnapList = await listSavedSnaps(supabase, user.id);
-  const stats = await getMySnapStats(supabase, user.id);
+  const [snapReactionCounts, articleReactionCounts] = await Promise.all([
+    listMySnapReactionCounts(supabase),
+    listMyArticleReactionCounts(supabase),
+  ]);
   const profileDisplayName = profile?.display_name?.trim() || profile?.salon_name?.trim() || "プロフィール未設定";
   const loginEmail = user.email ?? "メールアドレス未取得";
   const hasProfile = profile != null;
@@ -551,12 +554,40 @@ export default async function MyPage({ searchParams }: MyPageProps) {
     : { jobs: [], error: null };
   const { posts: mySuccessionPosts, error: mySuccessionPostsError } = await listUserSuccessionPosts(supabase, user.id, 30);
   const { shops: verifiedBarberShops, error: verifiedBarberShopsError } = await listOwnedVerifiedBarberShops(supabase, user.id, 20);
-  const articleThanksPoints = myArticles.reduce((sum, article) => sum + article.thanks_count, 0);
-  const likesReceived = stats.likesReceived + myArticles.reduce((sum, article) => sum + article.like_count, 0);
-  const thanksPoints = stats.thanksReceived + articleThanksPoints;
+
+  const snapCountsById = new Map(snapReactionCounts.map((counts) => [counts.snap_id, counts]));
+  const articleCountsById = new Map(articleReactionCounts.map((counts) => [counts.article_id, counts]));
+  const mySnapsWithCounts = mySnaps.map((snap) => {
+    const counts = snapCountsById.get(snap.id);
+    return {
+      ...snap,
+      thanks_count: Number(counts?.thanks_count ?? 0),
+      like_count: Number(counts?.like_count ?? 0),
+      comment_count: Number(counts?.comment_count ?? 0),
+    };
+  });
+  const myArticlesWithCounts = myArticles.map((article) => {
+    const counts = articleCountsById.get(article.id);
+    return {
+      ...article,
+      thanks_count: Number(counts?.thanks_count ?? 0),
+      like_count: Number(counts?.like_count ?? 0),
+      save_count: Number(counts?.save_count ?? 0),
+      comment_count: Number(counts?.comment_count ?? 0),
+    };
+  });
+
+  const snapThanksPoints = mySnapsWithCounts.reduce((sum, snap) => sum + snap.thanks_count, 0);
+  const articleThanksPoints = myArticlesWithCounts.reduce((sum, article) => sum + article.thanks_count, 0);
+  const likesReceived =
+    mySnapsWithCounts.reduce((sum, snap) => sum + snap.like_count, 0) +
+    myArticlesWithCounts.reduce((sum, article) => sum + article.like_count, 0);
+  const thanksPoints = snapThanksPoints + articleThanksPoints;
   const nextRewardAt = (Math.floor(thanksPoints / 100) + 1) * 100;
   const pointsToNext = nextRewardAt - thanksPoints;
-  const commentsReceived = stats.commentsReceived + myArticles.reduce((sum, article) => sum + article.comment_count, 0);
+  const commentsReceived =
+    mySnapsWithCounts.reduce((sum, snap) => sum + snap.comment_count, 0) +
+    myArticlesWithCounts.reduce((sum, article) => sum + article.comment_count, 0);
   const jobApplications: JobApplication[] = [];
 
   return (
@@ -714,7 +745,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
             自分の記事を読み込めませんでした。
           </div>
         ) : (
-          <MyArticleList articles={myArticles} />
+          <MyArticleList articles={myArticlesWithCounts} />
         )}
       </SectionCard>
 
@@ -729,7 +760,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
             自分のSnapを読み込めませんでした。
           </div>
         ) : (
-          <MySnapList snaps={mySnaps} />
+          <MySnapList snaps={mySnapsWithCounts} />
         )}
       </SectionCard>
 
@@ -898,7 +929,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         <p className="my-3 text-xs font-medium leading-relaxed text-mute">
           表示カウントから投稿者本人のリアクションは除外しています。
         </p>
-        <OwnerReactionSummaries articles={myArticles} snaps={mySnaps} />
+        <OwnerReactionSummaries articles={myArticlesWithCounts} snaps={mySnapsWithCounts} />
       </SectionCard>
 
       <SectionCard eyebrow="APPLICATIONS" title="応募履歴">

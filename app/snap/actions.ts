@@ -47,6 +47,7 @@ async function countReactionsForSnap(
   supabase: Awaited<ReturnType<typeof createClient>>,
   snapId: string,
   authorId: string,
+  viewerId: string,
   reactionType: SnapReactionType
 ) {
   try {
@@ -54,6 +55,7 @@ async function countReactionsForSnap(
       .from("snap_reactions")
       .select("snap_id, user_id, reaction_type")
       .eq("snap_id", snapId)
+      .eq("user_id", viewerId)
       .eq("reaction_type", reactionType)
       .returns<SnapReactionRow[]>();
 
@@ -142,7 +144,7 @@ export async function toggleSnapReactionAction(previousState: SnapReactionState,
 
   if (snap.author_id === user.id) {
     return {
-      count: await countReactionsForSnap(supabase, snap.id, snap.author_id, reactionType),
+      count: await countReactionsForSnap(supabase, snap.id, snap.author_id, user.id, reactionType),
       active: false,
       message: "自分の投稿にはリアクションできません。",
     };
@@ -205,7 +207,7 @@ export async function toggleSnapReactionAction(previousState: SnapReactionState,
     revalidatePath("/mypage");
 
     return {
-      count: await countReactionsForSnap(supabase, snap.id, snap.author_id, reactionType),
+      count: await countReactionsForSnap(supabase, snap.id, snap.author_id, user.id, reactionType),
       active: false,
       message: `${label}を取り消しました。`,
     };
@@ -235,7 +237,7 @@ export async function toggleSnapReactionAction(previousState: SnapReactionState,
 
     if (insertError.message.toLowerCase().includes("duplicate")) {
       return {
-        count: await countReactionsForSnap(supabase, snap.id, snap.author_id, reactionType),
+        count: await countReactionsForSnap(supabase, snap.id, snap.author_id, user.id, reactionType),
         active: true,
         message: `${label}済みです。`,
       };
@@ -253,7 +255,7 @@ export async function toggleSnapReactionAction(previousState: SnapReactionState,
   revalidatePath("/mypage");
 
   return {
-    count: await countReactionsForSnap(supabase, snap.id, snap.author_id, reactionType),
+    count: await countReactionsForSnap(supabase, snap.id, snap.author_id, user.id, reactionType),
     active: true,
     message: `${label}しました。`,
   };

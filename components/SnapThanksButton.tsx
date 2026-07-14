@@ -82,7 +82,7 @@ export function SnapThanksButton({
 }) {
   const config = reactionConfig[reactionType];
   const Icon = config.Icon;
-  const wrapperClass = inline ? "flex items-center gap-2" : "mt-3 flex flex-wrap items-center gap-2";
+  const wrapperClass = inline ? "flex items-center gap-2" : "reaction-row mt-3 flex flex-wrap items-center gap-2";
   const initialState: SnapReactionState = {
     count: initialCount,
     active: initiallyThanked,
@@ -101,7 +101,7 @@ export function SnapThanksButton({
           {config.label}
         </Link>
         {showCount ? <span className="text-[0.68rem] font-bold text-mute">{state.count}</span> : null}
-        {actions ? <span className="ml-auto flex items-center">{actions}</span> : null}
+        {actions ? <div className="ml-auto flex max-w-full flex-wrap items-center justify-end">{actions}</div> : null}
       </div>
     );
   }
@@ -115,7 +115,7 @@ export function SnapThanksButton({
         </button>
         {showCount ? <span className="text-[0.68rem] font-bold text-mute">{state.count}</span> : null}
         {!inline ? <span className="text-[0.68rem] font-semibold text-mute">{config.ownMessage}</span> : null}
-        {actions ? <span className="ml-auto flex items-center">{actions}</span> : null}
+        {actions ? <div className="ml-auto flex max-w-full flex-wrap items-center justify-end">{actions}</div> : null}
       </div>
     );
   }
@@ -130,7 +130,7 @@ export function SnapThanksButton({
       {showCount ? <span className="text-[0.68rem] font-bold text-mute">{state.count}</span> : null}
       {!inline && state.error ? <span className="text-[0.68rem] font-bold text-red-600">{state.error}</span> : null}
       {!inline && !state.error && state.message ? <span className="text-[0.68rem] font-semibold text-mute">{state.message}</span> : null}
-      {actions ? <span className="ml-auto flex items-center">{actions}</span> : null}
+      {actions ? <div className="ml-auto flex max-w-full flex-wrap items-center justify-end">{actions}</div> : null}
     </div>
   );
 }

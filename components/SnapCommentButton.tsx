@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { FormDisclaimer } from "@/components/FormDisclaimer";
+import { useCommentSheetFabHidden } from "@/components/useCommentSheetFabHidden";
 import { addSnapCommentAction, deleteSnapCommentAction } from "@/lib/actions/comments";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/client";
@@ -37,6 +38,7 @@ export function SnapCommentButton({
   const [isPending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const submittingRef = useRef(false);
+  useCommentSheetFabHidden(open);
 
   // 必要な画面でだけコメント数を表示する。公開Snapカードでは数字を出さない。
   useEffect(() => {
@@ -51,16 +53,6 @@ export function SnapCommentButton({
       active = false;
     };
   }, [showCount, snapId]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    document.body.dataset.commentSheetOpen = "true";
-
-    return () => {
-      delete document.body.dataset.commentSheetOpen;
-    };
-  }, [open]);
 
   useEffect(() => {
     const textarea = textareaRef.current;

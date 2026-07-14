@@ -111,8 +111,8 @@ export async function toggleArticleReactionAction(formData: FormData) {
       redirect(articlePath(articleId, { reactionError: "この記事にはリアクションできません。" }));
     }
 
-    if (article?.author_id === user.id) {
-      redirect(articlePath(articleId, { reactionError: "自分の記事へのリアクションはカウントされません。" }));
+    if (article?.author_id === user.id && reactionType !== "save") {
+      redirect(articlePath(articleId, { reactionError: "自分の記事へのThanks・いいねはカウントされません。" }));
     }
   }
 

@@ -96,7 +96,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             showCount={false}
             nextPath={`/posts/${dbSnap.id}`}
             actions={
-              <span className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
+              <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
                 <SnapLikeButton
                   snapId={dbSnap.id}
                   authorId={dbSnap.author_id}
@@ -108,7 +108,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                 />
                 <SnapCommentButton snapId={dbSnap.id} currentUserId={user?.id} />
                 <SnapSaveButton snapId={dbSnap.id} currentUserId={user?.id} nextPath={`/posts/${dbSnap.id}`} />
-              </span>
+              </div>
             }
           />
 
