@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { listPublicSnapCommentCounts } from "@/lib/supabase/comments";
 
 export type SnapAuthorProfile = {
   id: string;
@@ -185,7 +186,17 @@ export async function listMySnapReactionCounts(supabase: SupabaseClient): Promis
 async function withReactionSummaries(supabase: SupabaseClient, snaps: SnapWithAuthor[], viewerId?: string | null) {
   const snapIds = snaps.map((snap) => snap.id).filter((id) => id.length > 0);
 
-  if (snapIds.length === 0 || viewerId == null) return snaps;
+  if (snapIds.length === 0) return snaps;
+
+  const commentCounts = await listPublicSnapCommentCounts(supabase);
+  const commentCountBySnapId = new Map(commentCounts.map((row) => [row.snap_id, row.comment_count]));
+
+  if (viewerId == null) {
+    return snaps.map((snap) => ({
+      ...snap,
+      comment_count: commentCountBySnapId.get(snap.id) ?? 0,
+    }));
+  }
 
   const authorBySnapId = new Map(snaps.map((snap) => [snap.id, snap.author_id]));
   const viewerThankedSnapIds = new Set<string>();
@@ -225,6 +236,7 @@ async function withReactionSummaries(supabase: SupabaseClient, snaps: SnapWithAu
 
   return snaps.map((snap) => ({
     ...snap,
+    comment_count: commentCountBySnapId.get(snap.id) ?? 0,
     viewer_has_thanked: viewerId != null && viewerId !== snap.author_id && viewerThankedSnapIds.has(snap.id),
     viewer_has_liked: viewerId != null && viewerId !== snap.author_id && viewerLikedSnapIds.has(snap.id),
   }));

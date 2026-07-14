@@ -19,7 +19,7 @@ type ArticleEngagementPanelProps = {
 };
 
 const reactionButtonBase =
-  "inline-flex h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.72rem] font-black transition active:scale-[0.98]";
+  "inline-flex h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.72rem] font-black transition active:scale-[0.98] disabled:active:scale-100 disabled:cursor-not-allowed";
 
 const reactionConfig = {
   thanks: {
@@ -66,7 +66,7 @@ function LoginReactionLink({ articleId, label, children }: { articleId: string; 
   return (
     <Link
       href={pathWithParams("/login", { next: `/articles/${articleId}`, message: `${label}にはログインしてください。` })}
-      className={reactionButtonBase + " border-line/80 bg-white text-ink/78"}
+      className={reactionButtonBase + " border-line/80 bg-white text-ink/78 active:opacity-70"}
     >
       {children}
       <span>{label}</span>
@@ -74,23 +74,11 @@ function LoginReactionLink({ articleId, label, children }: { articleId: string; 
   );
 }
 
-function CommentActionButton({ articleId, currentUserId }: { articleId: string; currentUserId?: string | null }) {
-  if (currentUserId == null) {
-    return (
-      <Link
-        href={pathWithParams("/login", { next: `/articles/${articleId}`, message: "コメントにはログインしてください。" })}
-        className={reactionButtonBase + " border-line/80 bg-white text-ink/78"}
-      >
-        <MessageCircle aria-hidden="true" size={15} strokeWidth={1.9} />
-        <span>コメント</span>
-      </Link>
-    );
-  }
-
+function CommentActionButton({ commentCount }: { commentCount: number }) {
   return (
-    <a href="#article-comments" className={reactionButtonBase + " border-line/80 bg-white text-ink/78 hover:border-blush/25 hover:bg-blushSoft/50"}>
+    <a href="#article-comments" className={reactionButtonBase + " border-line/80 bg-white text-ink/78 transition hover:border-blush/25 hover:bg-blushSoft/50 active:opacity-70"}>
       <MessageCircle aria-hidden="true" size={15} strokeWidth={1.9} />
-      <span>コメント</span>
+      <span>コメント {commentCount}</span>
     </a>
   );
 }
@@ -155,7 +143,7 @@ export function ArticleEngagementPanel({
           return (
             <Fragment key={reactionType}>
               {button}
-              {reactionType === "like" ? <CommentActionButton articleId={articleId} currentUserId={currentUserId} /> : null}
+              {reactionType === "like" ? <CommentActionButton commentCount={metrics.comment_count} /> : null}
             </Fragment>
           );
         })}
@@ -170,7 +158,7 @@ export function ArticleEngagementPanel({
         <div className="flex items-center justify-between gap-3">
           <h2 className="inline-flex items-center gap-1.5 text-base font-black text-ink">
             <MessageCircle aria-hidden="true" size={17} />
-            コメント
+            コメント {metrics.comment_count}
           </h2>
         </div>
 
@@ -188,7 +176,7 @@ export function ArticleEngagementPanel({
         {currentUserId == null ? (
           <Link
             href={pathWithParams("/login", { next: `/articles/${articleId}`, message: "コメントにはログインしてください。" })}
-            className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white"
+            className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white transition active:scale-[0.98] active:opacity-70"
           >
             ログインしてコメントする
           </Link>

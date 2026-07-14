@@ -14,6 +14,11 @@ export type SnapComment = {
   author: SnapCommentAuthor | null;
 };
 
+export type PublicSnapCommentCount = {
+  snap_id: string;
+  comment_count: number;
+};
+
 /** Snapのコメント一覧（古い順）＋投稿者プロフィール。 */
 export async function listSnapComments(supabase: SupabaseClient, snapId: string): Promise<SnapComment[]> {
   const { data: rows, error } = await supabase
@@ -57,19 +62,32 @@ export async function listSnapComments(supabase: SupabaseClient, snapId: string)
   });
 }
 
-/** Snapのコメント数。 */
-export async function countSnapComments(supabase: SupabaseClient, snapId: string) {
-  const { count, error } = await supabase
-    .from("snap_comments")
-    .select("*", { count: "exact", head: true })
-    .eq("snap_id", snapId);
+/** 公開Snapのコメント数を一括取得する。個別コメントやuser_idは返さない。 */
+export async function listPublicSnapCommentCounts(supabase: SupabaseClient): Promise<PublicSnapCommentCount[]> {
+  const { data, error } = await supabase.rpc("get_public_snap_comment_counts");
 
-  if (error) {
-    console.error("comment count failed", { snapId, message: error.message });
-    return 0;
+  if (!error) {
+    return ((data ?? []) as Array<{ snap_id: string; comment_count: number | string }>).map((row) => ({
+      snap_id: row.snap_id,
+      comment_count: Number(row.comment_count ?? 0),
+    }));
   }
 
-  return count ?? 0;
+  // RPC未適用時もカード単位のN+1には戻さず、公開RLS付きの一括取得へフォールバックする。
+  console.error("Public snap comment counts RPC failed", { message: error.message });
+  const fallback = await supabase.from("snap_comments").select("snap_id").returns<Array<{ snap_id: string }>>();
+
+  if (fallback.error) {
+    console.error("Public snap comment counts fallback failed", { message: fallback.error.message });
+    return [];
+  }
+
+  const counts = new Map<string, number>();
+  (fallback.data ?? []).forEach(({ snap_id }) => {
+    counts.set(snap_id, (counts.get(snap_id) ?? 0) + 1);
+  });
+
+  return Array.from(counts, ([snap_id, comment_count]) => ({ snap_id, comment_count }));
 }
 
 /** 「今日」「◯時間前」などの相対表示。 */

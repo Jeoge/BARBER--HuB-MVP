@@ -49,6 +49,7 @@ export async function addSnapCommentAction(snapId: string, body: string): Promis
   revalidatePath(`/posts/${snapId}`);
   revalidatePath("/snap");
   revalidatePath("/mypage");
+  revalidatePath("/");
   return { status: "ok" };
 }
 
@@ -74,5 +75,7 @@ export async function deleteSnapCommentAction(commentId: string): Promise<Commen
   }
 
   revalidatePath("/mypage");
+  revalidatePath("/");
+  revalidatePath("/snap");
   return { status: "ok" };
 }
