@@ -18,6 +18,7 @@ type NewsReviewPageProps = {
     skipped?: string;
     generated?: string;
     failed?: string;
+    sourceErrors?: string;
   }>;
 };
 
@@ -98,7 +99,7 @@ function RunSummary({ params }: { params: Awaited<NewsReviewPageProps["searchPar
   return (
     <Banner
       type="info"
-      message={`収集 ${params.fetched ?? "0"}件 / 重複 ${params.duplicate ?? "0"}件 / 対象外 ${params.skipped ?? "0"}件 / AI生成成功 ${params.generated ?? "0"}件 / 失敗 ${params.failed ?? "0"}件`}
+      message={`収集 ${params.fetched ?? "0"}件 / 重複 ${params.duplicate ?? "0"}件 / 対象外 ${params.skipped ?? "0"}件 / AI生成成功 ${params.generated ?? "0"}件 / 失敗 ${params.failed ?? "0"}件 / 取得元エラー ${params.sourceErrors ?? "0"}件`}
     />
   );
 }

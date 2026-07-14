@@ -136,6 +136,9 @@ const HIGH_RISK_KEYWORDS = [
 ];
 
 const MEDIUM_RISK_KEYWORDS = ["補助金", "助成金", "賃金", "社会保険", "物価", "電気", "物流", "AI"];
+const FEED_ACCEPT_HEADER = "application/atom+xml, application/rss+xml, application/rdf+xml, application/xml, text/xml";
+const FEED_USER_AGENT = "BARBER HUB news draft bot; RSS/Atom metadata only";
+const XML_CONTENT_TYPE_PATTERN = /(xml|rss|atom|rdf)/i;
 
 function clampText(value: unknown, maxLength: number) {
   if (typeof value !== "string") return "";
@@ -160,17 +163,38 @@ function decodeXml(value: string) {
     .trim();
 }
 
-function tagValue(xml: string, tagName: string) {
+function qualifiedTagPattern(tagName: string) {
   const escaped = tagName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = xml.match(new RegExp(`<${escaped}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${escaped}>`, "i"));
+  return tagName.includes(":") ? escaped : `(?:[\\w.-]+:)?${escaped}`;
+}
+
+function tagBlocks(xml: string, tagName: string) {
+  const tag = qualifiedTagPattern(tagName);
+  return xml.match(new RegExp(`<${tag}\\b[\\s\\S]*?<\\/${tag}>`, "gi")) ?? [];
+}
+
+function tagValue(xml: string, tagName: string) {
+  const tag = qualifiedTagPattern(tagName);
+  const match = xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, "i"));
   return match ? decodeXml(match[1]) : "";
 }
 
-function attrValue(xml: string, tagName: string, attrName: string) {
-  const escapedTag = tagName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function attrValueFromTag(tagXml: string, attrName: string) {
   const escapedAttr = attrName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = xml.match(new RegExp(`<${escapedTag}\\b[^>]*\\s${escapedAttr}=["']([^"']+)["'][^>]*>`, "i"));
+  const match = tagXml.match(new RegExp(`\\s${escapedAttr}\\s*=\\s*["']([^"']+)["']`, "i"));
   return match ? decodeXml(match[1]) : "";
+}
+
+function atomLinkHref(xml: string) {
+  const linkTag = qualifiedTagPattern("link");
+  const links = Array.from(xml.matchAll(new RegExp(`<${linkTag}\\b[^>]*>`, "gi")))
+    .map((match) => ({
+      href: attrValueFromTag(match[0], "href"),
+      rel: attrValueFromTag(match[0], "rel").toLowerCase(),
+    }))
+    .filter((link) => link.href);
+
+  return links.find((link) => !link.rel || link.rel === "alternate")?.href ?? links[0]?.href ?? "";
 }
 
 function normalizeUrl(url: string, baseUrl: string) {
@@ -190,14 +214,14 @@ function parseDate(value: string) {
 
 function extractFeedItems(xml: string, source: NewsSource): FeedItem[] {
   const fetchedAt = new Date().toISOString();
-  const entries = xml.match(/<entry\b[\s\S]*?<\/entry>/gi) ?? [];
-  const rssItems = entries.length > 0 ? [] : xml.match(/<item\b[\s\S]*?<\/item>/gi) ?? [];
+  const entries = tagBlocks(xml, "entry");
+  const rssItems = entries.length > 0 ? [] : tagBlocks(xml, "item");
   const blocks = entries.length > 0 ? entries : rssItems;
 
   return blocks
     .map((block) => {
       const sourceTitle = tagValue(block, "title");
-      const atomLink = attrValue(block, "link", "href");
+      const atomLink = atomLinkHref(block);
       const rssLink = tagValue(block, "link");
       const sourceUrl = normalizeUrl(atomLink || rssLink, source.feedUrl);
       const sourcePublishedAt = parseDate(tagValue(block, "published") || tagValue(block, "updated") || tagValue(block, "pubDate") || tagValue(block, "dc:date"));
@@ -403,9 +427,10 @@ async function generateDraft(item: FeedItem, relevance: RelevanceResult): Promis
 async function fetchSource(source: NewsSource) {
   const response = await fetch(source.feedUrl, {
     headers: {
-      Accept: "application/atom+xml, application/rss+xml, application/xml, text/xml",
-      "User-Agent": "BARBER HUB news draft bot; RSS/Atom metadata only",
+      Accept: FEED_ACCEPT_HEADER,
+      "User-Agent": FEED_USER_AGENT,
     },
+    redirect: "follow",
     signal: AbortSignal.timeout(20_000),
   });
 
@@ -413,7 +438,22 @@ async function fetchSource(source: NewsSource) {
     throw new Error(`feed status=${response.status}`);
   }
 
-  return extractFeedItems(await response.text(), source);
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType && !XML_CONTENT_TYPE_PATTERN.test(contentType)) {
+    throw new Error("feed content-type is not XML");
+  }
+
+  const body = Buffer.from(await response.arrayBuffer());
+  if (body.byteLength === 0) {
+    throw new Error("feed body is empty");
+  }
+
+  const items = extractFeedItems(new TextDecoder("utf-8").decode(body), source);
+  if (items.length === 0) {
+    throw new Error("feed parsed zero items");
+  }
+
+  return items;
 }
 
 async function existingDraftMaps(supabase: SupabaseClient, items: FeedItem[]) {
@@ -449,6 +489,7 @@ function summarizeForLog(result: NewsDraftPipelineResult) {
     skippedCount: result.skippedCount,
     generatedCount: result.generatedCount,
     failedCount: result.failedCount,
+    sourceErrorCount: result.sourceErrorCount,
   };
 }
 

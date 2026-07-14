@@ -10,10 +10,10 @@ export type NewsSource = {
 
 export const NEWS_SOURCES: NewsSource[] = [
   {
-    sourceName: "経済産業省 ニュースリリース",
-    feedUrl: "https://www.meti.go.jp/ml_index_release_atom.xml",
-    sourceType: "official_atom",
-    categoryHint: "店舗経営・制度",
+    sourceName: "厚生労働省 新着情報",
+    feedUrl: "https://www.mhlw.go.jp/stf/news.rdf",
+    sourceType: "official_rss",
+    categoryHint: "安全・衛生・制度",
     enabled: true,
   },
 ];

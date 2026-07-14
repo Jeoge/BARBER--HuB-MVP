@@ -140,6 +140,7 @@ export async function runNewsDraftIngestAction() {
     skipped: String(result.skippedCount),
     generated: String(result.generatedCount),
     failed: String(result.failedCount),
+    sourceErrors: String(result.sourceErrorCount),
   });
 
   revalidatePath("/news-review");
