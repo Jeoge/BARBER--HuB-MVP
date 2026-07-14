@@ -28,8 +28,14 @@ type RelevanceResult = {
   riskLevel: "low" | "medium" | "high";
 };
 
+type TitleAngle = "work" | "personal" | "conversation";
+
+type TitleCandidates = Record<TitleAngle, string>;
+
 type GeneratedDraft = {
   draft_title: string;
+  title_candidates: TitleCandidates;
+  primary_angle: TitleAngle | null;
   draft_summary: string;
   draft_body: string;
   morning_tip: string;
@@ -309,12 +315,39 @@ function duplicateKey(title: string) {
     .slice(0, 120);
 }
 
+function normalizeTitleAngle(value: unknown): TitleAngle | null {
+  if (value === "work" || value === "personal" || value === "conversation") return value;
+  return null;
+}
+
+function preferredTitleAngle(candidates: TitleCandidates, value: unknown): TitleAngle | null {
+  const primaryAngle = normalizeTitleAngle(value);
+  if (primaryAngle && candidates[primaryAngle]) return primaryAngle;
+  if (candidates.work) return "work";
+  if (candidates.personal) return "personal";
+  if (candidates.conversation) return "conversation";
+  return null;
+}
+
 function parseGeneratedDraft(raw: string): GeneratedDraft {
-  const parsed = JSON.parse(raw) as Partial<GeneratedDraft>;
+  const parsed = JSON.parse(raw) as Partial<GeneratedDraft> & {
+    title_work?: unknown;
+    title_personal?: unknown;
+    title_conversation?: unknown;
+    recommended_angle?: unknown;
+  };
+  const titleCandidates: TitleCandidates = {
+    work: clampText(parsed.title_work, 80),
+    personal: clampText(parsed.title_personal, 80),
+    conversation: clampText(parsed.title_conversation, 80),
+  };
+  const primaryAngle = preferredTitleAngle(titleCandidates, parsed.recommended_angle);
   const riskLevel = parsed.risk_level === "high" || parsed.risk_level === "medium" || parsed.risk_level === "low" ? parsed.risk_level : "medium";
 
   return {
-    draft_title: clampText(parsed.draft_title, 80),
+    draft_title: primaryAngle ? titleCandidates[primaryAngle] : "",
+    title_candidates: titleCandidates,
+    primary_angle: primaryAngle,
     draft_summary: clampText(parsed.draft_summary, 220),
     draft_body: clampText(parsed.draft_body, 1800),
     morning_tip: clampText(parsed.morning_tip, 180),
@@ -368,11 +401,21 @@ async function generateDraft(item: FeedItem, relevance: RelevanceResult): Promis
           role: "user",
           content: JSON.stringify({
             rules: [
+              "title_workは仕事・経営視点。サロン経営、雇用、制度、技術、道具、集客など仕事への影響が伝わるタイトルにする",
+              "title_personalは理容師本人のメリット視点。健康、生活、趣味、お金、体調管理など本人にとっての価値が伝わるタイトルにする",
+              "title_conversationはお客様との会話視点。接客中の話題としてどう使えるかが伝わるタイトルにする",
+              "各タイトルは24〜42文字程度を目安に、重要な言葉を前半に置き、原則1文で内容と一致させる",
+              "官公庁や企業の原題を単に短くするだけでなく、誰に関係するか、何が変わるか、読むと何が分かるかのうち最低1つを伝える",
+              "理容師との関連性が弱く価値ある候補を作れない視点は空文字にする",
+              "禁止表現: 絶対、必ず、知らないと損、業界激震、業界騒然、売上が倍増、これだけで痩せる、誰でも成功、今すぐやらないと危険",
+              "元記事にない数字、効果、利用方法を作らない",
+              "使える表現例: どう変わる？、現場への影響は？、今確認したいこと、サロンが知っておきたいこと、理容師が見直したいこと、お客様との会話で使える、営業前に確認したい、選ぶポイントは？",
+              "recommended_angleはwork、personal、conversationのいずれか。空でない候補から最もBARBER HUBに向くものを選ぶ",
               "過剰な煽り表現や断定表現は禁止",
               "医療、法律、税務、災害、安全、商品回収は断定を避けrisk_levelを高める",
               "PRではないものを広告のように書かない",
               "draft_bodyは 何が起きたか / 理容師やサロンにどう関係するか / 現場で何を確認するか の順で短く書く",
-              "返すJSON keys: draft_title, draft_summary, draft_body, morning_tip, conversation_tip, relevance_reason, fact_check_notes, risk_level",
+              "返すJSON keys: title_work, title_personal, title_conversation, recommended_angle, draft_summary, draft_body, morning_tip, conversation_tip, relevance_reason, fact_check_notes, risk_level",
             ],
             source: sourcePayload,
           }),
@@ -563,6 +606,8 @@ export async function runNewsDraftPipeline(options: { maxItems?: number } = {}):
       relevance_score: relevance.score,
       relevance_reason: generated.draft?.relevance_reason || relevance.reason,
       draft_title: generated.draft?.draft_title || null,
+      title_candidates: generated.draft?.title_candidates || null,
+      primary_angle: generated.draft?.primary_angle || null,
       draft_summary: generated.draft?.draft_summary || null,
       draft_body: generated.draft?.draft_body || null,
       morning_tip: generated.draft?.morning_tip || null,

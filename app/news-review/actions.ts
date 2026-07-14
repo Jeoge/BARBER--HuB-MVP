@@ -58,6 +58,10 @@ export async function saveNewsDraftAction(formData: FormData) {
     reviewed_by: status === "pending" ? null : user.id,
   };
 
+  if (status === "approved" && !payload.draft_title) {
+    redirect(`/news-review?id=${encodeURIComponent(id)}&error=${encodeURIComponent("下書きタイトルを入力してください。")}`);
+  }
+
   const supabase = createSupabaseAdminClient();
   const { data: currentDraft, error: currentDraftError } = await supabase
     .from("news_drafts")

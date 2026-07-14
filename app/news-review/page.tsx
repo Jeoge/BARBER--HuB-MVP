@@ -1,6 +1,7 @@
 import { AlertTriangle, Bot, CheckCircle2, Clock3, ExternalLink, FileText, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import Link from "next/link";
 import { runNewsDraftIngestAction, saveNewsDraftAction } from "./actions";
+import { TitleCandidatePicker } from "./TitleCandidatePicker";
 import { newsDraftReviewStage, listNewsDrafts, requireNewsReviewAdmin, type NewsDraftRecord } from "@/lib/news-drafts/review";
 import { createSupabaseAdminClient, getSupabaseAdminConfigStatus } from "@/lib/supabase/admin";
 
@@ -175,6 +176,8 @@ function DetailForm({ draft }: { draft: NewsDraftRecord | null }) {
       </section>
 
       {draft.generation_error ? <Banner type="error" message={draft.generation_error} /> : null}
+
+      <TitleCandidatePicker candidates={draft.title_candidates} primaryAngle={draft.primary_angle} />
 
       <label className="block">
         <span className="text-xs font-black text-mute">下書きタイトル</span>
