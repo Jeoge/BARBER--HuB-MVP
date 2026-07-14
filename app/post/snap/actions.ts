@@ -452,7 +452,7 @@ export async function createSnapAction(formData: FormData) {
       await removeUploadedSnapImages(
         supabase,
         user.id,
-        uploadedImages.map((uploadedImage) => uploadedImage.storagePath),
+        [...uploadedImages.map((uploadedImage) => uploadedImage.storagePath), uploadPath],
         "upload throw"
       );
       redirectToSnapPost({ error: "画像アップロードに失敗しました。画像形式または容量を確認してください。" });
@@ -469,7 +469,7 @@ export async function createSnapAction(formData: FormData) {
       await removeUploadedSnapImages(
         supabase,
         user.id,
-        uploadedImages.map((uploadedImage) => uploadedImage.storagePath),
+        [...uploadedImages.map((uploadedImage) => uploadedImage.storagePath), uploadPath],
         "upload error"
       );
       redirectToSnapPost({ error: uploadErrorMessage(uploadError) });
@@ -555,7 +555,26 @@ export async function createSnapAction(formData: FormData) {
       mime_type: image.contentType,
     }));
 
-    const { error: imageInsertError } = await supabase.from("snap_images").insert(imageRows);
+    let imageInsertError: { message: string } | null = null;
+
+    try {
+      const imageInsertResult = await supabase.from("snap_images").insert(imageRows);
+      imageInsertError = imageInsertResult.error;
+    } catch (error) {
+      console.error("Snap image rows insert threw", {
+        snapId,
+        userId: user.id,
+        imageCount: uploadedImages.length,
+        message: errorMessage(error),
+      });
+      await cleanupCreatedSnapAfterImageFailure(supabase, {
+        snapId,
+        userId: user.id,
+        uploadedPaths: uploadedImages.map((uploadedImage) => uploadedImage.storagePath),
+        reason: "image row insert throw",
+      });
+      redirectToSnapPost({ error: "Snapの保存に失敗しました。少し時間をおいて再度お試しください。" });
+    }
 
     if (imageInsertError) {
       console.error("Snap image rows insert failed", {
@@ -573,11 +592,30 @@ export async function createSnapAction(formData: FormData) {
       redirectToSnapPost({ error: insertErrorMessage(imageInsertError, true) });
     }
 
-    const { error: publishError } = await supabase
-      .from("snaps")
-      .update({ is_published: true, updated_at: now })
-      .eq("id", snapId)
-      .eq("author_id", user.id);
+    let publishError: { message: string } | null = null;
+
+    try {
+      const publishResult = await supabase
+        .from("snaps")
+        .update({ is_published: true, updated_at: now })
+        .eq("id", snapId)
+        .eq("author_id", user.id);
+      publishError = publishResult.error;
+    } catch (error) {
+      console.error("Snap publish after images threw", {
+        snapId,
+        userId: user.id,
+        imageCount: uploadedImages.length,
+        message: errorMessage(error),
+      });
+      await cleanupCreatedSnapAfterImageFailure(supabase, {
+        snapId,
+        userId: user.id,
+        uploadedPaths: uploadedImages.map((uploadedImage) => uploadedImage.storagePath),
+        reason: "publish after images throw",
+      });
+      redirectToSnapPost({ error: "Snapの保存に失敗しました。少し時間をおいて再度お試しください。" });
+    }
 
     if (publishError) {
       console.error("Snap publish after images failed", {

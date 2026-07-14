@@ -13,7 +13,7 @@ const MAX_SOURCE_IMAGE_SIZE = 25 * 1024 * 1024;
 const MAX_IMAGE_COUNT = 4;
 const MAX_TOTAL_COMPRESSED_BYTES = 4 * 1024 * 1024;
 const TARGET_IMAGE_BYTES = 900 * 1024;
-const MAX_IMAGE_LONG_EDGE = 1600;
+const IMAGE_LONG_EDGE_STEPS = [1600, 1400, 1200, 1000, 800] as const;
 const imageInputId = "snap-image-input";
 const snapSafetyItems = [
   {
@@ -149,16 +149,20 @@ async function compressSourceImage(file: File, index: number, totalCount: number
       throw new Error("invalid dimensions");
     }
 
-    const baseScale = Math.min(1, MAX_IMAGE_LONG_EDGE / Math.max(decoded.width, decoded.height));
+    const sourceLongEdge = Math.max(decoded.width, decoded.height);
+    const initialLongEdge = Math.min(sourceLongEdge, IMAGE_LONG_EDGE_STEPS[0]);
+    const targetLongEdges = [
+      initialLongEdge,
+      ...IMAGE_LONG_EDGE_STEPS.slice(1).filter((longEdge) => longEdge < initialLongEdge),
+    ];
     const targetBytes = Math.min(TARGET_IMAGE_BYTES, Math.floor(MAX_TOTAL_COMPRESSED_BYTES / Math.max(totalCount, 1)));
     const hardBytes = Math.floor(MAX_TOTAL_COMPRESSED_BYTES / Math.max(totalCount, 1));
-    const dimensionScales = [1, 0.9, 0.8, 0.7, 0.6];
     const qualities = [0.84, 0.76, 0.68, 0.6, 0.52, 0.44];
     let best: { blob: Blob; width: number; height: number } | null = null;
     let webpSupported = false;
 
-    for (const dimensionScale of dimensionScales) {
-      const scale = baseScale * dimensionScale;
+    for (const targetLongEdge of targetLongEdges) {
+      const scale = targetLongEdge / sourceLongEdge;
       const width = Math.max(1, Math.round(decoded.width * scale));
       const height = Math.max(1, Math.round(decoded.height * scale));
       const canvas = document.createElement("canvas");
