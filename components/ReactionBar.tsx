@@ -15,7 +15,7 @@ type ReactionBarProps = {
 };
 
 const buttonBase =
-  "relative inline-flex h-9 items-center justify-center gap-1.5 overflow-visible rounded-full border border-line/80 bg-white px-3 text-[0.7rem] font-semibold text-ink/78 transition";
+  "relative inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-line/80 bg-white px-3 text-[0.7rem] font-semibold text-ink/78 transition";
 
 function storageKey(contentId: string, kind: "good" | "thanks" | "save") {
   return `barber-hub:reaction:${contentId}:${kind}`;

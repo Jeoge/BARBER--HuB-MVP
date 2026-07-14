@@ -2,7 +2,7 @@
 
 import { Loader2, Sparkles } from "lucide-react";
 import { type ButtonHTMLAttributes, type CSSProperties, type MouseEvent, type ReactNode, useEffect, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { createPortal, useFormStatus } from "react-dom";
 
 type ThanksActionButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> & {
   active: boolean;
@@ -17,6 +17,14 @@ type SparkleStyle = CSSProperties & {
   "--thanks-delay": string;
 };
 
+type BurstPosition = {
+  sequence: number;
+  height: number;
+  left: number;
+  top: number;
+  width: number;
+};
+
 const sparkleParticles = [
   { x: "-42px", y: "-20px", rotate: "-24deg", delay: "0ms", size: 17, color: "text-blush" },
   { x: "-18px", y: "-35px", rotate: "18deg", delay: "30ms", size: 13, color: "text-blush/75" },
@@ -28,9 +36,13 @@ const sparkleParticles = [
   { x: "-43px", y: "15px", rotate: "215deg", delay: "70ms", size: 14, color: "text-blush/70" },
 ] as const;
 
-function ThanksSparkleBurst() {
+function ThanksSparkleBurst({ position }: { position: BurstPosition }) {
   return (
-    <span aria-hidden="true" className="thanks-sparkle-layer">
+    <span
+      aria-hidden="true"
+      className="thanks-sparkle-layer"
+      style={{ height: position.height, left: position.left, top: position.top, width: position.width }}
+    >
       <span className="thanks-sparkle-ring" />
       {sparkleParticles.map((particle, index) => (
         <span
@@ -63,26 +75,34 @@ export function ThanksActionButton({
   ...buttonProps
 }: ThanksActionButtonProps) {
   const { pending } = useFormStatus();
-  const [burstSequence, setBurstSequence] = useState(0);
+  const [burstPosition, setBurstPosition] = useState<BurstPosition | null>(null);
   const isDisabled = disabled || pending;
 
   useEffect(() => {
-    if (burstSequence === 0) return;
+    if (burstPosition == null) return;
 
-    const timeout = window.setTimeout(() => setBurstSequence(0), 700);
+    const timeout = window.setTimeout(() => setBurstPosition(null), 700);
     return () => window.clearTimeout(timeout);
-  }, [burstSequence]);
+  }, [burstPosition]);
 
   function handleClick(event: MouseEvent<HTMLButtonElement>) {
     if (!active && !isDisabled) {
-      setBurstSequence((current) => current + 1);
+      const bounds = event.currentTarget.getBoundingClientRect();
+
+      setBurstPosition((current) => ({
+        sequence: (current?.sequence ?? 0) + 1,
+        height: bounds.height,
+        left: bounds.left,
+        top: bounds.top,
+        width: bounds.width,
+      }));
     }
 
     onClick?.(event);
   }
 
   return (
-    <span className="relative isolate inline-flex overflow-visible">
+    <>
       <button
         {...buttonProps}
         type={type}
@@ -91,7 +111,7 @@ export function ThanksActionButton({
         aria-busy={pending}
         className={
           className +
-          " relative z-10 transition active:scale-[0.98] disabled:active:scale-100 disabled:cursor-not-allowed " +
+          " transition active:scale-[0.98] disabled:active:scale-100 disabled:cursor-not-allowed " +
           (pending ? "pointer-events-none opacity-70" : "")
         }
         onClick={handleClick}
@@ -105,7 +125,9 @@ export function ThanksActionButton({
           children
         )}
       </button>
-      {burstSequence > 0 ? <ThanksSparkleBurst key={burstSequence} /> : null}
-    </span>
+      {burstPosition
+        ? createPortal(<ThanksSparkleBurst key={burstPosition.sequence} position={burstPosition} />, document.body)
+        : null}
+    </>
   );
 }

@@ -20,7 +20,7 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
   const authorHref = `/profiles/${snap.author_id}`;
 
   return (
-    <article className="min-w-0 overflow-visible rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
+    <article className="min-w-0 overflow-hidden rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
       <div className="mb-2.5 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Link href={authorHref} className="inline-flex min-w-0 items-center gap-2 rounded-full pr-1">
