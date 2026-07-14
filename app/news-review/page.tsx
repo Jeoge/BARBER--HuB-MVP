@@ -51,9 +51,8 @@ function riskClass(riskLevel: string | null) {
   return "border-line bg-neutral-50 text-mute";
 }
 
-function tabHref(tab: string, id?: string) {
+function tabHref(tab: string) {
   const params = new URLSearchParams({ tab });
-  if (id) params.set("id", id);
   return `/news-review?${params.toString()}`;
 }
 
@@ -142,7 +141,7 @@ function DetailForm({ draft }: { draft: NewsDraftRecord | null }) {
   }
 
   return (
-    <form action={saveNewsDraftAction} className="space-y-4 rounded-[8px] border border-line bg-white p-4 shadow-sm">
+    <form key={draft.id} action={saveNewsDraftAction} className="space-y-4 rounded-[8px] border border-line bg-white p-4 shadow-sm">
       <input type="hidden" name="id" value={draft.id} />
 
       <section className="rounded-[8px] border border-line bg-neutral-50 p-3">
@@ -250,7 +249,7 @@ export default async function NewsReviewPage({ searchParams }: NewsReviewPagePro
   const supabase = createSupabaseAdminClient();
   const { drafts, error } = await listNewsDrafts(supabase);
   const filtered = drafts.filter((draft) => newsDraftReviewStage(draft) === activeTab);
-  const selected = drafts.find((draft) => draft.id === params.id) ?? filtered[0] ?? null;
+  const selected = filtered.find((draft) => draft.id === params.id) ?? filtered[0] ?? null;
 
   return (
     <main className="mx-auto min-h-screen max-w-[1040px] bg-white px-4 py-6 text-ink">
@@ -283,7 +282,7 @@ export default async function NewsReviewPage({ searchParams }: NewsReviewPagePro
           const count = drafts.filter((draft) => newsDraftReviewStage(draft) === tab.id).length;
           const active = activeTab === tab.id;
           return (
-            <Link key={tab.id} href={tabHref(tab.id, selected?.id)} className={`shrink-0 rounded-full px-3 py-2 text-xs font-black ${active ? "bg-ink text-white" : "border border-line bg-white text-ink"}`}>
+            <Link key={tab.id} href={tabHref(tab.id)} className={`shrink-0 rounded-full px-3 py-2 text-xs font-black ${active ? "bg-ink text-white" : "border border-line bg-white text-ink"}`}>
               {tab.label}
               <span className="ml-1 opacity-70">{count}</span>
             </Link>
