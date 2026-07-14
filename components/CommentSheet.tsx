@@ -3,6 +3,7 @@
 import { Send, ThumbsUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { FormDisclaimer } from "@/components/FormDisclaimer";
+import { useCommentSheetFabHidden } from "@/components/useCommentSheetFabHidden";
 import { ProfileMiniLink } from "./ProfileMiniLink";
 
 export type SheetComment = {
@@ -75,6 +76,7 @@ function CommentItem({ comment }: { comment: SheetComment }) {
 export function CommentSheet({ open, onClose, title = "コメント", comments = defaultComments }: CommentSheetProps) {
   const [value, setValue] = useState("");
   const visibleComments = useMemo(() => comments, [comments]);
+  useCommentSheetFabHidden(open);
 
   if (!open) {
     return null;

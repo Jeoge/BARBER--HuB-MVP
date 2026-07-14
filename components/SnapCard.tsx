@@ -1,10 +1,9 @@
-import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { FollowButton } from "@/components/FollowButton";
 import { MagazineImage } from "@/components/MagazineImage";
 import { SnapCommentButton } from "@/components/SnapCommentButton";
 import { SnapSaveButton } from "@/components/SnapSaveButton";
-import { SnapThanksButton } from "@/components/SnapThanksButton";
+import { SnapLikeButton, SnapThanksButton } from "@/components/SnapThanksButton";
 import { snapAuthorMeta, snapAuthorName, snapDateLabel, type SnapWithAuthor } from "@/lib/supabase/snaps";
 
 function initial(name: string) {
@@ -37,9 +36,6 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <div className="flex items-center justify-end gap-1.5">
             {isOwnSnap ? null : <FollowButton authorId={snap.author_id} variant="snapInline" />}
-            <span className="grid h-8 w-8 place-items-center rounded-full" aria-label="スナップメニュー">
-              <MoreHorizontal aria-hidden="true" size={20} />
-            </span>
           </div>
           <span className="max-w-[6.75rem] truncate rounded-full border border-line bg-white px-2 py-0.5 text-[0.6rem] font-semibold text-mute">
             {snap.category ?? "日常"}
@@ -79,11 +75,21 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
         initialCount={snap.thanks_count}
         initiallyThanked={snap.viewer_has_thanked}
         showCount={false}
+        nextPath={`/posts/${snap.id}`}
         actions={
-          <span className="flex items-center gap-1.5">
+          <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
+            <SnapLikeButton
+              snapId={snap.id}
+              authorId={snap.author_id}
+              currentUserId={currentUserId}
+              initialCount={snap.like_count}
+              initiallyThanked={snap.viewer_has_liked}
+              showCount={false}
+              nextPath={`/posts/${snap.id}`}
+            />
             <SnapCommentButton snapId={snap.id} currentUserId={currentUserId} />
-            <SnapSaveButton snapId={snap.id} currentUserId={currentUserId} />
-          </span>
+            <SnapSaveButton snapId={snap.id} currentUserId={currentUserId} nextPath={`/posts/${snap.id}`} />
+          </div>
         }
       />
     </article>

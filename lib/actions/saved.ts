@@ -30,6 +30,19 @@ export async function saveSnapAction(snapId: string): Promise<SaveResult> {
 
   if (user == null) loginRedirect();
 
+  const { data: snap, error: snapError } = await supabase
+    .from("snaps")
+    .select("id, is_published, is_deleted")
+    .eq("id", snapId)
+    .maybeSingle<{ id: string; is_published: boolean | null; is_deleted: boolean | null }>();
+
+  if (snapError || snap == null || snap.is_deleted || snap.is_published === false) {
+    if (snapError) {
+      console.error("save snap target lookup failed", { userId: user.id, snapId, message: snapError.message });
+    }
+    return { status: "error" };
+  }
+
   const { error } = await supabase.from("saved_snaps").insert({ user_id: user.id, snap_id: snapId });
 
   if (error && !isDuplicateError(error)) {

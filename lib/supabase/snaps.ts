@@ -27,7 +27,10 @@ export type SnapRecord = {
 export type SnapWithAuthor = SnapRecord & {
   profiles: SnapAuthorProfile | null;
   thanks_count: number;
+  like_count: number;
+  comment_count: number;
   viewer_has_thanked: boolean;
+  viewer_has_liked: boolean;
 };
 
 type RawSnapWithAuthor = SnapRecord & {
@@ -100,7 +103,10 @@ function normalizeSnaps(data: unknown): SnapWithAuthor[] {
     ...snap,
     profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles,
     thanks_count: 0,
+    like_count: 0,
+    comment_count: 0,
     viewer_has_thanked: false,
+    viewer_has_liked: false,
   }));
 }
 
@@ -112,7 +118,10 @@ function normalizeSnap(data: unknown): SnapWithAuthor | null {
     ...snap,
     profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles,
     thanks_count: 0,
+    like_count: 0,
+    comment_count: 0,
     viewer_has_thanked: false,
+    viewer_has_liked: false,
   };
 }
 
@@ -120,6 +129,14 @@ type SnapReactionRow = {
   snap_id: string;
   user_id: string;
   reaction_type: string;
+};
+
+export type SnapReactionCountRow = {
+  snap_id: string;
+  thanks_count: number;
+  like_count: number;
+  comment_count: number;
+  total_count: number;
 };
 
 function errorCode(error: unknown) {
@@ -146,61 +163,71 @@ export function isMissingSnapReactionsTableError(error: unknown) {
   );
 }
 
+export async function listMySnapReactionCounts(supabase: SupabaseClient): Promise<SnapReactionCountRow[]> {
+  const { data, error } = await supabase.rpc("get_my_snap_reaction_counts");
+
+  if (error) {
+    console.error("My snap reaction counts RPC failed", {
+      message: error.message,
+    });
+    return [];
+  }
+
+  return ((data ?? []) as SnapReactionCountRow[]).map((counts) => ({
+    ...counts,
+    thanks_count: Number(counts.thanks_count ?? 0),
+    like_count: Number(counts.like_count ?? 0),
+    comment_count: Number(counts.comment_count ?? 0),
+    total_count: Number(counts.total_count ?? 0),
+  }));
+}
+
 async function withReactionSummaries(supabase: SupabaseClient, snaps: SnapWithAuthor[], viewerId?: string | null) {
   const snapIds = snaps.map((snap) => snap.id).filter((id) => id.length > 0);
 
-  if (snapIds.length === 0) return snaps;
+  if (snapIds.length === 0 || viewerId == null) return snaps;
+
+  const authorBySnapId = new Map(snaps.map((snap) => [snap.id, snap.author_id]));
+  const viewerThankedSnapIds = new Set<string>();
+  const viewerLikedSnapIds = new Set<string>();
 
   try {
     const { data, error } = await supabase
       .from("snap_reactions")
       .select("snap_id, user_id, reaction_type")
       .in("snap_id", snapIds)
-      .eq("reaction_type", "thanks")
+      .eq("user_id", viewerId)
       .returns<SnapReactionRow[]>();
 
     if (error) {
-      if (isMissingSnapReactionsTableError(error)) {
-        return snaps;
+      if (!isMissingSnapReactionsTableError(error)) {
+        console.error("Snap reactions select failed", {
+          message: error.message,
+        });
       }
+    } else {
+      (data ?? []).forEach((reaction) => {
+        const authorId = authorBySnapId.get(reaction.snap_id);
 
-      console.error("Snap reactions select failed", {
-        message: error.message,
+        if (!authorId || reaction.user_id === authorId) return;
+
+        if (reaction.reaction_type === "thanks") viewerThankedSnapIds.add(reaction.snap_id);
+        if (reaction.reaction_type === "like") viewerLikedSnapIds.add(reaction.snap_id);
       });
-      return snaps;
     }
-
-    const authorBySnapId = new Map(snaps.map((snap) => [snap.id, snap.author_id]));
-    const thanksBySnapId = new Map<string, number>();
-    const viewerThankedSnapIds = new Set<string>();
-
-    (data ?? []).forEach((reaction) => {
-      const authorId = authorBySnapId.get(reaction.snap_id);
-
-      if (!authorId || reaction.user_id === authorId) return;
-
-      thanksBySnapId.set(reaction.snap_id, (thanksBySnapId.get(reaction.snap_id) ?? 0) + 1);
-
-      if (viewerId && reaction.user_id === viewerId) {
-        viewerThankedSnapIds.add(reaction.snap_id);
-      }
-    });
-
-    return snaps.map((snap) => ({
-      ...snap,
-      thanks_count: thanksBySnapId.get(snap.id) ?? 0,
-      viewer_has_thanked: viewerId != null && viewerId !== snap.author_id && viewerThankedSnapIds.has(snap.id),
-    }));
   } catch (error) {
-    if (isMissingSnapReactionsTableError(error)) {
-      return snaps;
+    if (!isMissingSnapReactionsTableError(error)) {
+      console.error("Snap reactions select threw", {
+        message: errorMessage(error),
+      });
     }
-
-    console.error("Snap reactions select threw", {
-      message: errorMessage(error),
-    });
-    return snaps;
   }
+
+  return snaps.map((snap) => ({
+    ...snap,
+    viewer_has_thanked: viewerId != null && viewerId !== snap.author_id && viewerThankedSnapIds.has(snap.id),
+    viewer_has_liked: viewerId != null && viewerId !== snap.author_id && viewerLikedSnapIds.has(snap.id),
+  }));
 }
 
 export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20, viewerId?: string | null) {

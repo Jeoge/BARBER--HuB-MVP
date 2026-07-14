@@ -9,6 +9,7 @@ type LoadingSubmitButtonProps = {
   pendingText?: string;
   className: string;
   disabled?: boolean;
+  ariaPressed?: boolean;
 };
 
 export function LoadingSubmitButton({
@@ -16,6 +17,7 @@ export function LoadingSubmitButton({
   pendingText = "送信中...",
   className,
   disabled = false,
+  ariaPressed,
 }: LoadingSubmitButtonProps) {
   const { pending } = useFormStatus();
   const isDisabled = pending || disabled;
@@ -25,6 +27,7 @@ export function LoadingSubmitButton({
       type="submit"
       disabled={isDisabled}
       aria-busy={pending}
+      aria-pressed={ariaPressed}
       className={
         className +
         " transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 " +

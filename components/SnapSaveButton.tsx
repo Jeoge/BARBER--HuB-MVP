@@ -13,7 +13,15 @@ import { isSnapSaved as fetchIsSaved } from "@/lib/supabase/saved";
 const base =
   "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.7rem] font-black transition active:scale-[0.98] disabled:cursor-not-allowed";
 
-export function SnapSaveButton({ snapId, currentUserId }: { snapId: string; currentUserId?: string | null }) {
+export function SnapSaveButton({
+  snapId,
+  currentUserId,
+  nextPath = "/snap",
+}: {
+  snapId: string;
+  currentUserId?: string | null;
+  nextPath?: string;
+}) {
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -38,7 +46,7 @@ export function SnapSaveButton({ snapId, currentUserId }: { snapId: string; curr
   if (currentUserId == null) {
     return (
       <Link
-        href={pathWithParams("/login", { next: "/snap", message: "保存するにはログインしてください。" })}
+        href={pathWithParams("/login", { next: nextPath, message: "保存するにはログインしてください。" })}
         aria-label="保存する"
         className={base + " border-line/80 bg-white text-ink/78"}
       >
