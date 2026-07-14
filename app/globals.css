@@ -56,6 +56,10 @@ button:disabled {
   scrollbar-width: none;
 }
 
+body[data-comment-sheet-open="true"] .global-post-fab {
+  display: none;
+}
+
 .signature-type {
   font-family: "Segoe Script", "Snell Roundhand", "Brush Script MT", "Bradley Hand ITC", cursive;
   font-weight: 700;

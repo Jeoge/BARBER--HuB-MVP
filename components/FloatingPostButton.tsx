@@ -154,7 +154,7 @@ export function FloatingPostButton() {
   const allowedItems = postItems.filter((item) => canUseCapability(profile, item.capability));
 
   return (
-    <div className="pointer-events-none fixed bottom-[4.5rem] left-1/2 z-50 w-full max-w-[430px] -translate-x-1/2 px-4">
+    <div className="global-post-fab pointer-events-none fixed bottom-[4.5rem] left-1/2 z-50 w-full max-w-[430px] -translate-x-1/2 px-4">
       {open ? (
         <div className="pointer-events-auto mb-2.5 ml-auto w-64 rounded-[8px] border border-line/80 bg-white p-2 shadow-[0_14px_30px_rgba(17,17,17,0.1)]">
           <div className="mb-1 flex items-center gap-2 px-3 py-2 text-[0.72rem] font-black text-mute">

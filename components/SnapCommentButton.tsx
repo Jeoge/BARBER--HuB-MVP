@@ -3,7 +3,7 @@
 import { MessageCircle, Send, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useCallback, useEffect, useState, useTransition } from "react";
+import { type FormEvent, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { addSnapCommentAction, deleteSnapCommentAction } from "@/lib/actions/comments";
 import { pathWithParams } from "@/lib/auth/redirects";
@@ -17,7 +17,15 @@ function initial(name: string | null) {
   return (name?.trim().slice(0, 1) || "?").toUpperCase();
 }
 
-export function SnapCommentButton({ snapId, currentUserId }: { snapId: string; currentUserId?: string | null }) {
+export function SnapCommentButton({
+  snapId,
+  currentUserId,
+  showCount = false,
+}: {
+  snapId: string;
+  currentUserId?: string | null;
+  showCount?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState<number | null>(null);
@@ -25,10 +33,14 @@ export function SnapCommentButton({ snapId, currentUserId }: { snapId: string; c
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const submittingRef = useRef(false);
 
-  // カードにコメント数を表示するため、マウント時に件数だけ取得。
+  // 必要な画面でだけコメント数を表示する。公開Snapカードでは数字を出さない。
   useEffect(() => {
+    if (!showCount) return;
     let active = true;
     const supabase = createClient();
     (async () => {
@@ -38,7 +50,25 @@ export function SnapCommentButton({ snapId, currentUserId }: { snapId: string; c
     return () => {
       active = false;
     };
-  }, [snapId]);
+  }, [showCount, snapId]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    document.body.dataset.commentSheetOpen = "true";
+
+    return () => {
+      delete document.body.dataset.commentSheetOpen;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 112)}px`;
+  }, [text, open]);
 
   const loadComments = useCallback(async () => {
     setLoading(true);
@@ -58,18 +88,25 @@ export function SnapCommentButton({ snapId, currentUserId }: { snapId: string; c
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const body = text.trim();
-    if (body.length === 0 || isPending) return;
+    if (body.length === 0 || submittingRef.current) return;
     setError(null);
+    submittingRef.current = true;
+    setSubmitting(true);
 
     startTransition(async () => {
-      const result = await addSnapCommentAction(snapId, body);
-      if (result.status === "error") {
-        setError(result.message);
-        return;
+      try {
+        const result = await addSnapCommentAction(snapId, body);
+        if (result.status === "error") {
+          setError(result.message);
+          return;
+        }
+        setText("");
+        await loadComments();
+        router.refresh();
+      } finally {
+        submittingRef.current = false;
+        setSubmitting(false);
       }
-      setText("");
-      await loadComments();
-      router.refresh();
     });
   }
 
@@ -90,7 +127,7 @@ export function SnapCommentButton({ snapId, currentUserId }: { snapId: string; c
       <button type="button" onClick={openSheet} aria-label="コメントを見る" className={pill}>
         <MessageCircle aria-hidden="true" size={15} strokeWidth={1.9} />
         コメント
-        {count != null && count > 0 ? <span className="tabular-nums">{count}</span> : null}
+        {showCount && count != null && count > 0 ? <span className="tabular-nums">{count}</span> : null}
       </button>
 
       {open ? (
@@ -157,7 +194,7 @@ export function SnapCommentButton({ snapId, currentUserId }: { snapId: string; c
             {/* 入力欄 */}
             {error ? <p className="px-5 pb-1 text-xs font-bold text-red-600">{error}</p> : null}
             {currentUserId == null ? (
-              <div className="border-t border-line px-4 py-3 pb-6">
+              <div className="border-t border-line px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
                 <Link
                   href={pathWithParams("/login", { next: `/posts/${snapId}`, message: "コメントするにはログインしてください。" })}
                   className="flex h-11 items-center justify-center rounded-full bg-ink text-sm font-black text-white"
@@ -166,18 +203,19 @@ export function SnapCommentButton({ snapId, currentUserId }: { snapId: string; c
                 </Link>
               </div>
             ) : (
-              <form onSubmit={submit} className="border-t border-line px-4 py-3 pb-6">
+              <form onSubmit={submit} className="border-t border-line px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
                 <div className="flex items-end gap-2">
                   <textarea
+                    ref={textareaRef}
                     value={text}
                     onChange={(event) => setText(event.target.value)}
                     rows={1}
                     placeholder="コメントを書く..."
-                    className="max-h-28 flex-1 resize-none rounded-[18px] border border-line bg-neutral-50 px-4 py-2.5 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
+                    className="max-h-28 min-h-11 flex-1 resize-none overflow-y-auto rounded-[18px] border border-line bg-neutral-50 px-4 py-2.5 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
                   />
                   <button
                     type="submit"
-                    disabled={isPending || text.trim().length === 0}
+                    disabled={isPending || submitting || text.trim().length === 0}
                     aria-label="送信"
                     className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-white transition active:scale-95 disabled:opacity-40"
                   >

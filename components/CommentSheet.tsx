@@ -1,7 +1,7 @@
 "use client";
 
 import { Send, ThumbsUp, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { ProfileMiniLink } from "./ProfileMiniLink";
 
@@ -75,6 +75,16 @@ function CommentItem({ comment }: { comment: SheetComment }) {
 export function CommentSheet({ open, onClose, title = "コメント", comments = defaultComments }: CommentSheetProps) {
   const [value, setValue] = useState("");
   const visibleComments = useMemo(() => comments, [comments]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    document.body.dataset.commentSheetOpen = "true";
+
+    return () => {
+      delete document.body.dataset.commentSheetOpen;
+    };
+  }, [open]);
 
   if (!open) {
     return null;

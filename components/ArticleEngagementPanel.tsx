@@ -1,6 +1,6 @@
 import { Bookmark, MessageCircle, Send, Sparkles, ThumbsUp } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { createArticleCommentAction, toggleArticleReactionAction } from "@/app/articles/actions";
 import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
@@ -22,25 +22,24 @@ const reactionButtonBase =
   "inline-flex h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.72rem] font-black transition active:scale-[0.98]";
 
 const reactionConfig = {
-  like: {
-    label: "いいね",
-    icon: ThumbsUp,
-    countKey: "like_count",
-    pressedKey: "viewer_has_liked",
-  },
   thanks: {
     label: "Thanks",
     icon: Sparkles,
-    countKey: "thanks_count",
     pressedKey: "viewer_has_thanked",
+  },
+  like: {
+    label: "いいね",
+    icon: ThumbsUp,
+    pressedKey: "viewer_has_liked",
   },
   save: {
     label: "保存",
     icon: Bookmark,
-    countKey: "save_count",
     pressedKey: "viewer_has_saved",
   },
 } as const;
+
+const reactionOrder: Array<keyof typeof reactionConfig> = ["thanks", "like", "save"];
 
 function commentDateLabel(value: string | null) {
   if (!value) return "";
@@ -63,16 +62,36 @@ function commenterInitial(comment: ArticleComment) {
   return commenterName(comment).slice(0, 1).toUpperCase();
 }
 
-function LoginReactionLink({ articleId, label, count, children }: { articleId: string; label: string; count: number; children: ReactNode }) {
+function LoginReactionLink({ articleId, label, children }: { articleId: string; label: string; children: ReactNode }) {
   return (
     <Link
       href={pathWithParams("/login", { next: `/articles/${articleId}`, message: `${label}にはログインしてください。` })}
-            className={reactionButtonBase + " border-line/80 bg-white text-ink/78"}
+      className={reactionButtonBase + " border-line/80 bg-white text-ink/78"}
     >
       {children}
       <span>{label}</span>
-      <span className="text-mute">{count}</span>
     </Link>
+  );
+}
+
+function CommentActionButton({ articleId, currentUserId }: { articleId: string; currentUserId?: string | null }) {
+  if (currentUserId == null) {
+    return (
+      <Link
+        href={pathWithParams("/login", { next: `/articles/${articleId}`, message: "コメントにはログインしてください。" })}
+        className={reactionButtonBase + " border-line/80 bg-white text-ink/78"}
+      >
+        <MessageCircle aria-hidden="true" size={15} strokeWidth={1.9} />
+        <span>コメント</span>
+      </Link>
+    );
+  }
+
+  return (
+    <a href="#article-comments" className={reactionButtonBase + " border-line/80 bg-white text-ink/78 hover:border-blush/25 hover:bg-blushSoft/50"}>
+      <MessageCircle aria-hidden="true" size={15} strokeWidth={1.9} />
+      <span>コメント</span>
+    </a>
   );
 }
 
@@ -91,46 +110,52 @@ export function ArticleEngagementPanel({
   return (
     <section className="mt-5 rounded-[8px] border border-line/80 bg-white p-3.5 shadow-[0_8px_20px_rgba(17,17,17,0.035)]">
       <div className="flex flex-wrap items-center gap-1.5">
-        {(Object.keys(reactionConfig) as Array<keyof typeof reactionConfig>).map((reactionType) => {
+        {reactionOrder.map((reactionType) => {
           const config = reactionConfig[reactionType];
           const Icon = config.icon;
-          const count = metrics[config.countKey];
           const pressed = metrics[config.pressedKey];
           const pressedClass = pressed ? " border-blush/25 bg-blushSoft text-ink" : " border-line/80 bg-white text-ink/78 hover:border-blush/25 hover:bg-blushSoft/50";
 
-          if (currentUserId == null) {
-            return (
-              <LoginReactionLink key={reactionType} articleId={articleId} label={config.label} count={count}>
-                <Icon aria-hidden="true" size={15} strokeWidth={1.9} className={reactionType === "thanks" ? "text-blush" : ""} />
-              </LoginReactionLink>
-            );
-          }
+          const button = (() => {
+            if (currentUserId == null) {
+              return (
+                <LoginReactionLink articleId={articleId} label={config.label}>
+                  <Icon aria-hidden="true" size={15} strokeWidth={1.9} className={reactionType === "thanks" ? "text-blush" : ""} />
+                </LoginReactionLink>
+              );
+            }
 
-          if (isOwnArticle) {
+            if (isOwnArticle) {
+              return (
+                <button
+                  type="button"
+                  disabled
+                  aria-pressed={false}
+                  className={reactionButtonBase + " cursor-not-allowed border-line/80 bg-neutral-50 text-mute"}
+                >
+                  <Icon aria-hidden="true" size={15} strokeWidth={1.9} className={reactionType === "thanks" ? "text-blush/70" : ""} />
+                  <span>{config.label}</span>
+                </button>
+              );
+            }
+
             return (
-              <button
-                key={reactionType}
-                type="button"
-                disabled
-                className={reactionButtonBase + " cursor-not-allowed border-line/80 bg-neutral-50 text-mute"}
-              >
-                <Icon aria-hidden="true" size={15} strokeWidth={1.9} className={reactionType === "thanks" ? "text-blush/70" : ""} />
-                <span>{config.label}</span>
-                <span>{count}</span>
-              </button>
+              <form action={toggleArticleReactionAction}>
+                <input type="hidden" name="articleId" value={articleId} />
+                <input type="hidden" name="reactionType" value={reactionType} />
+                <LoadingSubmitButton pendingText="保存中..." className={reactionButtonBase + pressedClass} ariaPressed={pressed}>
+                  <Icon aria-hidden="true" size={15} strokeWidth={1.9} fill={pressed && reactionType !== "thanks" ? "currentColor" : "none"} className={reactionType === "thanks" ? "text-blush" : ""} />
+                  <span>{config.label}</span>
+                </LoadingSubmitButton>
+              </form>
             );
-          }
+          })();
 
           return (
-            <form key={reactionType} action={toggleArticleReactionAction}>
-              <input type="hidden" name="articleId" value={articleId} />
-              <input type="hidden" name="reactionType" value={reactionType} />
-              <LoadingSubmitButton pendingText="保存中..." className={reactionButtonBase + pressedClass}>
-                <Icon aria-hidden="true" size={15} strokeWidth={1.9} fill={pressed && reactionType !== "thanks" ? "currentColor" : "none"} className={reactionType === "thanks" ? "text-blush" : ""} />
-                <span>{config.label}</span>
-                <span className={pressed ? "text-ink" : "text-mute"}>{count}</span>
-              </LoadingSubmitButton>
-            </form>
+            <Fragment key={reactionType}>
+              {button}
+              {reactionType === "like" ? <CommentActionButton articleId={articleId} currentUserId={currentUserId} /> : null}
+            </Fragment>
           );
         })}
       </div>
@@ -140,13 +165,12 @@ export function ArticleEngagementPanel({
       ) : null}
       {reactionError ? <p className="mt-2 text-[0.72rem] font-black leading-relaxed text-red-600">{reactionError}</p> : null}
 
-      <div className="mt-5 border-t border-line/70 pt-4">
+      <div id="article-comments" className="mt-5 scroll-mt-4 border-t border-line/70 pt-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="inline-flex items-center gap-1.5 text-base font-black text-ink">
             <MessageCircle aria-hidden="true" size={17} />
             コメント
           </h2>
-          <span className="text-xs font-black text-mute">{metrics.comment_count}</span>
         </div>
 
         {commentPosted ? (

@@ -24,6 +24,21 @@ export async function addSnapCommentAction(snapId: string, body: string): Promis
     redirect(pathWithParams("/login", { next: `/posts/${snapId}`, message: "コメントするにはログインしてください。" }));
   }
 
+  const { data: snap, error: snapError } = await supabase
+    .from("snaps")
+    .select("id, is_published, is_deleted")
+    .eq("id", snapId)
+    .maybeSingle<{ id: string; is_published: boolean | null; is_deleted: boolean | null }>();
+
+  if (snapError) {
+    console.error("add comment target lookup failed", { snapId, userId: user.id, message: snapError.message });
+    return { status: "error", message: "コメントを投稿できませんでした。" };
+  }
+
+  if (snap == null || snap.is_deleted || snap.is_published === false) {
+    return { status: "error", message: "このSnapにはコメントできません。" };
+  }
+
   const { error } = await supabase.from("snap_comments").insert({ snap_id: snapId, user_id: user.id, body: text });
 
   if (error) {

@@ -114,7 +114,9 @@ function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
               <Link href={`/posts/${snap.id}`} className="mt-1 block">
                 <p className="line-clamp-2 break-words text-sm font-semibold leading-relaxed text-ink">{snap.caption}</p>
               </Link>
-              <p className="mt-1 text-[0.68rem] font-bold text-mute">Thanks {snap.thanks_count}</p>
+              <p className="mt-1 text-[0.68rem] font-bold text-mute">
+                Thanks {snap.thanks_count} / いいね {snap.like_count} / コメント {snap.comment_count}
+              </p>
             </div>
           </div>
           <form action={deleteMySnapAction} className="mt-2">
@@ -279,10 +281,10 @@ function OwnerReactionSummaries({ articles, snaps }: { articles: ArticleWithAuth
       id: snap.id,
       href: `/posts/${snap.id}`,
       title: snap.caption || "Snap",
-      likes: 0,
+      likes: snap.like_count,
       thanks: snap.thanks_count,
       saves: 0,
-      comments: 0,
+      comments: snap.comment_count,
     })),
   ];
 
@@ -550,6 +552,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const { posts: mySuccessionPosts, error: mySuccessionPostsError } = await listUserSuccessionPosts(supabase, user.id, 30);
   const { shops: verifiedBarberShops, error: verifiedBarberShopsError } = await listOwnedVerifiedBarberShops(supabase, user.id, 20);
   const articleThanksPoints = myArticles.reduce((sum, article) => sum + article.thanks_count, 0);
+  const likesReceived = stats.likesReceived + myArticles.reduce((sum, article) => sum + article.like_count, 0);
   const thanksPoints = stats.thanksReceived + articleThanksPoints;
   const nextRewardAt = (Math.floor(thanksPoints / 100) + 1) * 100;
   const pointsToNext = nextRewardAt - thanksPoints;
@@ -878,10 +881,14 @@ export default async function MyPage({ searchParams }: MyPageProps) {
       </SectionCard>
 
       <SectionCard eyebrow="OWNER VIEW" title="自分の投稿への反応">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <div className="rounded-[8px] bg-neutral-50 p-3 text-center">
             <p className="text-[0.62rem] font-bold text-mute">受け取ったThanks</p>
             <p className="mt-1 text-2xl font-black text-ink">{thanksPoints}</p>
+          </div>
+          <div className="rounded-[8px] bg-neutral-50 p-3 text-center">
+            <p className="text-[0.62rem] font-bold text-mute">いいね</p>
+            <p className="mt-1 text-2xl font-black text-ink">{likesReceived}</p>
           </div>
           <div className="rounded-[8px] bg-neutral-50 p-3 text-center">
             <p className="text-[0.62rem] font-bold text-mute">コメント</p>

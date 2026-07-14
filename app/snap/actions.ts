@@ -4,12 +4,16 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isMissingSnapReactionsTableError } from "@/lib/supabase/snaps";
 
-export type SnapThanksState = {
+export type SnapReactionType = "thanks" | "like";
+
+export type SnapReactionState = {
   count: number;
-  thanked: boolean;
+  active: boolean;
   message?: string;
   error?: string;
 };
+
+export type SnapThanksState = SnapReactionState;
 
 type SnapForReaction = {
   id: string;
@@ -24,6 +28,8 @@ type SnapReactionRow = {
   reaction_type: string;
 };
 
+const reactionTypes = new Set<SnapReactionType>(["thanks", "like"]);
+
 function errorMessage(error: unknown) {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
     return error.message;
@@ -33,13 +39,22 @@ function errorMessage(error: unknown) {
   return String(error || "");
 }
 
-async function countThanksForSnap(supabase: Awaited<ReturnType<typeof createClient>>, snapId: string, authorId: string) {
+function reactionLabel(reactionType: SnapReactionType) {
+  return reactionType === "thanks" ? "Thanks" : "いいね";
+}
+
+async function countReactionsForSnap(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  snapId: string,
+  authorId: string,
+  reactionType: SnapReactionType
+) {
   try {
     const { data, error } = await supabase
       .from("snap_reactions")
       .select("snap_id, user_id, reaction_type")
       .eq("snap_id", snapId)
-      .eq("reaction_type", "thanks")
+      .eq("reaction_type", reactionType)
       .returns<SnapReactionRow[]>();
 
     if (error) {
@@ -47,8 +62,9 @@ async function countThanksForSnap(supabase: Awaited<ReturnType<typeof createClie
         return 0;
       }
 
-      console.error("Snap thanks count failed", {
+      console.error("Snap reaction count failed", {
         snapId,
+        reactionType,
         message: error.message,
       });
       return 0;
@@ -56,19 +72,22 @@ async function countThanksForSnap(supabase: Awaited<ReturnType<typeof createClie
 
     return (data ?? []).filter((reaction) => reaction.user_id !== authorId).length;
   } catch (error) {
-    console.error("Snap thanks count threw", {
+    console.error("Snap reaction count threw", {
       snapId,
+      reactionType,
       message: errorMessage(error),
     });
     return 0;
   }
 }
 
-export async function toggleSnapThanksAction(previousState: SnapThanksState, formData: FormData): Promise<SnapThanksState> {
+export async function toggleSnapReactionAction(previousState: SnapReactionState, formData: FormData): Promise<SnapReactionState> {
   const snapId = String(formData.get("snapId") ?? "").trim();
+  const reactionType = String(formData.get("reactionType") ?? "thanks").trim() as SnapReactionType;
   const supabase = await createClient();
+  const label = reactionTypes.has(reactionType) ? reactionLabel(reactionType) : "リアクション";
 
-  if (!snapId) {
+  if (!snapId || !reactionTypes.has(reactionType)) {
     return {
       ...previousState,
       error: "Snapが見つかりませんでした。",
@@ -82,15 +101,16 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
 
   if (user == null) {
     if (userError) {
-      console.error("Snap thanks auth lookup failed", {
+      console.error("Snap reaction auth lookup failed", {
         snapId,
+        reactionType,
         message: userError.message,
       });
     }
 
     return {
       ...previousState,
-      error: "Thanksするにはログインしてください。",
+      error: `${label}するにはログインしてください。`,
     };
   }
 
@@ -101,9 +121,10 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
     .maybeSingle<SnapForReaction>();
 
   if (snapError) {
-    console.error("Snap thanks target lookup failed", {
+    console.error("Snap reaction target lookup failed", {
       snapId,
       userId: user.id,
+      reactionType,
       message: snapError.message,
     });
     return {
@@ -115,15 +136,15 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
   if (snap == null || snap.is_deleted || snap.is_published === false) {
     return {
       ...previousState,
-      error: "このSnapにはThanksできません。",
+      error: `このSnapには${label}できません。`,
     };
   }
 
   if (snap.author_id === user.id) {
     return {
-      count: await countThanksForSnap(supabase, snap.id, snap.author_id),
-      thanked: false,
-      message: "自分の投稿へのThanksはカウントされません。",
+      count: await countReactionsForSnap(supabase, snap.id, snap.author_id, reactionType),
+      active: false,
+      message: "自分の投稿にはリアクションできません。",
     };
   }
 
@@ -132,25 +153,26 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
     .select("id")
     .eq("snap_id", snap.id)
     .eq("user_id", user.id)
-    .eq("reaction_type", "thanks")
+    .eq("reaction_type", reactionType)
     .maybeSingle<{ id: string }>();
 
   if (existingError) {
     if (isMissingSnapReactionsTableError(existingError)) {
       return {
         ...previousState,
-        error: "Thanks機能の準備中です。しばらく時間をおいて再度お試しください。",
+        error: "リアクション機能の準備中です。しばらく時間をおいて再度お試しください。",
       };
     }
 
-    console.error("Snap thanks existing lookup failed", {
+    console.error("Snap reaction existing lookup failed", {
       snapId: snap.id,
       userId: user.id,
+      reactionType,
       message: existingError.message,
     });
     return {
       ...previousState,
-      error: "Thanksを確認できませんでした。少し時間をおいて再度お試しください。",
+      error: "リアクションを確認できませんでした。少し時間をおいて再度お試しください。",
     };
   }
 
@@ -161,18 +183,19 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
       if (isMissingSnapReactionsTableError(deleteError)) {
         return {
           ...previousState,
-          error: "Thanks機能の準備中です。しばらく時間をおいて再度お試しください。",
+          error: "リアクション機能の準備中です。しばらく時間をおいて再度お試しください。",
         };
       }
 
-      console.error("Snap thanks delete failed", {
+      console.error("Snap reaction delete failed", {
         snapId: snap.id,
         userId: user.id,
+        reactionType,
         message: deleteError.message,
       });
       return {
         ...previousState,
-        error: "Thanksを取り消せませんでした。少し時間をおいて再度お試しください。",
+        error: "リアクションを取り消せませんでした。少し時間をおいて再度お試しください。",
       };
     }
 
@@ -182,44 +205,45 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
     revalidatePath("/mypage");
 
     return {
-      count: await countThanksForSnap(supabase, snap.id, snap.author_id),
-      thanked: false,
-      message: "Thanksを取り消しました。",
+      count: await countReactionsForSnap(supabase, snap.id, snap.author_id, reactionType),
+      active: false,
+      message: `${label}を取り消しました。`,
     };
   }
 
   const { error: insertError } = await supabase.from("snap_reactions").insert({
     snap_id: snap.id,
     user_id: user.id,
-    reaction_type: "thanks",
+    reaction_type: reactionType,
   });
 
   if (insertError) {
     if (isMissingSnapReactionsTableError(insertError)) {
       return {
         ...previousState,
-        error: "Thanks機能の準備中です。しばらく時間をおいて再度お試しください。",
+        error: "リアクション機能の準備中です。しばらく時間をおいて再度お試しください。",
       };
     }
 
-    console.error("Snap thanks insert failed", {
+    console.error("Snap reaction insert failed", {
       snapId: snap.id,
       userId: user.id,
       authorId: snap.author_id,
+      reactionType,
       message: insertError.message,
     });
 
     if (insertError.message.toLowerCase().includes("duplicate")) {
       return {
-        count: await countThanksForSnap(supabase, snap.id, snap.author_id),
-        thanked: true,
-        message: "Thanks済みです。",
+        count: await countReactionsForSnap(supabase, snap.id, snap.author_id, reactionType),
+        active: true,
+        message: `${label}済みです。`,
       };
     }
 
     return {
       ...previousState,
-      error: "Thanksできませんでした。少し時間をおいて再度お試しください。",
+      error: "リアクションできませんでした。少し時間をおいて再度お試しください。",
     };
   }
 
@@ -229,8 +253,13 @@ export async function toggleSnapThanksAction(previousState: SnapThanksState, for
   revalidatePath("/mypage");
 
   return {
-    count: await countThanksForSnap(supabase, snap.id, snap.author_id),
-    thanked: true,
-    message: "Thanksしました。",
+    count: await countReactionsForSnap(supabase, snap.id, snap.author_id, reactionType),
+    active: true,
+    message: `${label}しました。`,
   };
+}
+
+export async function toggleSnapThanksAction(previousState: SnapThanksState, formData: FormData): Promise<SnapThanksState> {
+  formData.set("reactionType", "thanks");
+  return toggleSnapReactionAction(previousState, formData);
 }

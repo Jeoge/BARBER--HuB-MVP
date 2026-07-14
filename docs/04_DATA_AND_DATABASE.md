@@ -74,6 +74,10 @@
 
 - `profiles`: 本人だけが作成・編集できる。
 - `snaps`: 投稿者本人だけが投稿・更新・削除できる。
+- `snap_reactions`: 反応した本人、または対象Snapの投稿者本人だけがSELECTできる。INSERT/DELETEは本人のみで、自分のSnapへのThanks・いいねはINSERTできない。
+- `article_reactions`: 反応した本人、または対象記事の投稿者本人だけがSELECTできる。自分の記事へのThanks・いいねは保存・集計対象にしない。
+- `snap_comments`: 公開中かつ削除されていないSnapのコメントだけを閲覧・作成できる。削除は本人のみ。
+- `saved_snaps`: 本人だけが閲覧・作成・削除でき、削除済みまたは非公開Snapは保存対象にしない。
 - `snap-images`: 本人フォルダだけアップロードできる。
 - `barber_shops`: 公開情報は閲覧可能。編集は認証済みオーナーに限定する。
 - `barber_shop_claims`: 申請者本人が自分の申請を確認・作成できる。

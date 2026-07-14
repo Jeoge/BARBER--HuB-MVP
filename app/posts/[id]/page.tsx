@@ -1,4 +1,4 @@
-import { Flag, MapPin, MoreHorizontal } from "lucide-react";
+import { Flag, MapPin } from "lucide-react";
 import Link from "next/link";
 import { BackRoomThreadDetail } from "@/components/BackRoomThreadDetail";
 import { FollowButton } from "@/components/FollowButton";
@@ -6,8 +6,11 @@ import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ReactionBar } from "@/components/ReactionBar";
-import { SnapThanksButton } from "@/components/SnapThanksButton";
+import { SnapCommentButton } from "@/components/SnapCommentButton";
+import { SnapSaveButton } from "@/components/SnapSaveButton";
+import { SnapLikeButton, SnapThanksButton } from "@/components/SnapThanksButton";
 import { VisualTile } from "@/components/VisualTile";
+import { pathWithParams } from "@/lib/auth/redirects";
 import { findBackyardPost, findPost, posts } from "@/lib/mockData";
 import { createClient } from "@/lib/supabase/server";
 import { getPublishedSnapById, snapAuthorMeta, snapAuthorName, snapDateLabel } from "@/lib/supabase/snaps";
@@ -71,9 +74,6 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
                 {dbSnap.region || dbSnap.profiles?.region || "地域未設定"} / {snapDateLabel(dbSnap)}
               </p>
             </div>
-            <button className="grid h-9 w-9 place-items-center rounded-full bg-neutral-50 text-ink" aria-label="投稿メニュー">
-              <MoreHorizontal aria-hidden="true" size={19} />
-            </button>
           </div>
 
           <p className="mt-4 whitespace-pre-wrap text-[0.94rem] font-medium leading-relaxed text-ink">{caption}</p>
@@ -93,12 +93,32 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             currentUserId={user?.id}
             initialCount={dbSnap.thanks_count}
             initiallyThanked={dbSnap.viewer_has_thanked}
+            showCount={false}
+            nextPath={`/posts/${dbSnap.id}`}
+            actions={
+              <span className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
+                <SnapLikeButton
+                  snapId={dbSnap.id}
+                  authorId={dbSnap.author_id}
+                  currentUserId={user?.id}
+                  initialCount={dbSnap.like_count}
+                  initiallyThanked={dbSnap.viewer_has_liked}
+                  showCount={false}
+                  nextPath={`/posts/${dbSnap.id}`}
+                />
+                <SnapCommentButton snapId={dbSnap.id} currentUserId={user?.id} />
+                <SnapSaveButton snapId={dbSnap.id} currentUserId={user?.id} nextPath={`/posts/${dbSnap.id}`} />
+              </span>
+            }
           />
 
-          <button className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute">
+          <Link
+            href={pathWithParams("/contact", { topic: "report", targetUrl: `/posts/${dbSnap.id}` })}
+            className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute"
+          >
             <Flag aria-hidden="true" size={14} />
             通報
-          </button>
+          </Link>
         </article>
       </PageChrome>
     );
@@ -144,9 +164,6 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
               {area} / {source}
             </p>
           </div>
-          <button className="grid h-9 w-9 place-items-center rounded-full bg-neutral-50 text-ink" aria-label="投稿メニュー">
-            <MoreHorizontal aria-hidden="true" size={19} />
-          </button>
         </div>
 
         {isBackyard ? (
@@ -174,10 +191,13 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           goodIconOnly={!isBackyard}
         />
 
-        <button className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute">
+        <Link
+          href={pathWithParams("/contact", { topic: "report", targetUrl: `/posts/${id}` })}
+          className="mt-4 inline-flex items-center gap-1.5 text-xs font-black text-mute"
+        >
           <Flag aria-hidden="true" size={14} />
           通報
-        </button>
+        </Link>
       </article>
 
       {topicBundle == null ? null : (

@@ -4,7 +4,7 @@ import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { createSupportInquiryAction } from "@/lib/actions/support";
 
 type ContactPageProps = {
-  searchParams?: Promise<{ error?: string; sent?: string; topic?: string }>;
+  searchParams?: Promise<{ error?: string; sent?: string; topic?: string; targetUrl?: string }>;
 };
 
 const inquiryTypes = [
@@ -19,6 +19,7 @@ const inquiryTypes = [
 ];
 
 function defaultType(topic?: string) {
+  if (topic?.includes("report")) return "report";
   if (topic?.includes("job")) return "jobs";
   if (topic?.includes("succession")) return "succession";
   if (topic?.includes("ad")) return "advertising";
@@ -81,7 +82,13 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
 
         <label className="grid gap-2">
           <span className="text-sm font-black text-ink">対象URL</span>
-          <input name="targetUrl" type="text" className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush" placeholder="/posts/... または https://..." />
+          <input
+            name="targetUrl"
+            type="text"
+            defaultValue={params?.targetUrl ?? ""}
+            className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush"
+            placeholder="/posts/... または https://..."
+          />
         </label>
 
         <label className="grid gap-2">
