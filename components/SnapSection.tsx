@@ -22,7 +22,7 @@ export async function SnapSection() {
         </Link>
       </div>
 
-      <div className="overflow-hidden">
+      <div className="overflow-visible">
         {error ? (
           <div className="px-4">
             <div className="rounded-[8px] border border-line bg-white p-4 text-xs font-bold leading-relaxed text-mute">

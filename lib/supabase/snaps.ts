@@ -60,7 +60,7 @@ export type SnapWithAuthor = SnapRecord & {
 };
 
 type RawSnapWithAuthor = SnapRecord & {
-  profiles: SnapAuthorProfile | SnapAuthorProfile[] | null;
+  profiles?: SnapAuthorProfile | SnapAuthorProfile[] | null;
   snap_images?: SnapImageRecord | SnapImageRecord[] | null;
 };
 
@@ -111,6 +111,19 @@ const snapBaseSelect = `
   is_deleted,
   created_at,
   updated_at
+`;
+
+const snapProfileFallbackSelect = `
+  ${snapBaseSelect},
+  profiles:author_id (
+    id,
+    display_name,
+    job_type,
+    salon_name,
+    region,
+    bio,
+    avatar_url
+  )
 `;
 
 export function snapAuthorName(snap: SnapWithAuthor) {
@@ -211,7 +224,7 @@ export function primarySnapImageUrl(snap: Parameters<typeof snapDisplayImages>[0
 function normalizeSnaps(data: unknown): SnapWithAuthor[] {
   return ((data ?? []) as RawSnapWithAuthor[]).map((snap) => ({
     ...snap,
-    profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles,
+    profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles ?? null,
     images: normalizeSnapImages(snap),
     thanks_count: 0,
     like_count: 0,
@@ -227,7 +240,7 @@ function normalizeSnap(data: unknown): SnapWithAuthor | null {
 
   return {
     ...snap,
-    profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles,
+    profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles ?? null,
     images: normalizeSnapImages(snap),
     thanks_count: 0,
     like_count: 0,
@@ -259,6 +272,49 @@ function errorMessage(error: unknown) {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") return error.message;
   if (error instanceof Error) return error.message;
   return String(error || "");
+}
+
+type SnapSelectResult = {
+  data: unknown;
+  error: unknown;
+};
+
+type SnapSelectRunner = (columns: string) => Promise<SnapSelectResult>;
+
+const snapSelectAttempts = [
+  { label: "joined", columns: snapSelect },
+  { label: "profile fallback", columns: snapProfileFallbackSelect },
+  { label: "base fallback", columns: snapBaseSelect },
+] as const;
+
+async function selectSnapRowsWithFallback(
+  runSelect: SnapSelectRunner,
+  logLabel: string,
+  context: Record<string, string> = {}
+): Promise<SnapSelectResult> {
+  let finalResult: SnapSelectResult = { data: null, error: null };
+
+  for (const attempt of snapSelectAttempts) {
+    try {
+      const result = await runSelect(attempt.columns);
+
+      if (result.error == null) return result;
+
+      finalResult = result;
+      console.error(`${logLabel} ${attempt.label} select failed`, {
+        ...context,
+        message: errorMessage(result.error),
+      });
+    } catch (error) {
+      finalResult = { data: null, error };
+      console.error(`${logLabel} ${attempt.label} select threw`, {
+        ...context,
+        message: errorMessage(error),
+      });
+    }
+  }
+
+  return finalResult;
 }
 
 export function isMissingSnapReactionsTableError(error: unknown) {
@@ -355,35 +411,17 @@ async function withReactionSummaries(supabase: SupabaseClient, snaps: SnapWithAu
 
 export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20, viewerId?: string | null) {
   try {
-    const { data, error } = await supabase
-      .from("snaps")
-      .select(snapSelect)
-      .eq("is_published", true)
-      .eq("is_deleted", false)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error("Published snap joined select failed", {
-        message: error.message,
-      });
-
-      const fallback = await supabase
-        .from("snaps")
-        .select(snapBaseSelect)
-        .eq("is_published", true)
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: false })
-        .limit(limit);
-
-      if (!fallback.error) {
-        return { snaps: await withReactionSummaries(supabase, normalizeSnaps(fallback.data), viewerId), error: null };
-      }
-
-      console.error("Published snap fallback select failed", {
-        message: fallback.error.message,
-      });
-    }
+    const { data, error } = await selectSnapRowsWithFallback(
+      async (columns) =>
+        await supabase
+          .from("snaps")
+          .select(columns)
+          .eq("is_published", true)
+          .eq("is_deleted", false)
+          .order("created_at", { ascending: false })
+          .limit(limit),
+      "Published snap"
+    );
 
     return { snaps: await withReactionSummaries(supabase, normalizeSnaps(data), viewerId), error };
   } catch (error) {
@@ -396,37 +434,18 @@ export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20, v
 
 export async function listUserSnaps(supabase: SupabaseClient, userId: string, limit = 30, viewerId?: string | null) {
   try {
-    const { data, error } = await supabase
-      .from("snaps")
-      .select(snapSelect)
-      .eq("author_id", userId)
-      .eq("is_deleted", false)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error("User snap joined select failed", {
-        userId,
-        message: error.message,
-      });
-
-      const fallback = await supabase
-        .from("snaps")
-        .select(snapBaseSelect)
-        .eq("author_id", userId)
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: false })
-        .limit(limit);
-
-      if (!fallback.error) {
-        return { snaps: await withReactionSummaries(supabase, normalizeSnaps(fallback.data), viewerId), error: null };
-      }
-
-      console.error("User snap fallback select failed", {
-        userId,
-        message: fallback.error.message,
-      });
-    }
+    const { data, error } = await selectSnapRowsWithFallback(
+      async (columns) =>
+        await supabase
+          .from("snaps")
+          .select(columns)
+          .eq("author_id", userId)
+          .eq("is_deleted", false)
+          .order("created_at", { ascending: false })
+          .limit(limit),
+      "User snap",
+      { userId }
+    );
 
     return { snaps: await withReactionSummaries(supabase, normalizeSnaps(data), viewerId), error };
   } catch (error) {
@@ -440,40 +459,18 @@ export async function listUserSnaps(supabase: SupabaseClient, userId: string, li
 
 export async function getPublishedSnapById(supabase: SupabaseClient, id: string, viewerId?: string | null) {
   try {
-    const { data, error } = await supabase
-      .from("snaps")
-      .select(snapSelect)
-      .eq("id", id)
-      .eq("is_published", true)
-      .eq("is_deleted", false)
-      .maybeSingle();
-
-    if (error) {
-      console.error("Snap detail joined select failed", {
-        snapId: id,
-        message: error.message,
-      });
-
-      const fallback = await supabase
-        .from("snaps")
-        .select(snapBaseSelect)
-        .eq("id", id)
-        .eq("is_published", true)
-        .eq("is_deleted", false)
-        .maybeSingle();
-
-      if (!fallback.error) {
-        const fallbackSnap = normalizeSnap(fallback.data);
-        const fallbackWithReactions = fallbackSnap ? await withReactionSummaries(supabase, [fallbackSnap], viewerId) : [];
-
-        return { snap: fallbackWithReactions[0] ?? null, error: null };
-      }
-
-      console.error("Snap detail fallback select failed", {
-        snapId: id,
-        message: fallback.error.message,
-      });
-    }
+    const { data, error } = await selectSnapRowsWithFallback(
+      async (columns) =>
+        await supabase
+          .from("snaps")
+          .select(columns)
+          .eq("id", id)
+          .eq("is_published", true)
+          .eq("is_deleted", false)
+          .maybeSingle(),
+      "Snap detail",
+      { snapId: id }
+    );
 
     const snap = normalizeSnap(data);
     const snapWithReactions = snap ? await withReactionSummaries(supabase, [snap], viewerId) : [];

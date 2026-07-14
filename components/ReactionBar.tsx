@@ -3,6 +3,7 @@
 import { Bookmark, MessageCircle, Sparkles, ThumbsUp } from "lucide-react";
 import { type MouseEvent, useEffect, useState } from "react";
 import { CommentSheet, type SheetComment } from "./CommentSheet";
+import { ThanksActionButton } from "./ThanksActionButton";
 
 type ReactionBarProps = {
   contentId?: string;
@@ -40,7 +41,6 @@ export function ReactionBar({ contentId, commentTitle, comments, className = "",
   const [thanked, setThanked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [likePulse, setLikePulse] = useState(false);
-  const [thanksPulse, setThanksPulse] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
 
   useEffect(() => {
@@ -65,8 +65,6 @@ export function ReactionBar({ contentId, commentTitle, comments, className = "",
       storeReaction(contentId, "thanks");
       setThanked(true);
     }
-    setThanksPulse(true);
-    window.setTimeout(() => setThanksPulse(false), 760);
   }
 
   function pressSave(event: MouseEvent<HTMLButtonElement>) {
@@ -99,29 +97,18 @@ export function ReactionBar({ contentId, commentTitle, comments, className = "",
           <span className={goodLabelClass}>{"\u30b0\u30c3\u30c9"}</span>
         </button>
 
-        <button
+        <ThanksActionButton
           type="button"
-          aria-pressed={thanked}
+          active={thanked}
           className={
             buttonBase +
-            (thanked ? " border-blush/25 bg-blushSoft text-ink" : " hover:border-blush/25 hover:bg-blushSoft/50") +
-            (thanksPulse ? " scale-110 shadow-[0_0_0_6px_rgba(230,51,116,0.08)]" : "")
+            (thanked ? " border-blush/25 bg-blushSoft text-ink" : " hover:border-blush/25 hover:bg-blushSoft/50")
           }
           onClick={pressThanks}
         >
           <Sparkles aria-hidden="true" size={15} strokeWidth={1.9} className="text-blush" />
           <span className={labelClass}>Thanks</span>
-          {thanksPulse ? (
-            <>
-              <span aria-hidden="true" className="pointer-events-none absolute -right-2 -top-3 text-blush">
-                <Sparkles size={18} className="animate-ping opacity-75" />
-              </span>
-              <span aria-hidden="true" className="pointer-events-none absolute -left-1 -top-2 text-blush/70">
-                <Sparkles size={12} className="animate-pulse" />
-              </span>
-            </>
-          ) : null}
-        </button>
+        </ThanksActionButton>
 
         <button type="button" className={buttonBase + " hover:bg-neutral-50"} onClick={openComments}>
           <MessageCircle aria-hidden="true" size={15} strokeWidth={1.9} />
