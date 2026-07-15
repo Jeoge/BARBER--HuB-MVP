@@ -18,9 +18,10 @@
 | 領域 | テーブル |
 | --- | --- |
 | プロフィール | `profiles` |
-| Snap | `snaps`, `snap_images`, `snap_reactions`, `snap_comments`, `saved_snaps` |
+| Snap | `snaps`, `snap_images`, `snap_reactions`, `snap_comments`, `snap_comment_likes`, `saved_snaps` |
 | フォロー | `follows` |
 | 記事 | `articles`, `article_reactions`, `article_comments` |
+| 通知 | `notifications` |
 | Back Room | `backroom_profiles`, `backroom_posts`, `backroom_comments` |
 | Q&A | `qa_questions`, `qa_answers` |
 | 求人 | `job_posts` |
@@ -94,6 +95,10 @@
 - `article_reactions`: 通常SELECTは反応した本人の行だけ許可する。投稿者本人は個別user_idや保存者を読まず、`get_my_article_reaction_counts` で自分の記事が受け取った集計数だけ確認する。自分の記事へのThanks・いいねは保存・集計対象にせず、自分の記事の保存は許可する。
 - `snap_comments`: 公開中かつ削除されていないSnapのコメントだけをanon / authenticatedが閲覧できる。INSERTはauthenticatedだけで、投稿対象も公開中かつ未削除Snapに限定する。削除は本人のみ。
 - `get_public_snap_comment_counts`: 公開中かつ未削除Snapの `snap_id` と `comment_count` だけをまとめて返す公開集計RPC。個別コメント、本文、user_idは返さない。
+- `snap_comment_likes`: Snapコメントへのいいね。通常SELECTは押した本人の行だけ許可する。INSERT/DELETEは本人のみで、自分のコメント、非公開または削除済みSnapのコメントにはINSERTできない。
+- `get_public_snap_comment_like_counts`: 指定された公開Snapコメントの `comment_id` と `like_count` だけを返す公開集計RPC。誰が押したか、user_id、created_atは返さない。
+- `notifications`: アプリ内通知。recipient本人だけがSELECTでき、recipient本人だけが `read_at` を更新できる。クライアントから任意のINSERT/DELETEは許可しない。
+- `list_my_notifications` / `get_unread_notification_count`: 本人の通知一覧と未読件数だけを返すRPC。削除済みまたは非公開になったSnap/記事に紐づく通知は返さない。
 - `saved_snaps`: 本人だけが閲覧・作成・削除でき、削除済みまたは非公開Snapは保存対象にしない。
 - `snap_images`: 公開中かつ未削除Snapに属する画像情報だけをanon / authenticatedが閲覧できる。投稿者本人は自分のSnap画像情報を閲覧・追加・更新・削除できる。
 - `snap-images`: 本人フォルダだけアップロードできる。新規Snap画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。

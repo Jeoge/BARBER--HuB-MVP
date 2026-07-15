@@ -1,12 +1,12 @@
 "use client";
 
-import { MessageCircle, Send, Trash2, X } from "lucide-react";
+import { MessageCircle, Send, ThumbsUp, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { useCommentSheetFabHidden } from "@/components/useCommentSheetFabHidden";
-import { addSnapCommentAction, deleteSnapCommentAction } from "@/lib/actions/comments";
+import { addSnapCommentAction, deleteSnapCommentAction, toggleSnapCommentLikeAction } from "@/lib/actions/comments";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/client";
 import { commentTimeLabel, listSnapComments, type SnapComment } from "@/lib/supabase/comments";
@@ -37,6 +37,7 @@ export function SnapCommentButton({
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [likeSubmittingId, setLikeSubmittingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const submittingRef = useRef(false);
@@ -57,11 +58,30 @@ export function SnapCommentButton({
   const loadComments = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
-    const list = await listSnapComments(supabase, snapId);
+    const list = await listSnapComments(supabase, snapId, currentUserId);
     setComments(list);
     setCount(list.length);
     setLoading(false);
-  }, [snapId]);
+  }, [currentUserId, snapId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.location.hash.startsWith("#snap-comment-")) return;
+
+    setOpen(true);
+    setError(null);
+    void loadComments();
+  }, [loadComments]);
+
+  useEffect(() => {
+    if (!open || comments.length === 0 || typeof window === "undefined") return;
+    const targetId = window.location.hash.replace(/^#/, "");
+    if (!targetId.startsWith("snap-comment-")) return;
+
+    window.requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ block: "center" });
+    });
+  }, [comments, open]);
 
   function openSheet() {
     setOpen(true);
@@ -106,6 +126,109 @@ export function SnapCommentButton({
     });
   }
 
+  function toggleCommentLike(comment: SnapComment) {
+    if (currentUserId == null || currentUserId === comment.user_id || likeSubmittingId != null) return;
+
+    setError(null);
+    setLikeSubmittingId(comment.id);
+
+    startTransition(async () => {
+      try {
+        const result = await toggleSnapCommentLikeAction(comment.id, snapId);
+        if (result.status === "error") {
+          setError(result.message);
+          if (typeof result.count === "number" || typeof result.active === "boolean") {
+            setComments((current) =>
+              current.map((item) =>
+                item.id === comment.id
+                  ? {
+                      ...item,
+                      like_count: typeof result.count === "number" ? result.count : item.like_count,
+                      viewer_has_liked: typeof result.active === "boolean" ? result.active : item.viewer_has_liked,
+                    }
+                  : item
+              )
+            );
+          }
+          return;
+        }
+
+        setComments((current) =>
+          current.map((item) =>
+            item.id === comment.id
+              ? {
+                  ...item,
+                  like_count: result.count,
+                  viewer_has_liked: result.active,
+                }
+              : item
+          )
+        );
+        router.refresh();
+      } finally {
+        setLikeSubmittingId(null);
+      }
+    });
+  }
+
+  function commentLikeControl(comment: SnapComment) {
+    const isOwnComment = currentUserId != null && currentUserId === comment.user_id;
+    const active = comment.viewer_has_liked;
+    const pending = likeSubmittingId === comment.id;
+    const className =
+      "inline-flex h-7 items-center justify-center gap-1 rounded-full border px-2 text-[0.66rem] font-black transition active:scale-[0.98] disabled:active:scale-100 disabled:cursor-not-allowed " +
+      (active
+        ? "border-blush/25 bg-blushSoft text-ink"
+        : "border-line/80 bg-white text-mute hover:border-blush/25 hover:bg-blushSoft/45") +
+      (pending ? " cursor-wait opacity-70" : "");
+
+    if (currentUserId == null) {
+      return (
+        <Link
+          href={pathWithParams("/login", {
+            next: `/posts/${snapId}#snap-comment-${comment.id}`,
+            message: "コメントにいいねするにはログインしてください。",
+          })}
+          className={className}
+          aria-label="コメントにいいねするにはログインしてください"
+        >
+          <ThumbsUp aria-hidden="true" size={12} strokeWidth={1.9} />
+          <span>{comment.like_count}</span>
+        </Link>
+      );
+    }
+
+    if (isOwnComment) {
+      return (
+        <button
+          type="button"
+          disabled
+          aria-pressed={false}
+          aria-label="自分のコメントにはいいねできません"
+          className="inline-flex h-7 items-center justify-center gap-1 rounded-full border border-line/80 bg-neutral-100 px-2 text-[0.66rem] font-black text-mute"
+        >
+          <ThumbsUp aria-hidden="true" size={12} strokeWidth={1.9} />
+          <span>{comment.like_count}</span>
+        </button>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => toggleCommentLike(comment)}
+        disabled={pending || likeSubmittingId != null}
+        aria-pressed={active}
+        aria-busy={pending}
+        aria-label={active ? "コメントのいいねを取り消す" : "コメントにいいねする"}
+        className={className}
+      >
+        <ThumbsUp aria-hidden="true" size={12} strokeWidth={1.9} fill={active ? "currentColor" : "none"} />
+        <span>{comment.like_count}</span>
+      </button>
+    );
+  }
+
   return (
     <>
       <button type="button" onClick={openSheet} aria-label="コメントを見る" className={pill}>
@@ -139,7 +262,7 @@ export function SnapCommentButton({
                 <p className="px-1 py-8 text-center text-sm font-semibold text-mute">まだコメントはありません。最初のコメントを書いてみましょう。</p>
               ) : (
                 comments.map((comment) => (
-                  <div key={comment.id} className="rounded-[10px] bg-neutral-50 p-3">
+                  <div id={`snap-comment-${comment.id}`} key={comment.id} className="scroll-mt-4 rounded-[10px] bg-neutral-50 p-3">
                     <div className="flex items-start gap-2.5">
                       <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
                         {comment.author?.avatar_url ? (
@@ -156,18 +279,21 @@ export function SnapCommentButton({
                           <span className="shrink-0 text-[0.66rem] font-semibold text-mute">{commentTimeLabel(comment.created_at)}</span>
                         </div>
                         <p className="mt-1 whitespace-pre-wrap break-words text-sm font-medium leading-relaxed text-ink">{comment.body}</p>
-                        {currentUserId != null && currentUserId === comment.user_id ? (
-                          <button
-                            type="button"
-                            onClick={() => removeComment(comment.id)}
-                            disabled={isPending}
-                            aria-busy={isPending}
-                            className="mt-1.5 inline-flex items-center gap-1 text-[0.66rem] font-bold text-mute transition hover:text-red-600 active:scale-[0.98] disabled:active:scale-100 disabled:opacity-50"
-                          >
-                            <Trash2 aria-hidden="true" size={12} />
-                            削除
-                          </button>
-                        ) : null}
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          {commentLikeControl(comment)}
+                          {currentUserId != null && currentUserId === comment.user_id ? (
+                            <button
+                              type="button"
+                              onClick={() => removeComment(comment.id)}
+                              disabled={isPending}
+                              aria-busy={isPending}
+                              className="inline-flex h-7 items-center gap-1 text-[0.66rem] font-bold text-mute transition hover:text-red-600 active:scale-[0.98] disabled:active:scale-100 disabled:opacity-50"
+                            >
+                              <Trash2 aria-hidden="true" size={12} />
+                              削除
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   </div>

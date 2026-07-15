@@ -85,6 +85,16 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - console.logにメールアドレス、token、接続文字列、DBエラー詳細を出さない。
 - PR確認時に不要なdebug logが残っていないか確認する。
 
+## アプリ内通知
+
+- 通知は本人だけが閲覧できるRLSを前提にする。
+- クライアントから任意の `recipient_id` や `actor_id` を指定して通知を作成しない。
+- 通知作成はDB trigger / SECURITY DEFINER関数で、対象投稿またはコメントの所有者からrecipientを決定する。
+- actorとrecipientが同じ場合は通知を作らない。
+- 解除されたThanks、いいね、Snapコメントいいねに対応する通知は削除する。
+- 通知の既読化はrecipient本人の `read_at` 更新だけに限定する。
+- migration未適用のPreviewでは、通知一覧は空状態、未読件数は0として扱い、既存ページをクラッシュさせない。
+
 ## 3MIN NEWS下書き作成
 
 - ニュース収集APIは `NEWS_INGEST_SECRET` または `CRON_SECRET` のBearer tokenなしでは実行できない。

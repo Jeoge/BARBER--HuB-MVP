@@ -3,7 +3,10 @@
 import { Bell, Home, Search, UserCircle, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { AuthGateLink } from "./AuthGate";
+import { createClient } from "@/lib/supabase/client";
+import { getUnreadNotificationCount } from "@/lib/supabase/notifications";
 
 const navItems = [
   { label: "ホーム", href: "/", icon: Home },
@@ -13,8 +16,57 @@ const navItems = [
   { label: "マイページ", href: "/mypage", icon: UserCircle, auth: true },
 ];
 
+function badgeLabel(count: number) {
+  return count > 99 ? "99+" : String(count);
+}
+
+function useUnreadNotifications() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let ignore = false;
+    const supabase = createClient();
+
+    async function loadUnreadCount() {
+      const { data, error } = await supabase.auth.getUser();
+
+      if (ignore) return;
+
+      if (error) {
+        console.error("Bottom navigation auth lookup failed", { message: error.message });
+        setCount(0);
+        return;
+      }
+
+      if (data.user == null) {
+        setCount(0);
+        return;
+      }
+
+      const unread = await getUnreadNotificationCount(supabase);
+      if (!ignore) setCount(unread);
+    }
+
+    void loadUnreadCount();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      void loadUnreadCount();
+    });
+
+    return () => {
+      ignore = true;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  return count;
+}
+
 export function BottomNavigation() {
   const pathname = usePathname();
+  const unreadNotifications = useUnreadNotifications();
 
   return (
     <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-line/60 bg-white/88 px-3 pb-[max(env(safe-area-inset-bottom),0.45rem)] pt-1.5 shadow-[0_-6px_14px_rgba(17,17,17,0.025)] backdrop-blur-sm">
@@ -27,7 +79,14 @@ export function BottomNavigation() {
 
           const content = (
             <>
-              <Icon aria-hidden="true" size={17} strokeWidth={active ? 2.25 : 1.9} />
+              <span className="relative grid h-5 w-5 place-items-center">
+                <Icon aria-hidden="true" size={17} strokeWidth={active ? 2.25 : 1.9} />
+                {href === "/notifications" && unreadNotifications > 0 ? (
+                  <span className="absolute -right-2 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-blush px-1 text-[0.56rem] font-black leading-none text-white">
+                    {badgeLabel(unreadNotifications)}
+                  </span>
+                ) : null}
+              </span>
               <span>{displayLabel ?? label}</span>
             </>
           );
