@@ -15,6 +15,7 @@ import { ToolActionLinks } from "@/components/ToolActionLinks";
 import { imageVariantForArticleCategory } from "@/lib/articleCategories";
 import { toolPartners, type ToolPartner } from "@/lib/tool-partners";
 import { getTopicBundle, topics, type TopicBundle } from "@/lib/topics";
+import { resolveArticleImageUrls } from "@/lib/supabase/article-images";
 import {
   articleAuthorMeta,
   articleAuthorName,
@@ -231,7 +232,8 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
     });
   }
 
-  const dbArticleItems = dbTopicArticles.map(dbArticleItem);
+  const signedDbTopicArticles = await resolveArticleImageUrls(dbTopicArticles);
+  const dbArticleItems = signedDbTopicArticles.map(dbArticleItem);
   const articleItems = [
     ...dbArticleItems,
     ...bundle.articles.map(articleItem).filter((item) => !dbArticleItems.some((dbItem) => dbItem.href === item.href)),

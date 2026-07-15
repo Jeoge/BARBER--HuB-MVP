@@ -31,7 +31,6 @@ type PreparedArticleImage = {
 
 type UploadedArticleImage = PreparedArticleImage & {
   storagePath: string;
-  publicUrl: string;
 };
 
 function cleanText(value: FormDataEntryValue | null) {
@@ -379,12 +378,9 @@ export async function createArticleAction(formData: FormData) {
       redirectToArticlePost({ error: imageUploadErrorMessage(uploadResult.error) });
     }
 
-    const { data: publicUrlData } = supabase.storage.from(ARTICLE_IMAGE_BUCKET).getPublicUrl(uploadPath);
-
     uploadedImage = {
       ...preparedImage,
       storagePath: uploadPath,
-      publicUrl: publicUrlData.publicUrl,
     };
   }
 
@@ -396,7 +392,7 @@ export async function createArticleAction(formData: FormData) {
       title,
       category,
       body: articleBody,
-      image_url: uploadedImage?.publicUrl ?? null,
+      image_url: null,
       image_path: uploadedImage?.storagePath ?? null,
       is_published: true,
       is_deleted: false,

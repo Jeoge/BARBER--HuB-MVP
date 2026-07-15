@@ -75,7 +75,10 @@
 - Storage pathは `userId/articleId/timestamp-random.ext` とし、ユーザー提供ファイル名を使わない。
 - 許可MIMEは `image/webp` と `image/jpeg`。
 - 1枚あたりのStorage上限は2MB。
-- `image_url` にはStorage公開URL、`image_path` にはStorage object pathを保存する。
+- `article-images` bucketはprivateにする。
+- 新規投稿では `image_path` にStorage object pathを保存し、恒久的なStorage公開URLを `image_url` へ保存しない。
+- 公開中かつ未削除の記事を表示するときだけ、サーバー側で30分程度の短時間signed URLを生成して表示用 `image_url` として扱う。
+- `image_path` がなく既存の `image_url` だけを持つ記事は、既存互換としてそのURLを表示に使える。
 - 記事保存失敗、保存確認失敗、例外発生時は、今回アップロードしたStorage objectを削除する。
 - EDITOR'S PICK選定日時は `articles.editor_pick_at` に保存する。booleanではなく日時にすることで、最新選定順と将来の解除を扱えるようにする。
 - 手動並べ替えUIはまだ実装しない。表示順は `editor_pick_at desc` を基本にする。
@@ -121,7 +124,7 @@
 - `snap_images`: 公開中かつ未削除Snapに属する画像情報だけをanon / authenticatedが閲覧できる。投稿者本人は自分のSnap画像情報を閲覧・追加・更新・削除できる。
 - `snap-images`: 本人フォルダだけアップロードできる。新規Snap画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。
 - `articles`: 公開中かつ未削除の記事、または本人の記事だけを閲覧できる。本人によるINSERT / UPDATEでも `editor_pick_at` を直接設定・変更できないようにする。
-- `article-images`: 本人フォルダだけアップロードできる。公開中かつ未削除記事に紐づく画像、または本人フォルダの画像だけを読めるようにする。新規記事画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。
+- `article-images`: private bucket。本人フォルダだけアップロード、更新、削除できる。authenticatedは本人フォルダのobject行だけをSELECTできる。公開記事画像の表示は、DB上の公開中・未削除記事確認後にサーバー側で発行する30分程度の短時間signed URLで行う。新規記事画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。
 - `barber_shops`: 公開情報は閲覧可能。編集は認証済みオーナーに限定する。
 - `barber_shop_claims`: 申請者本人が自分の申請を確認・作成できる。
 - 管理者審査はクライアントから直接行わない。

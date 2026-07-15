@@ -69,7 +69,7 @@ insert into storage.buckets (
 values (
   'article-images',
   'article-images',
-  true,
+  false,
   2097152,
   array[
     'image/jpeg',
@@ -84,34 +84,18 @@ set
 
 do $$
 begin
-  if not exists (
-    select 1
-    from pg_policies
-    where schemaname = 'storage'
-      and tablename = 'objects'
-      and policyname = 'article_images_select_public_article_or_own'
-  ) then
-    create policy "article_images_select_public_article_or_own"
-      on storage.objects
-      for select
-      to anon, authenticated
-      using (
-        bucket_id = 'article-images'
-        and (
-          exists (
-            select 1
-            from public.articles
-            where articles.image_path = storage.objects.name
-              and articles.is_published = true
-              and articles.is_deleted = false
-          )
-          or (
-            auth.uid() is not null
-            and (storage.foldername(name))[1] = auth.uid()::text
-          )
-        )
-      );
-  end if;
+  drop policy if exists "article_images_select_public_article_or_own" on storage.objects;
+  drop policy if exists "article_images_select_own_folder" on storage.objects;
+
+  create policy "article_images_select_own_folder"
+    on storage.objects
+    for select
+    to authenticated
+    using (
+      bucket_id = 'article-images'
+      and auth.uid() is not null
+      and (storage.foldername(name))[1] = auth.uid()::text
+    );
 
   if not exists (
     select 1

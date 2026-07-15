@@ -13,6 +13,7 @@ import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { articles, posts } from "@/lib/mockData";
 import { findPublicProfile, type ProfileLinkKey, type PublicProfile } from "@/lib/publicProfiles";
+import { resolveArticleImageUrls } from "@/lib/supabase/article-images";
 import {
   articleDateLabel,
   articleExcerpt,
@@ -216,7 +217,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
       });
     }
 
-    dbRecentArticles = userArticles.filter((article) => article.is_published !== false);
+    dbRecentArticles = await resolveArticleImageUrls(userArticles.filter((article) => article.is_published !== false));
   }
 
   if (profile == null) {

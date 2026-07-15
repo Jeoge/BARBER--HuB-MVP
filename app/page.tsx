@@ -17,6 +17,7 @@ import { composeHomeEditorPicks } from "@/lib/editorPicks";
 import { composeNewsWithFallback, listPublicNews } from "@/lib/news-drafts/public-news";
 import { articles, jobs, seminars } from "@/lib/mockData";
 import { sponsorsForPlacement } from "@/lib/sponsors";
+import { resolveArticleImageUrls } from "@/lib/supabase/article-images";
 import {
   articleAuthorMeta,
   articleAuthorName,
@@ -75,9 +76,13 @@ export default async function Home() {
     console.error("Latest articles lookup failed");
   }
 
+  const [editorPickArticles, latestArticles] = await Promise.all([
+    resolveArticleImageUrls(editorPickResult.articles),
+    resolveArticleImageUrls(latestArticleResult.articles),
+  ]);
   const homeNews = composeNewsWithFallback(approvedNews, 4);
-  const homeEditorPicks = editorPickResult.articles.length > 0 ? composeHomeEditorPicks(editorPickResult.articles, 3) : undefined;
-  const dbArticleRailItems = latestArticleResult.articles.map(articleRailItem);
+  const homeEditorPicks = editorPickArticles.length > 0 ? composeHomeEditorPicks(editorPickArticles, 3) : undefined;
+  const dbArticleRailItems = latestArticles.map(articleRailItem);
   const dbArticleIds = new Set(dbArticleRailItems.map((article) => article.id));
   const homeArticleRailItems =
     dbArticleRailItems.length > 0

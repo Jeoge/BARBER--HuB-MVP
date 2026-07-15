@@ -9,6 +9,7 @@ import { SponsorSection } from "@/components/SponsorSection";
 import { ToolActionLinks } from "@/components/ToolActionLinks";
 import { articles, findArticle, getRelatedProducts } from "@/lib/mockData";
 import { sponsorsForPlacement } from "@/lib/sponsors";
+import { resolveArticleImageUrl } from "@/lib/supabase/article-images";
 import {
   articleAuthorMeta,
   articleAuthorName,
@@ -53,10 +54,11 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
   const { article: dbArticle } = isUuid(id)
     ? await getPublishedArticleById(supabase, id, user?.id)
     : { article: null };
+  const resolvedDbArticle = await resolveArticleImageUrl(dbArticle);
 
-  if (dbArticle != null) {
-    const authorName = articleAuthorName(dbArticle);
-    const authorMeta = articleAuthorMeta(dbArticle);
+  if (resolvedDbArticle != null) {
+    const authorName = articleAuthorName(resolvedDbArticle);
+    const authorMeta = articleAuthorMeta(resolvedDbArticle);
     const { comments } = await listArticleComments(supabase, id, 30);
 
     return (
@@ -78,33 +80,33 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
             </div>
           ) : null}
           <span className="rounded-full bg-blushSoft px-2.5 py-1 text-[0.68rem] font-black text-blush">
-            {dbArticle.category ?? "経験記事"}
+            {resolvedDbArticle.category ?? "経験記事"}
           </span>
-          <h1 className="mt-3 text-[1.55rem] font-black leading-tight text-ink">{dbArticle.title}</h1>
+          <h1 className="mt-3 text-[1.55rem] font-black leading-tight text-ink">{resolvedDbArticle.title}</h1>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-bold text-mute">
             <ProfileMiniLink
-              profileId={dbArticle.author_id}
+              profileId={resolvedDbArticle.author_id}
               fallbackName={authorName}
-              avatarUrl={dbArticle.profiles?.avatar_url}
+              avatarUrl={resolvedDbArticle.profiles?.avatar_url}
               meta={authorMeta}
-              href={`/profiles/${dbArticle.author_id}`}
+              href={`/profiles/${resolvedDbArticle.author_id}`}
               className="max-w-full"
             />
             <span className="inline-flex items-center gap-1">
               <CalendarDays aria-hidden="true" size={15} />
-              {articleDateLabel(dbArticle)}
+              {articleDateLabel(resolvedDbArticle)}
             </span>
           </div>
 
-          {dbArticle.image_url ? (
-            <MagazineImage src={dbArticle.image_url} alt={dbArticle.title} variant="news" className="mt-4 aspect-[16/10]" />
+          {resolvedDbArticle.image_url ? (
+            <MagazineImage src={resolvedDbArticle.image_url} alt={resolvedDbArticle.title} variant="news" className="mt-4 aspect-[16/10]" />
           ) : null}
 
           <ArticleEngagementPanel
-            articleId={dbArticle.id}
-            authorId={dbArticle.author_id}
+            articleId={resolvedDbArticle.id}
+            authorId={resolvedDbArticle.author_id}
             currentUserId={user?.id}
-            metrics={dbArticle}
+            metrics={resolvedDbArticle}
             comments={comments}
             reactionError={query?.reactionError}
             commentError={query?.commentError}
@@ -112,7 +114,7 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
           />
 
           <div className="mt-5 space-y-4 text-[0.92rem] font-medium leading-relaxed text-ink">
-            {articleParagraphs(dbArticle.body).map((paragraph) => (
+            {articleParagraphs(resolvedDbArticle.body).map((paragraph) => (
               <p key={paragraph} className="whitespace-pre-wrap">
                 {paragraph}
               </p>

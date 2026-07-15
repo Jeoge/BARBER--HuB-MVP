@@ -13,6 +13,7 @@ import { SnapImageCarousel } from "@/components/SnapImageCarousel";
 import { canCreateJob, canCreateSuccession, classifyAccountType, getAccountTypeLabel } from "@/lib/accountTypes";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { isNewsReviewAdminUserId } from "@/lib/news-drafts/review";
+import { resolveArticleImageUrls } from "@/lib/supabase/article-images";
 import {
   articleDateLabel,
   articleExcerpt,
@@ -591,6 +592,10 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const { articles: savedArticles, error: savedArticlesError } = await listSavedArticles(supabase, user.id, 30, user.id);
   const followedProfiles = await listFollowingProfiles(supabase, user.id);
   const savedSnapList = await listSavedSnaps(supabase, user.id);
+  const [myArticlesWithImages, savedArticlesWithImages] = await Promise.all([
+    resolveArticleImageUrls(myArticles),
+    resolveArticleImageUrls(savedArticles),
+  ]);
   const [snapReactionCounts, articleReactionCounts] = await Promise.all([
     listMySnapReactionCounts(supabase),
     listMyArticleReactionCounts(supabase),
@@ -620,7 +625,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
       comment_count: Number(counts?.comment_count ?? 0),
     };
   });
-  const myArticlesWithCounts = myArticles.map((article) => {
+  const myArticlesWithCounts = myArticlesWithImages.map((article) => {
     const counts = articleCountsById.get(article.id);
     return {
       ...article,
@@ -872,7 +877,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
                 保存した記事を読み込めませんでした。
               </div>
             ) : (
-              <SavedArticleList articles={savedArticles} />
+              <SavedArticleList articles={savedArticlesWithImages} />
             )}
           </div>
           <div>
