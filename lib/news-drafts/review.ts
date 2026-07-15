@@ -51,6 +51,11 @@ export function configuredNewsReviewAdminIds() {
     .filter(Boolean);
 }
 
+export function isNewsReviewAdminUserId(userId: string | null | undefined) {
+  if (!userId) return false;
+  return configuredNewsReviewAdminIds().includes(userId);
+}
+
 export async function requireNewsReviewAdmin(): Promise<NewsReviewUser> {
   const supabase = await createClient();
   const {
@@ -59,8 +64,7 @@ export async function requireNewsReviewAdmin(): Promise<NewsReviewUser> {
 
   if (!user) notFound();
 
-  const adminIds = configuredNewsReviewAdminIds();
-  if (adminIds.length === 0 || !adminIds.includes(user.id)) {
+  if (!isNewsReviewAdminUserId(user.id)) {
     notFound();
   }
 

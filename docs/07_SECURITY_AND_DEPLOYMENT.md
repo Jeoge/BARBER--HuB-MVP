@@ -75,6 +75,12 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - 画像はサイズ上限を設ける。
 - 画像MIME typeを確認する。
 - 危険なファイル名をそのまま使わない。
+- 原寸画像をそのままStorageへ保存しない。ブラウザ側で縮小・圧縮し、EXIFを落とした圧縮済み画像だけを送信する。
+- HEIC / HEIFはブラウザでデコード・再エンコードできる場合だけ受け付け、不可の場合はJPEGまたはPNGへの変換を案内する。
+- サーバー側でも圧縮後画像のMIME type、容量、JPEG / WebPの画像シグネチャを確認する。
+- private bucketの投稿画像は、公開中かつ未削除の投稿を取得するサーバー処理の中だけで30分程度の短時間signed URLを発行する。
+- 一般ユーザーが任意のStorage pathを渡してsigned URLを取得できるAPIやServer Actionを作らない。
+- アップロード後に投稿保存が失敗した場合は、今回アップロードしたStorage objectを削除する。
 - 投稿本文のHTMLやscriptを実行させない。
 - 画像URLが `undefined` でも画面全体をクラッシュさせない。
 - 外部URLを扱う場合はNext/Imageやドメイン設定との整合を確認する。
@@ -109,6 +115,14 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - 公開表示は読み取り専用RPCを通し、approvedかつ公開可能な項目だけを返す。
 - Supabase取得失敗、RPC未適用、公開ニュース不足時は固定ニュースへフォールバックし、トップページ全体を止めない。
 - 公開ニュース取得エラーのログには本文、内部メモ、管理者ID、Secretを出さない。
+
+## 記事EDITOR'S PICK
+
+- EDITOR'S PICK掲載指定は `NEWS_REVIEW_ADMIN_USER_IDS` に登録した運営者だけが使える。
+- allowlistの値やservice role keyはクライアントコードへ渡さない。
+- 一般ユーザー向けUIでは掲載項目を表示せず、Server Actionでも同じ運営者判定を行う。
+- `editor_pick_at` 更新はサーバー側の管理用Supabase clientで実行する。
+- migration未適用のPreviewで `editor_pick_at` または `article-images` bucketがない場合でも、トップページと既存記事投稿をクラッシュさせず、固定EDITOR'S PICKや画像fallbackへフォールバックする。
 
 ## リリース前チェック
 

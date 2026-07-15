@@ -12,17 +12,50 @@ import { QASection } from "@/components/QASection";
 import { SnapSection } from "@/components/SnapSection";
 import { SponsorSection } from "@/components/SponsorSection";
 import { StoreDirectoryProvider, StoreDirectoryStatsCard, StoreSearchHeaderButton } from "@/components/StoreDirectorySearch";
+import { imageVariantForArticleCategory } from "@/lib/articleCategories";
+import { composeHomeEditorPicks } from "@/lib/editorPicks";
 import { composeNewsWithFallback, listPublicNews } from "@/lib/news-drafts/public-news";
 import { articles, jobs, seminars } from "@/lib/mockData";
 import { sponsorsForPlacement } from "@/lib/sponsors";
+import { resolveArticleImageUrls } from "@/lib/supabase/article-images";
+import {
+  articleAuthorMeta,
+  articleAuthorName,
+  articleExcerpt,
+  listEditorPickArticles,
+  listPublishedArticles,
+  type ArticleWithAuthor,
+} from "@/lib/supabase/articles";
 import { getPublicBarberShopCount } from "@/lib/supabase/barber-shops";
 import { createClient } from "@/lib/supabase/server";
 
+function articleRailItem(article: ArticleWithAuthor) {
+  return {
+    id: article.id,
+    title: article.title,
+    category: article.category ?? "経験記事",
+    author: articleAuthorName(article),
+    profileId: article.author_id,
+    avatarUrl: article.profiles?.avatar_url ?? null,
+    meta: articleExcerpt(article.body, 54),
+    summary: articleAuthorMeta(article),
+    accent: imageVariantForArticleCategory(article.category),
+    imageUrl: article.image_url ?? undefined,
+  };
+}
+
 export default async function Home() {
   const supabase = await createClient();
-  const [{ count: storeCount, error: storeCountError }, { news: approvedNews, error: publicNewsError }] = await Promise.all([
+  const [
+    { count: storeCount, error: storeCountError },
+    { news: approvedNews, error: publicNewsError },
+    editorPickResult,
+    latestArticleResult,
+  ] = await Promise.all([
     getPublicBarberShopCount(supabase),
     listPublicNews(supabase, 4),
+    listEditorPickArticles(supabase, 3),
+    listPublishedArticles(supabase, 5),
   ]);
 
   if (storeCountError) {
@@ -35,14 +68,36 @@ export default async function Home() {
     console.error("Public news lookup failed");
   }
 
+  if (editorPickResult.error) {
+    console.error("Editor pick articles lookup failed");
+  }
+
+  if (latestArticleResult.error) {
+    console.error("Latest articles lookup failed");
+  }
+
+  const [editorPickArticles, latestArticles] = await Promise.all([
+    resolveArticleImageUrls(editorPickResult.articles),
+    resolveArticleImageUrls(latestArticleResult.articles),
+  ]);
   const homeNews = composeNewsWithFallback(approvedNews, 4);
+  const homeEditorPicks = editorPickArticles.length > 0 ? composeHomeEditorPicks(editorPickArticles, 3) : undefined;
+  const dbArticleRailItems = latestArticles.map(articleRailItem);
+  const dbArticleIds = new Set(dbArticleRailItems.map((article) => article.id));
+  const homeArticleRailItems =
+    dbArticleRailItems.length > 0
+      ? [
+          ...dbArticleRailItems,
+          ...articles.filter((article) => !dbArticleIds.has(article.id)),
+        ].slice(0, 5)
+      : articles.slice(0, 5);
 
   return (
     <StoreDirectoryProvider>
       <main className="mx-auto min-h-screen max-w-[430px] overflow-x-hidden bg-white pb-40 shadow-[0_0_70px_rgba(17,17,17,0.06)]">
         <Header action={<StoreSearchHeaderButton />} />
         <CategoryNavigation />
-        <LiveEditorialCover newsItems={homeNews} />
+        <LiveEditorialCover newsItems={homeNews} editorPicks={homeEditorPicks} />
         <SnapSection />
         <SponsorSection
           eyebrow="Sponsored"
@@ -51,7 +106,7 @@ export default async function Home() {
         />
         <BackyardSection />
         <StoreDirectoryStatsCard count={storeCount} />
-        <HorizontalRail title="新着記事" items={articles.slice(0, 5)} />
+        <HorizontalRail title="新着記事" items={homeArticleRailItems} />
         <ContributionSection />
         <QASection />
         <MainFeature />

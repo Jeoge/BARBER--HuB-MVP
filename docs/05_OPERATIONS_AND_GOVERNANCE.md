@@ -56,6 +56,10 @@ Back Roomは会員限定コミュニティです。
 - 投稿本文でHTMLやscriptを実行させない。
 - 画像ファイルはサイズ、MIME type、安全なファイル名を確認する。
 - エラー時にSupabaseの詳細エラーや秘密情報を画面へ出さない。
+- EDITOR'S PICKはBARBER HUB運営が選んだ記事として扱い、一般投稿者が自分で掲載を選べる仕様にしない。
+- EDITOR'S PICK掲載指定と解除は、既存のニュースレビュー運営者allowlistに含まれるユーザーだけに表示・実行させる。
+- 運営者以外がFormDataやURLを改ざんしても、EDITOR'S PICKの設定・解除ができないようServer Action側で再判定する。
+- EDITOR'S PICK対象記事が不足する場合は固定記事で補完し、トップ画面の通常運用を止めない。
 
 ## 広告・協賛運用
 

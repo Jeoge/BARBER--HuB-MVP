@@ -9,6 +9,7 @@ import { SponsorSection } from "@/components/SponsorSection";
 import { ToolActionLinks } from "@/components/ToolActionLinks";
 import { articles, findArticle, getRelatedProducts } from "@/lib/mockData";
 import { sponsorsForPlacement } from "@/lib/sponsors";
+import { resolveArticleImageUrl } from "@/lib/supabase/article-images";
 import {
   articleAuthorMeta,
   articleAuthorName,
@@ -24,6 +25,7 @@ type ArticleDetailPageProps = {
   params: Promise<{ id: string }>;
   searchParams?: Promise<{
     posted?: string;
+    editorPick?: string;
     reactionError?: string;
     comment?: string;
     commentError?: string;
@@ -32,10 +34,6 @@ type ArticleDetailPageProps = {
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function initial(name: string) {
-  return name.trim().slice(0, 1).toUpperCase();
 }
 
 function articleParagraphs(body: string) {
@@ -56,10 +54,11 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
   const { article: dbArticle } = isUuid(id)
     ? await getPublishedArticleById(supabase, id, user?.id)
     : { article: null };
+  const resolvedDbArticle = await resolveArticleImageUrl(dbArticle);
 
-  if (dbArticle != null) {
-    const authorName = articleAuthorName(dbArticle);
-    const authorMeta = articleAuthorMeta(dbArticle);
+  if (resolvedDbArticle != null) {
+    const authorName = articleAuthorName(resolvedDbArticle);
+    const authorMeta = articleAuthorMeta(resolvedDbArticle);
     const { comments } = await listArticleComments(supabase, id, 30);
 
     return (
@@ -70,35 +69,44 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
               投稿できました
             </div>
           ) : null}
+          {query?.editorPick === "1" ? (
+            <div className="mb-3 rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-sm font-black leading-relaxed text-ink">
+              EDITOR&apos;S PICKに掲載しました。
+            </div>
+          ) : null}
+          {query?.editorPick === "failed" || query?.editorPick === "unavailable" ? (
+            <div className="mb-3 rounded-[8px] border border-line bg-neutral-50 p-3 text-sm font-black leading-relaxed text-mute">
+              記事は投稿できました。EDITOR&apos;S PICK設定は保存できませんでした。
+            </div>
+          ) : null}
           <span className="rounded-full bg-blushSoft px-2.5 py-1 text-[0.68rem] font-black text-blush">
-            {dbArticle.category ?? "経験記事"}
+            {resolvedDbArticle.category ?? "経験記事"}
           </span>
-          <h1 className="mt-3 text-[1.55rem] font-black leading-tight text-ink">{dbArticle.title}</h1>
+          <h1 className="mt-3 text-[1.55rem] font-black leading-tight text-ink">{resolvedDbArticle.title}</h1>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-bold text-mute">
-            <Link href={`/profiles/${dbArticle.author_id}`} className="inline-flex min-w-0 items-center gap-2 rounded-full pr-1">
-              <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
-                {dbArticle.profiles?.avatar_url ? <img src={dbArticle.profiles.avatar_url} alt="" className="h-full w-full object-cover" /> : initial(authorName)}
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold leading-tight text-ink">{authorName}</span>
-                {authorMeta ? <span className="mt-0.5 block truncate text-[0.62rem] font-semibold text-mute">{authorMeta}</span> : null}
-              </span>
-            </Link>
+            <ProfileMiniLink
+              profileId={resolvedDbArticle.author_id}
+              fallbackName={authorName}
+              avatarUrl={resolvedDbArticle.profiles?.avatar_url}
+              meta={authorMeta}
+              href={`/profiles/${resolvedDbArticle.author_id}`}
+              className="max-w-full"
+            />
             <span className="inline-flex items-center gap-1">
               <CalendarDays aria-hidden="true" size={15} />
-              {articleDateLabel(dbArticle)}
+              {articleDateLabel(resolvedDbArticle)}
             </span>
           </div>
 
-          {dbArticle.image_url ? (
-            <MagazineImage src={dbArticle.image_url} alt={dbArticle.title} variant="news" className="mt-4 aspect-[16/10]" />
+          {resolvedDbArticle.image_url ? (
+            <MagazineImage src={resolvedDbArticle.image_url} alt={resolvedDbArticle.title} variant="news" className="mt-4 aspect-[16/10]" />
           ) : null}
 
           <ArticleEngagementPanel
-            articleId={dbArticle.id}
-            authorId={dbArticle.author_id}
+            articleId={resolvedDbArticle.id}
+            authorId={resolvedDbArticle.author_id}
             currentUserId={user?.id}
-            metrics={dbArticle}
+            metrics={resolvedDbArticle}
             comments={comments}
             reactionError={query?.reactionError}
             commentError={query?.commentError}
@@ -106,7 +114,7 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
           />
 
           <div className="mt-5 space-y-4 text-[0.92rem] font-medium leading-relaxed text-ink">
-            {articleParagraphs(dbArticle.body).map((paragraph) => (
+            {articleParagraphs(resolvedDbArticle.body).map((paragraph) => (
               <p key={paragraph} className="whitespace-pre-wrap">
                 {paragraph}
               </p>
@@ -149,7 +157,7 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
         </span>
         <h1 className="mt-3 text-[1.55rem] font-black leading-tight text-ink">{article.title}</h1>
         <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-bold text-mute">
-          <ProfileMiniLink profileId={article.profileId} fallbackName={article.author} compact />
+          <ProfileMiniLink profileId={article.profileId} fallbackName={article.author} compact size="feed" />
           <span className="inline-flex items-center gap-1">
             <CalendarDays aria-hidden="true" size={15} />
             {article.date}

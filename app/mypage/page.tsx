@@ -3,20 +3,24 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
 import { logoutAction } from "@/app/auth/actions";
-import { deleteMySnapAction } from "@/app/mypage/actions";
+import { clearMyArticleEditorPickAction, deleteMySnapAction } from "@/app/mypage/actions";
 import { closeJobPostAction } from "@/app/post/job/actions";
 import { closeSuccessionPostAction } from "@/app/post/succession/actions";
+import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { SnapImageCarousel } from "@/components/SnapImageCarousel";
 import { canCreateJob, canCreateSuccession, classifyAccountType, getAccountTypeLabel } from "@/lib/accountTypes";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { isNewsReviewAdminUserId } from "@/lib/news-drafts/review";
+import { resolveArticleImageUrls } from "@/lib/supabase/article-images";
 import {
   articleDateLabel,
   articleExcerpt,
   listMyArticleReactionCounts,
   listSavedArticles,
   listUserArticles,
+  listUserArticlesWithEditorPick,
   type ArticleWithAuthor,
 } from "@/lib/supabase/articles";
 import {
@@ -80,7 +84,19 @@ function SectionCard({ title, eyebrow, children }: { title: string; eyebrow?: st
 }
 
 type MyPageProps = {
-  searchParams?: Promise<{ profile?: string; snap?: string; snapError?: string; job?: string; jobError?: string; succession?: string; successionError?: string; store?: string; storeError?: string }>;
+  searchParams?: Promise<{
+    profile?: string;
+    snap?: string;
+    snapError?: string;
+    article?: string;
+    articleError?: string;
+    job?: string;
+    jobError?: string;
+    succession?: string;
+    successionError?: string;
+    store?: string;
+    storeError?: string;
+  }>;
 };
 
 function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
@@ -142,7 +158,7 @@ function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
   );
 }
 
-function MyArticleList({ articles }: { articles: ArticleWithAuthor[] }) {
+function MyArticleList({ articles, canManageEditorPick }: { articles: ArticleWithAuthor[]; canManageEditorPick: boolean }) {
   if (articles.length === 0) {
     return (
       <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
@@ -158,14 +174,32 @@ function MyArticleList({ articles }: { articles: ArticleWithAuthor[] }) {
   return (
     <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
       {articles.map((article) => (
-        <Link key={article.id} href={`/articles/${article.id}`} className="rounded-[8px] border border-line bg-neutral-50 p-3">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{article.category ?? "経験記事"}</span>
-            <span className="text-[0.66rem] font-bold text-mute">{articleDateLabel(article)}</span>
+        <article key={article.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex gap-3">
+            {article.image_url ? (
+              <div className="h-20 w-16 shrink-0">
+                <MagazineImage src={article.image_url} alt={article.title} variant="news" className="h-full w-full" />
+              </div>
+            ) : null}
+            <Link href={`/articles/${article.id}`} className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{article.category ?? "経験記事"}</span>
+                <span className="text-[0.66rem] font-bold text-mute">{articleDateLabel(article)}</span>
+                {article.editor_pick_at ? <span className="text-[0.66rem] font-black text-blush">EDITOR&apos;S PICK</span> : null}
+              </div>
+              <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{article.title}</p>
+              <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{articleExcerpt(article.body, 78)}</p>
+            </Link>
           </div>
-          <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{article.title}</p>
-          <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{articleExcerpt(article.body, 78)}</p>
-        </Link>
+          {canManageEditorPick && article.editor_pick_at ? (
+            <form action={clearMyArticleEditorPickAction} className="mt-2">
+              <input type="hidden" name="articleId" value={article.id} />
+              <button type="submit" className="inline-flex h-9 w-full items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-mute">
+                EDITOR&apos;S PICK掲載を解除
+              </button>
+            </form>
+          ) : null}
+        </article>
       ))}
     </div>
   );
@@ -268,9 +302,16 @@ function SavedArticleList({ articles }: { articles: ArticleWithAuthor[] }) {
   return (
     <div className="grid max-h-[14.25rem] gap-2 overflow-y-auto overscroll-contain pr-1">
       {articles.map((article) => (
-        <Link key={article.id} href={`/articles/${article.id}`} className="block rounded-[8px] bg-neutral-50 p-3">
-          <p className="line-clamp-1 text-sm font-black text-ink">{article.title}</p>
-          <p className="mt-1 text-xs font-semibold text-mute">{article.category ?? "記事"} / {articleDateLabel(article)}</p>
+        <Link key={article.id} href={`/articles/${article.id}`} className="flex gap-3 rounded-[8px] bg-neutral-50 p-3">
+          {article.image_url ? (
+            <div className="h-16 w-14 shrink-0">
+              <MagazineImage src={article.image_url} alt={article.title} variant="news" className="h-full w-full" />
+            </div>
+          ) : null}
+          <span className="min-w-0 flex-1">
+            <span className="line-clamp-1 text-sm font-black text-ink">{article.title}</span>
+            <span className="mt-1 block text-xs font-semibold text-mute">{article.category ?? "記事"} / {articleDateLabel(article)}</span>
+          </span>
         </Link>
       ))}
     </div>
@@ -540,14 +581,21 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   }
 
   const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+  const canManageEditorPick = isNewsReviewAdminUserId(user.id);
   const { snaps: mySnaps, error: mySnapsError } = await listUserSnaps(supabase, user.id, 30, user.id);
-  const { articles: myArticles, error: myArticlesError } = await listUserArticles(supabase, user.id, 30, user.id);
+  const { articles: myArticles, error: myArticlesError } = canManageEditorPick
+    ? await listUserArticlesWithEditorPick(supabase, user.id, 30, user.id)
+    : await listUserArticles(supabase, user.id, 30, user.id);
   const { posts: myBackroomPosts, error: myBackroomPostsError } = await listUserBackroomPosts(supabase, user.id, 30);
   const { questions: myQaQuestions, error: myQaQuestionsError } = await listUserQaQuestions(supabase, user.id, 30);
   const { answers: myQaAnswers, error: myQaAnswersError } = await listUserQaAnswers(supabase, user.id, 30);
   const { articles: savedArticles, error: savedArticlesError } = await listSavedArticles(supabase, user.id, 30, user.id);
   const followedProfiles = await listFollowingProfiles(supabase, user.id);
   const savedSnapList = await listSavedSnaps(supabase, user.id);
+  const [myArticlesWithImages, savedArticlesWithImages] = await Promise.all([
+    resolveArticleImageUrls(myArticles),
+    resolveArticleImageUrls(savedArticles),
+  ]);
   const [snapReactionCounts, articleReactionCounts] = await Promise.all([
     listMySnapReactionCounts(supabase),
     listMyArticleReactionCounts(supabase),
@@ -577,7 +625,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
       comment_count: Number(counts?.comment_count ?? 0),
     };
   });
-  const myArticlesWithCounts = myArticles.map((article) => {
+  const myArticlesWithCounts = myArticlesWithImages.map((article) => {
     const counts = articleCountsById.get(article.id);
     return {
       ...article,
@@ -620,6 +668,16 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           {params?.snap === "deleted" ? (
             <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
               削除しました
+            </p>
+          ) : null}
+          {params?.article === "editor_pick_cleared" ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              EDITOR&apos;S PICK掲載を解除しました。
+            </p>
+          ) : null}
+          {params?.articleError ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              {params.articleError}
             </p>
           ) : null}
           {params?.job === "closed" ? (
@@ -756,7 +814,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
             自分の記事を読み込めませんでした。
           </div>
         ) : (
-          <MyArticleList articles={myArticlesWithCounts} />
+          <MyArticleList articles={myArticlesWithCounts} canManageEditorPick={canManageEditorPick} />
         )}
       </SectionCard>
 
@@ -819,7 +877,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
                 保存した記事を読み込めませんでした。
               </div>
             ) : (
-              <SavedArticleList articles={savedArticles} />
+              <SavedArticleList articles={savedArticlesWithImages} />
             )}
           </div>
           <div>

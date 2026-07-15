@@ -3,22 +3,33 @@
 import Link from "next/link";
 import { type MouseEvent } from "react";
 import { findPublicProfile, profileHref } from "@/lib/publicProfiles";
+import { ProfileAvatar, type ProfileAvatarSize } from "./ProfileAvatar";
 
 type ProfileMiniLinkProps = {
   profileId?: string;
   fallbackName?: string;
+  avatarUrl?: string | null;
+  meta?: string | null;
+  href?: string;
   compact?: boolean;
+  size?: ProfileAvatarSize;
   className?: string;
 };
 
-function initials(name: string) {
-  return name.trim().slice(0, 1).toUpperCase();
-}
-
-export function ProfileMiniLink({ profileId, fallbackName = "BARBER HUB", compact = false, className = "" }: ProfileMiniLinkProps) {
+export function ProfileMiniLink({
+  profileId,
+  fallbackName = "BARBER HUB",
+  avatarUrl,
+  meta,
+  href,
+  compact = false,
+  size,
+  className = "",
+}: ProfileMiniLinkProps) {
   const profile = findPublicProfile(profileId);
   const name = profile?.displayName ?? fallbackName;
-  const badge = profile?.isHiring ? "求人中" : profile?.badges?.[0];
+  const badge = meta?.trim() || (profile?.isHiring ? "求人中" : profile?.badges?.[0]);
+  const avatarSize = size ?? (compact ? "compact" : "feed");
 
   function stopParentNavigation(event: MouseEvent<HTMLAnchorElement>) {
     event.stopPropagation();
@@ -26,18 +37,12 @@ export function ProfileMiniLink({ profileId, fallbackName = "BARBER HUB", compac
 
   return (
     <Link
-      href={profileHref(profileId)}
+      href={href ?? profileHref(profileId)}
       onClick={stopParentNavigation}
-      className={"inline-flex min-w-0 items-center gap-2 rounded-full pr-1 text-left transition hover:bg-neutral-50 " + className}
+      className={"inline-flex min-w-0 items-center gap-2.5 rounded-full pr-1 text-left transition hover:bg-neutral-50 " + className}
       aria-label={`${name}のプロフィールを見る`}
     >
-      <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
-        {profile?.avatarUrl ? (
-          <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" onError={(event) => (event.currentTarget.style.display = "none")} />
-        ) : (
-          initials(name)
-        )}
-      </span>
+      <ProfileAvatar src={avatarUrl ?? profile?.avatarUrl} name={name} size={avatarSize} />
       <span className="min-w-0">
         <span className="block truncate text-sm font-semibold leading-tight text-ink">{name}</span>
         {!compact && badge ? <span className="mt-0.5 block truncate text-[0.62rem] font-semibold text-mute">{badge}</span> : null}

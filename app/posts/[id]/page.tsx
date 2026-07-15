@@ -57,15 +57,14 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <Link href={authorHref} className="inline-flex min-w-0 items-center gap-2 rounded-full pr-1">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
-                    {dbSnap.profiles?.avatar_url ? <img src={dbSnap.profiles.avatar_url} alt="" className="h-full w-full object-cover" /> : authorName.slice(0, 1)}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold leading-tight text-ink">{authorName}</span>
-                    {authorMeta ? <span className="mt-0.5 block truncate text-[0.62rem] font-semibold text-mute">{authorMeta}</span> : null}
-                  </span>
-                </Link>
+                <ProfileMiniLink
+                  profileId={dbSnap.author_id}
+                  fallbackName={authorName}
+                  avatarUrl={dbSnap.profiles?.avatar_url}
+                  meta={authorMeta}
+                  href={authorHref}
+                  className="max-w-full"
+                />
                 <span className="rounded-full bg-blushSoft px-2 py-0.5 text-[0.64rem] font-black text-blush">
                   {dbSnap.category ?? "日常"}
                 </span>

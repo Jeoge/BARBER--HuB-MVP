@@ -1,14 +1,11 @@
 import Link from "next/link";
 import { FollowButton } from "@/components/FollowButton";
+import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { SnapImageCarousel } from "@/components/SnapImageCarousel";
 import { SnapCommentButton } from "@/components/SnapCommentButton";
 import { SnapSaveButton } from "@/components/SnapSaveButton";
 import { SnapLikeButton, SnapThanksButton } from "@/components/SnapThanksButton";
 import { snapAuthorMeta, snapAuthorName, snapDateLabel, snapDisplayImages, type SnapWithAuthor } from "@/lib/supabase/snaps";
-
-function initial(name: string) {
-  return name.trim().slice(0, 1).toUpperCase();
-}
 
 export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapWithAuthor; compact?: boolean; currentUserId?: string | null }) {
   const authorName = snapAuthorName(snap);
@@ -23,16 +20,15 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
     <article className="min-w-0 overflow-hidden rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
       <div className="mb-2.5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Link href={authorHref} className="inline-flex min-w-0 items-center gap-2 rounded-full pr-1">
-            <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
-              {snap.profiles?.avatar_url ? <img src={snap.profiles.avatar_url} alt="" className="h-full w-full object-cover" /> : initial(authorName)}
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold leading-tight text-ink">{authorName}</span>
-              {authorMeta ? <span className="mt-0.5 block truncate text-[0.62rem] font-semibold text-mute">{authorMeta}</span> : null}
-            </span>
-          </Link>
-          <p className="ml-10 mt-0.5 text-xs font-medium text-mute">{snapDateLabel(snap)}</p>
+          <ProfileMiniLink
+            profileId={snap.author_id}
+            fallbackName={authorName}
+            avatarUrl={snap.profiles?.avatar_url}
+            meta={authorMeta}
+            href={authorHref}
+            className="max-w-full"
+          />
+          <p className="ml-12 mt-0.5 text-xs font-medium text-mute">{snapDateLabel(snap)}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <div className="flex items-center justify-end gap-1.5">

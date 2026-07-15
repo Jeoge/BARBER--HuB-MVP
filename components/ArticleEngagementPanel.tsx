@@ -4,6 +4,7 @@ import { Fragment, type ReactNode } from "react";
 import { createArticleCommentAction, toggleArticleReactionAction } from "@/app/articles/actions";
 import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ThanksActionButton } from "@/components/ThanksActionButton";
 import { pathWithParams } from "@/lib/auth/redirects";
 import type { ArticleComment, ArticleMetrics } from "@/lib/supabase/articles";
@@ -57,10 +58,6 @@ function commentDateLabel(value: string | null) {
 
 function commenterName(comment: ArticleComment) {
   return comment.profiles?.display_name?.trim() || "プロフィール未設定";
-}
-
-function commenterInitial(comment: ArticleComment) {
-  return commenterName(comment).slice(0, 1).toUpperCase();
 }
 
 function LoginReactionLink({ articleId, label, children }: { articleId: string; label: string; children: ReactNode }) {
@@ -215,8 +212,8 @@ export function ArticleEngagementPanel({
           ) : (
             comments.map((comment) => (
               <article key={comment.id} className="flex gap-2.5 rounded-[8px] bg-neutral-50 p-3">
-                <Link href={`/profiles/${comment.user_id}`} className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
-                  {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} alt="" className="h-full w-full object-cover" /> : commenterInitial(comment)}
+                <Link href={`/profiles/${comment.user_id}`} className="shrink-0 rounded-full">
+                  <ProfileAvatar src={comment.profiles?.avatar_url} name={commenterName(comment)} size="compact" />
                 </Link>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

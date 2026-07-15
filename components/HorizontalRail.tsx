@@ -10,6 +10,7 @@ type RailItem = {
   category: string;
   author?: string;
   profileId?: string;
+  avatarUrl?: string | null;
   meta?: string;
   summary?: string;
   accent: string;
@@ -52,7 +53,7 @@ export function HorizontalRail({ title, items, hrefPrefix = "/articles" }: Horiz
                 </div>
               </Link>
               {showReactions ? (
-                <ProfileMiniLink profileId={item.profileId} fallbackName={item.author} compact className="mt-3 max-w-full" />
+                <ProfileMiniLink profileId={item.profileId} fallbackName={item.author} avatarUrl={item.avatarUrl} compact size="compact" className="mt-3 max-w-full" />
               ) : null}
             </article>
           );

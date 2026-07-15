@@ -13,6 +13,7 @@ import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { articles, posts } from "@/lib/mockData";
 import { findPublicProfile, type ProfileLinkKey, type PublicProfile } from "@/lib/publicProfiles";
+import { resolveArticleImageUrls } from "@/lib/supabase/article-images";
 import {
   articleDateLabel,
   articleExcerpt,
@@ -216,7 +217,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
       });
     }
 
-    dbRecentArticles = userArticles.filter((article) => article.is_published !== false);
+    dbRecentArticles = await resolveArticleImageUrls(userArticles.filter((article) => article.is_published !== false));
   }
 
   if (profile == null) {
@@ -439,18 +440,32 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
         <div className="mt-3 grid gap-2.5">
           {dbRecentArticles.length > 0 ? (
             dbRecentArticles.map((article) => (
-              <Link key={article.id} href={`/articles/${article.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
-                <p className="text-[0.66rem] font-black text-blush">{article.category ?? "経験記事"}</p>
-                <p className="mt-1 text-sm font-black leading-snug text-ink">{article.title}</p>
-                <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{articleExcerpt(article.body, 64)}</p>
-                <p className="mt-1 text-xs font-bold text-mute">{articleDateLabel(article)}</p>
+              <Link key={article.id} href={`/articles/${article.id}`} className="flex gap-3 rounded-[8px] border border-line bg-white p-3 shadow-sm">
+                {article.image_url ? (
+                  <div className="h-16 w-14 shrink-0">
+                    <MagazineImage src={article.image_url} alt={article.title} variant="news" className="h-full w-full" />
+                  </div>
+                ) : null}
+                <span className="min-w-0 flex-1">
+                  <span className="text-[0.66rem] font-black text-blush">{article.category ?? "経験記事"}</span>
+                  <span className="mt-1 block text-sm font-black leading-snug text-ink">{article.title}</span>
+                  <span className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{articleExcerpt(article.body, 64)}</span>
+                  <span className="mt-1 block text-xs font-bold text-mute">{articleDateLabel(article)}</span>
+                </span>
               </Link>
             ))
           ) : recentArticles.length > 0 ? (
             recentArticles.map((article) => (
-              <Link key={article.id} href={`/articles/${article.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
-                <p className="text-[0.66rem] font-black text-blush">{article.category}</p>
-                <p className="mt-1 text-sm font-black leading-snug text-ink">{article.title}</p>
+              <Link key={article.id} href={`/articles/${article.id}`} className="flex gap-3 rounded-[8px] border border-line bg-white p-3 shadow-sm">
+                {article.imageUrl ? (
+                  <div className="h-16 w-14 shrink-0">
+                    <MagazineImage src={article.imageUrl} alt={article.title} variant={article.accent} className="h-full w-full" />
+                  </div>
+                ) : null}
+                <span className="min-w-0 flex-1">
+                  <span className="text-[0.66rem] font-black text-blush">{article.category}</span>
+                  <span className="mt-1 block text-sm font-black leading-snug text-ink">{article.title}</span>
+                </span>
               </Link>
             ))
           ) : (

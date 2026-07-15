@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { FormDisclaimer } from "@/components/FormDisclaimer";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { useCommentSheetFabHidden } from "@/components/useCommentSheetFabHidden";
 import { addSnapCommentAction, deleteSnapCommentAction, toggleSnapCommentLikeAction } from "@/lib/actions/comments";
 import { pathWithParams } from "@/lib/auth/redirects";
@@ -13,10 +14,6 @@ import { commentTimeLabel, listSnapComments, type SnapComment } from "@/lib/supa
 
 const pill =
   "inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-line/80 bg-white px-3 text-[0.7rem] font-black text-ink/78 transition hover:border-blush/25 hover:bg-blushSoft/50 active:scale-[0.98]";
-
-function initial(name: string | null) {
-  return (name?.trim().slice(0, 1) || "?").toUpperCase();
-}
 
 export function SnapCommentButton({
   snapId,
@@ -264,13 +261,11 @@ export function SnapCommentButton({
                 comments.map((comment) => (
                   <div id={`snap-comment-${comment.id}`} key={comment.id} className="scroll-mt-4 rounded-[10px] bg-neutral-50 p-3">
                     <div className="flex items-start gap-2.5">
-                      <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
-                        {comment.author?.avatar_url ? (
-                          <img src={comment.author.avatar_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          initial(comment.author?.display_name ?? null)
-                        )}
-                      </span>
+                      <ProfileAvatar
+                        src={comment.author?.avatar_url}
+                        name={comment.author?.display_name?.trim() || "プロフィール未設定"}
+                        size="compact"
+                      />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="truncate text-sm font-black text-ink">
