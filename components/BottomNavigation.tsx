@@ -33,7 +33,6 @@ function useUnreadNotifications() {
       if (ignore) return;
 
       if (error) {
-        console.error("Bottom navigation auth lookup failed", { message: error.message });
         setCount(0);
         return;
       }
