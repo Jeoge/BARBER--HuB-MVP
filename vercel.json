@@ -2,7 +2,15 @@
   "crons": [
     {
       "path": "/api/news-drafts/run",
-      "schedule": "0 20 * * *"
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/news-drafts/run",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/news-drafts/run",
+      "schedule": "0 9 * * *"
     }
   ]
 }

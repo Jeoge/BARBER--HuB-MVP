@@ -49,6 +49,7 @@ async function handleRun(request: NextRequest) {
       failedCount: result.failedCount,
       insertedCount: result.insertedCount,
       sourceErrorCount: result.sourceErrorCount,
+      sourceStats: result.sourceStats,
     });
   } catch {
     return NextResponse.json({ ok: false, error: "ニュース収集を実行できませんでした。" }, { status: 500 });
