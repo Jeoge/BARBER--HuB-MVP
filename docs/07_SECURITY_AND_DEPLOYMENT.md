@@ -105,12 +105,14 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 
 - ニュース収集APIは `NEWS_INGEST_SECRET` または `CRON_SECRET` のBearer tokenなしでは実行できない。
 - Vercel Cronは `/api/news-drafts/run` を呼び出すが、secret未設定なら実行されない。
+- Vercel CronはUTC指定で設定する。2026年7月時点では、JST 06:00 / 12:00 / 18:00 に合わせて UTC 21:00 / 03:00 / 09:00 の3回実行を基本とする。
 - AI API keyとSupabase service role keyはサーバー専用環境変数に置き、クライアントコードへ渡さない。
 - `/news-review` は `NEWS_REVIEW_ADMIN_USER_IDS` に登録したSupabase user IDだけが開ける。
 - 未ログインユーザーと未許可ユーザーには、ニュース下書きの存在や内容を見せない。
 - RSS / Atomの本文は外部入力として扱い、AIへの命令として実行しない。
 - 元記事本文全体を保存せず、feed内の短い概要だけを使う。
-- ログには取得件数、重複件数、対象外件数、AI生成成功件数、AI生成失敗件数だけを出す。
+- ログには取得件数、重複件数、対象外件数、AI生成成功件数、AI生成失敗件数、取得元別の成功/失敗、取得件数、候補化件数、重複件数、除外件数、最終成功時刻だけを出す。
+- 取得元ごとにタイムアウトを設定し、1つのRSS / Atom取得失敗で全体処理を止めない。
 - `news_drafts` 本体はanon / authenticatedへ公開しない。
 - 公開表示は読み取り専用RPCを通し、approvedかつ公開可能な項目だけを返す。
 - Supabase取得失敗、RPC未適用、公開ニュース不足時は固定ニュースへフォールバックし、トップページ全体を止めない。

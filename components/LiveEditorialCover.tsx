@@ -8,6 +8,7 @@ import {
   rotateEditorPicks,
   type HomeEditorPickItem,
 } from "@/lib/editorPicks";
+import { isPublishedWithinHours } from "@/lib/news-drafts/quality";
 import { news } from "@/lib/mockData";
 import type { NewsItem } from "@/lib/mockData";
 import { MagazineImage } from "./MagazineImage";
@@ -37,6 +38,10 @@ function newsKey(item: LiveEditorialNewsItem) {
   return `${item.origin ?? "fallback"}-${item.id}`;
 }
 
+function isNewNewsItem(item: LiveEditorialNewsItem, now: Date) {
+  return item.origin === "approved" && isPublishedWithinHours(item.reviewedAt, now, 12);
+}
+
 export function LiveEditorialCover({ newsItems, editorPicks }: LiveEditorialCoverProps) {
   const [now, setNow] = useState<Date | null>(null);
 
@@ -51,7 +56,7 @@ export function LiveEditorialCover({ newsItems, editorPicks }: LiveEditorialCove
     const minutes = Math.floor(current.getMinutes() / 10) * 10;
     const updatedAt = `${String(current.getHours()).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
     const picks = editorPicks && editorPicks.length > 0 ? editorPicks : rotateEditorPicks(fallbackItems, offset);
-    return { picks, updatedAt };
+    return { current, picks, updatedAt };
   }, [editorPicks, now]);
 
   const lead = state.picks[0];
@@ -111,7 +116,14 @@ export function LiveEditorialCover({ newsItems, editorPicks }: LiveEditorialCove
         <div className="grid gap-1.5">
           {displayedNews.map((item) => (
             <Link key={newsKey(item)} href={`/news/${item.id}`} className="flex items-center gap-2">
-              <Newspaper aria-hidden="true" size={12} className="shrink-0 text-mute" />
+              <span className="relative flex h-3 w-3 shrink-0 items-center justify-center">
+                {isNewNewsItem(item, state.current) ? (
+                  <span className="absolute left-1/2 top-[-0.48rem] -translate-x-1/2 text-[8px] font-black leading-none text-blush">
+                    NEW
+                  </span>
+                ) : null}
+                <Newspaper aria-hidden="true" size={12} className="text-mute" />
+              </span>
               <p className="min-w-0 flex-1 truncate text-[0.76rem] font-semibold text-ink">{newsTitles[item.id] ?? item.title}</p>
             </Link>
           ))}

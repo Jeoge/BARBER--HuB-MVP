@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "news-drafts:check": "node scripts/check-news-draft-quality.mjs",
     "supabase:migrations:check": "node scripts/check-supabase-migrations.mjs",
     "supabase:health:production": "node scripts/verify-supabase-production-health.mjs"
   },
