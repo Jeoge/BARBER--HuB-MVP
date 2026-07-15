@@ -10,7 +10,7 @@ import {
   type NotificationUnreadCountChangedDetail,
 } from "@/lib/notificationUnreadEvents";
 import { createClient } from "@/lib/supabase/client";
-import { getUnreadNotificationCount } from "@/lib/supabase/notifications";
+import { getUnreadNotificationCountResult } from "@/lib/supabase/notifications";
 
 const navItems = [
   { label: "ホーム", href: "/", icon: Home },
@@ -32,22 +32,37 @@ function useUnreadNotifications() {
     const supabase = createClient();
 
     async function loadUnreadCount() {
-      const { data, error } = await supabase.auth.getUser();
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
-      if (ignore) return;
+        if (ignore) return;
 
-      if (error) {
-        setCount(0);
-        return;
+        if (sessionError) {
+          console.error("Notification unread session lookup failed", { message: sessionError.message });
+          return;
+        }
+
+        if (sessionData.session == null) {
+          setCount(0);
+          return;
+        }
+
+        const { data, error } = await supabase.auth.getUser();
+
+        if (ignore) return;
+
+        if (error || data.user == null) {
+          if (error) {
+            console.error("Notification unread user lookup failed", { message: error.message });
+          }
+          return;
+        }
+
+        const unreadResult = await getUnreadNotificationCountResult(supabase);
+        if (!ignore && unreadResult.status !== "error") setCount(unreadResult.count);
+      } catch (error) {
+        console.error("Notification unread count refresh failed", { error });
       }
-
-      if (data.user == null) {
-        setCount(0);
-        return;
-      }
-
-      const unread = await getUnreadNotificationCount(supabase);
-      if (!ignore) setCount(unread);
     }
 
     void loadUnreadCount();

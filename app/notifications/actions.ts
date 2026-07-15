@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  getUnreadNotificationCount,
+  getUnreadNotificationCountResult,
   isMissingNotificationsError,
   listMyNotifications,
   type AppNotification,
@@ -10,12 +10,14 @@ import {
 import { createClient } from "@/lib/supabase/server";
 
 export type NotificationActionResult =
-  | { status: "ok"; unreadCount: number }
+  | { status: "ok"; unreadCount?: number }
   | { status: "error"; message: string; unreadCount?: number };
 
 export type NotificationsSnapshotResult =
   | { status: "ok"; notifications: AppNotification[]; unreadCount: number }
   | { status: "error"; message: string };
+
+const NOTIFICATION_SNAPSHOT_ERROR_MESSAGE = "通知の状態を再取得できませんでした。";
 
 export async function markNotificationReadAction(notificationId: string): Promise<NotificationActionResult> {
   const cleanId = notificationId.trim();
@@ -54,7 +56,10 @@ export async function markNotificationReadAction(notificationId: string): Promis
   }
 
   revalidatePath("/notifications");
-  return { status: "ok", unreadCount: await getUnreadNotificationCount(supabase) };
+  const unreadCountResult = await getUnreadNotificationCountResult(supabase);
+  if (unreadCountResult.status === "error") return { status: "ok" };
+
+  return { status: "ok", unreadCount: unreadCountResult.count };
 }
 
 export async function markAllNotificationsReadAction(): Promise<NotificationActionResult> {
@@ -89,7 +94,10 @@ export async function markAllNotificationsReadAction(): Promise<NotificationActi
   }
 
   revalidatePath("/notifications");
-  return { status: "ok", unreadCount: await getUnreadNotificationCount(supabase) };
+  const unreadCountResult = await getUnreadNotificationCountResult(supabase);
+  if (unreadCountResult.status === "error") return { status: "ok" };
+
+  return { status: "ok", unreadCount: unreadCountResult.count };
 }
 
 export async function getNotificationsSnapshotAction(): Promise<NotificationsSnapshotResult> {
@@ -104,13 +112,30 @@ export async function getNotificationsSnapshotAction(): Promise<NotificationsSna
       console.error("Notification snapshot auth lookup failed", { message: userError.message });
     }
 
-    return { status: "error", message: "通知を再取得できませんでした。" };
+    return { status: "error", message: NOTIFICATION_SNAPSHOT_ERROR_MESSAGE };
   }
 
-  const [{ notifications }, unreadCount] = await Promise.all([
-    listMyNotifications(supabase, 30),
-    getUnreadNotificationCount(supabase),
-  ]);
+  try {
+    const [notificationsResult, unreadCountResult] = await Promise.all([
+      listMyNotifications(supabase, 30),
+      getUnreadNotificationCountResult(supabase),
+    ]);
 
-  return { status: "ok", notifications, unreadCount };
+    if (notificationsResult.error != null && !notificationsResult.unavailable) {
+      return { status: "error", message: NOTIFICATION_SNAPSHOT_ERROR_MESSAGE };
+    }
+
+    if (unreadCountResult.status === "error") {
+      return { status: "error", message: NOTIFICATION_SNAPSHOT_ERROR_MESSAGE };
+    }
+
+    return {
+      status: "ok",
+      notifications: notificationsResult.notifications,
+      unreadCount: unreadCountResult.count,
+    };
+  } catch (error) {
+    console.error("Notification snapshot lookup failed", { error });
+    return { status: "error", message: NOTIFICATION_SNAPSHOT_ERROR_MESSAGE };
+  }
 }

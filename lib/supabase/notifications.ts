@@ -32,6 +32,16 @@ type NotificationRpcRow = AppNotification & {
   target_type: string;
 };
 
+export type ListMyNotificationsResult =
+  | { status: "ok"; notifications: AppNotification[]; error: null; unavailable: false }
+  | { status: "unavailable"; notifications: AppNotification[]; error: null; unavailable: true }
+  | { status: "error"; notifications: AppNotification[]; error: unknown; unavailable: false };
+
+export type UnreadNotificationCountResult =
+  | { status: "ok"; count: number; error: null; unavailable: false }
+  | { status: "unavailable"; count: 0; error: null; unavailable: true }
+  | { status: "error"; count: null; error: unknown; unavailable: false };
+
 function errorCode(error: unknown) {
   return error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : "";
 }
@@ -73,37 +83,44 @@ function normalizeNotification(row: NotificationRpcRow): AppNotification {
   };
 }
 
-export async function listMyNotifications(supabase: SupabaseClient, limit = 30) {
+export async function listMyNotifications(supabase: SupabaseClient, limit = 30): Promise<ListMyNotificationsResult> {
   const { data, error } = await supabase.rpc("list_my_notifications", { p_limit: limit });
 
   if (error) {
     if (!isMissingNotificationsError(error)) {
       console.error("Notifications list RPC failed", { message: error.message });
-      return { notifications: [] as AppNotification[], error };
+      return { status: "error", notifications: [] as AppNotification[], error, unavailable: false };
     }
 
-    return { notifications: [] as AppNotification[], error: null, unavailable: true };
+    return { status: "unavailable", notifications: [] as AppNotification[], error: null, unavailable: true };
   }
 
   return {
+    status: "ok",
     notifications: ((data ?? []) as NotificationRpcRow[]).map(normalizeNotification),
     error: null,
     unavailable: false,
   };
 }
 
-export async function getUnreadNotificationCount(supabase: SupabaseClient) {
+export async function getUnreadNotificationCountResult(supabase: SupabaseClient): Promise<UnreadNotificationCountResult> {
   const { data, error } = await supabase.rpc("get_unread_notification_count");
 
   if (error) {
     if (!isMissingNotificationsError(error)) {
       console.error("Unread notification count RPC failed", { message: error.message });
+      return { status: "error", count: null, error, unavailable: false };
     }
 
-    return 0;
+    return { status: "unavailable", count: 0, error: null, unavailable: true };
   }
 
-  return Number(data ?? 0);
+  return { status: "ok", count: Number(data ?? 0), error: null, unavailable: false };
+}
+
+export async function getUnreadNotificationCount(supabase: SupabaseClient) {
+  const result = await getUnreadNotificationCountResult(supabase);
+  return result.status === "error" ? 0 : result.count;
 }
 
 export function notificationActorName(notification: Pick<AppNotification, "actor_display_name">) {

@@ -66,9 +66,18 @@ export function NotificationsList({
   }
 
   async function syncFromServer() {
-    const snapshot = await getNotificationsSnapshotAction();
+    let snapshot: Awaited<ReturnType<typeof getNotificationsSnapshotAction>>;
+
+    try {
+      snapshot = await getNotificationsSnapshotAction();
+    } catch {
+      setErrorMessage("通知の状態を再取得できませんでした。");
+      dispatchNotificationUnreadCountChanged();
+      return false;
+    }
 
     if (snapshot.status !== "ok") {
+      setErrorMessage(snapshot.message);
       dispatchNotificationUnreadCountChanged();
       return false;
     }
@@ -93,7 +102,10 @@ export function NotificationsList({
           if (wasUnread) {
             const result = await markNotificationReadAction(notification.id);
             if (result.status === "ok") {
-              markLocalRead(notification.id, result.unreadCount);
+              markLocalRead(
+                notification.id,
+                typeof result.unreadCount === "number" ? result.unreadCount : Math.max(0, unreadCount - 1)
+              );
             } else if (typeof result.unreadCount === "number") {
               setSyncedUnreadCount(result.unreadCount);
             } else {
@@ -122,7 +134,7 @@ export function NotificationsList({
           const result = await markAllNotificationsReadAction();
 
           if (result.status === "ok") {
-            markAllLocalRead(result.unreadCount);
+            markAllLocalRead(typeof result.unreadCount === "number" ? result.unreadCount : 0);
             router.refresh();
             return;
           }
