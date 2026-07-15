@@ -37,6 +37,7 @@
 
 - `snap-images`
 - `profile-images`
+- `article-images`
 
 方針:
 
@@ -46,6 +47,7 @@
 - ユーザーごとのフォルダを使い、本人以外がアップロードできないようにする。
 - public URLやNext/Imageで `undefined` や外部URL起因のクラッシュが起きないようにする。
 - Snapの新規アップロードは圧縮後の `image/webp` または `image/jpeg` に限定する。
+- 記事の新規アップロードも圧縮後の `image/webp` または `image/jpeg` に限定する。
 
 ## Snap画像
 
@@ -61,6 +63,22 @@
 - 新規投稿では1枚目を `snaps.image_url` / `snaps.image_path` にも保存し、既存表示との互換性を保つ。
 - 読み取り時は `snap_images` があれば順序順に使い、なければ既存の `image_url` を1枚目として使う。
 - 既存の1枚Snapは自動移行しない。
+
+## 記事画像とEDITOR'S PICK
+
+`articles` には `image_url` / `image_path` があり、記事画像はこの既存カラムへ保存します。
+
+主な設計:
+
+- 1記事につき画像は最大1枚。
+- 記事画像bucketは `article-images`。
+- Storage pathは `userId/articleId/timestamp-random.ext` とし、ユーザー提供ファイル名を使わない。
+- 許可MIMEは `image/webp` と `image/jpeg`。
+- 1枚あたりのStorage上限は2MB。
+- `image_url` にはStorage公開URL、`image_path` にはStorage object pathを保存する。
+- 記事保存失敗、保存確認失敗、例外発生時は、今回アップロードしたStorage objectを削除する。
+- EDITOR'S PICK選定日時は `articles.editor_pick_at` に保存する。booleanではなく日時にすることで、最新選定順と将来の解除を扱えるようにする。
+- 手動並べ替えUIはまだ実装しない。表示順は `editor_pick_at desc` を基本にする。
 
 ## 店舗ディレクトリのDB設計
 
@@ -102,6 +120,8 @@
 - `saved_snaps`: 本人だけが閲覧・作成・削除でき、削除済みまたは非公開Snapは保存対象にしない。
 - `snap_images`: 公開中かつ未削除Snapに属する画像情報だけをanon / authenticatedが閲覧できる。投稿者本人は自分のSnap画像情報を閲覧・追加・更新・削除できる。
 - `snap-images`: 本人フォルダだけアップロードできる。新規Snap画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。
+- `articles`: 公開中かつ未削除の記事、または本人の記事だけを閲覧できる。本人によるINSERT / UPDATEでも `editor_pick_at` を直接設定・変更できないようにする。
+- `article-images`: 本人フォルダだけアップロードできる。公開中かつ未削除記事に紐づく画像、または本人フォルダの画像だけを読めるようにする。新規記事画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。
 - `barber_shops`: 公開情報は閲覧可能。編集は認証済みオーナーに限定する。
 - `barber_shop_claims`: 申請者本人が自分の申請を確認・作成できる。
 - 管理者審査はクライアントから直接行わない。

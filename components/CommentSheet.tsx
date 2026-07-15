@@ -50,7 +50,7 @@ function CommentItem({ comment }: { comment: SheetComment }) {
 
   return (
     <article className="flex gap-2.5 rounded-[8px] bg-neutral-50 p-3">
-      <ProfileMiniLink profileId={comment.profileId} fallbackName={comment.author} compact className="self-start pr-0" />
+      <ProfileMiniLink profileId={comment.profileId} fallbackName={comment.author} compact size="compact" className="self-start pr-0" />
       <div className="min-w-0 flex-1">
         <p className="text-[0.64rem] font-bold text-mute">{comment.date}</p>
         <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{comment.body}</p>

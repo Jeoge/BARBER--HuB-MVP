@@ -3,6 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { MagazineImage } from "./MagazineImage";
+import { ProfileMiniLink } from "./ProfileMiniLink";
 
 export type MagazineListItem = {
   href: string;
@@ -14,6 +15,10 @@ export type MagazineListItem = {
   variant?: string;
   imageClassName?: string;
   tags?: string[];
+  authorName?: string;
+  profileId?: string;
+  avatarUrl?: string | null;
+  authorMeta?: string;
 };
 
 export function MagazinePageHeader({
@@ -65,24 +70,37 @@ export function MagazineFeaturedCard({ item, eyebrow = "EDITOR'S PICK", portrait
   return (
     <section className="px-4 pt-6">
       <p className="editorial-label text-[0.68rem] uppercase text-blush">{eyebrow}</p>
-      <Link href={item.href} className="mt-3 block rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_14px_34px_rgba(17,17,17,0.045)]">
-        <MagazineImage
-          src={item.imageUrl}
-          alt={item.title}
-          variant={item.variant}
-          className={portrait ? "aspect-[4/5]" : "aspect-[16/9]"}
-          imageClassName={item.imageClassName}
-        />
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-blush">{item.label}</p>
-          <span className="inline-flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-mute">
-            READ
-            <ChevronRight aria-hidden="true" size={12} />
-          </span>
-        </div>
-        <h2 className="editorial-serif mt-1 line-clamp-3 text-[1.28rem] leading-tight text-ink">{item.title}</h2>
-        {item.description ? <p className="mt-2 line-clamp-2 text-sm font-medium leading-relaxed text-mute">{item.description}</p> : null}
-      </Link>
+      <article className="mt-3 rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_14px_34px_rgba(17,17,17,0.045)]">
+        <Link href={item.href} className="block">
+          <MagazineImage
+            src={item.imageUrl}
+            alt={item.title}
+            variant={item.variant}
+            className={portrait ? "aspect-[4/5]" : "aspect-[16/9]"}
+            imageClassName={item.imageClassName}
+          />
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-blush">{item.label}</p>
+            <span className="inline-flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-mute">
+              READ
+              <ChevronRight aria-hidden="true" size={12} />
+            </span>
+          </div>
+          <h2 className="editorial-serif mt-1 line-clamp-3 text-[1.28rem] leading-tight text-ink">{item.title}</h2>
+          {item.description ? <p className="mt-2 line-clamp-2 text-sm font-medium leading-relaxed text-mute">{item.description}</p> : null}
+        </Link>
+        {item.authorName || item.profileId ? (
+          <ProfileMiniLink
+            profileId={item.profileId}
+            fallbackName={item.authorName}
+            avatarUrl={item.avatarUrl}
+            meta={item.authorMeta}
+            compact
+            size="feed"
+            className="mt-3 max-w-full"
+          />
+        ) : null}
+      </article>
     </section>
   );
 }
@@ -95,18 +113,31 @@ export function MagazineRail({ title, eyebrow, items, portrait = false }: { titl
       <MagazineSectionHeading eyebrow={eyebrow} title={title} />
       <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
         {items.map((item) => (
-          <Link key={`${item.href}-${item.title}`} href={item.href} className="w-[72%] shrink-0 rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
-            <MagazineImage
-              src={item.imageUrl}
-              alt={item.title}
-              variant={item.variant}
-              className={portrait ? "aspect-[4/5]" : "aspect-[16/8.5]"}
-              imageClassName={item.imageClassName}
-            />
-            <p className="mt-3 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-blush">{item.label}</p>
-            <h3 className="mt-1 line-clamp-2 text-[0.98rem] font-black leading-snug text-ink">{item.title}</h3>
-            {item.description ? <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{item.description}</p> : null}
-          </Link>
+          <article key={`${item.href}-${item.title}`} className="w-[72%] shrink-0 rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
+            <Link href={item.href} className="block">
+              <MagazineImage
+                src={item.imageUrl}
+                alt={item.title}
+                variant={item.variant}
+                className={portrait ? "aspect-[4/5]" : "aspect-[16/8.5]"}
+                imageClassName={item.imageClassName}
+              />
+              <p className="mt-3 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-blush">{item.label}</p>
+              <h3 className="mt-1 line-clamp-2 text-[0.98rem] font-black leading-snug text-ink">{item.title}</h3>
+              {item.description ? <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{item.description}</p> : null}
+            </Link>
+            {item.authorName || item.profileId ? (
+              <ProfileMiniLink
+                profileId={item.profileId}
+                fallbackName={item.authorName}
+                avatarUrl={item.avatarUrl}
+                meta={item.authorMeta}
+                compact
+                size="compact"
+                className="mt-3 max-w-full"
+              />
+            ) : null}
+          </article>
         ))}
       </div>
     </section>
@@ -121,17 +152,30 @@ export function MagazineCompactList({ title, eyebrow, items, actionHref }: { tit
       <MagazineSectionHeading eyebrow={eyebrow} title={title} actionHref={actionHref} />
       <div className="grid gap-2.5">
         {items.map((item) => (
-          <Link key={`${item.href}-${item.title}`} href={item.href} className="rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_8px_22px_rgba(17,17,17,0.03)]">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-blush">{item.label}</p>
-                <h3 className="mt-1 line-clamp-2 text-[0.94rem] font-black leading-snug text-ink">{item.title}</h3>
-                {item.description ? <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{item.description}</p> : null}
-                {item.meta ? <p className="mt-2 text-[0.68rem] font-semibold text-mute">{item.meta}</p> : null}
+          <article key={`${item.href}-${item.title}`} className="rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_8px_22px_rgba(17,17,17,0.03)]">
+            <Link href={item.href} className="block">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-blush">{item.label}</p>
+                  <h3 className="mt-1 line-clamp-2 text-[0.94rem] font-black leading-snug text-ink">{item.title}</h3>
+                  {item.description ? <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{item.description}</p> : null}
+                  {item.meta ? <p className="mt-2 text-[0.68rem] font-semibold text-mute">{item.meta}</p> : null}
+                </div>
+                <ChevronRight aria-hidden="true" size={16} className="mt-1 shrink-0 text-mute" />
               </div>
-              <ChevronRight aria-hidden="true" size={16} className="mt-1 shrink-0 text-mute" />
-            </div>
-          </Link>
+            </Link>
+            {item.authorName || item.profileId ? (
+              <ProfileMiniLink
+                profileId={item.profileId}
+                fallbackName={item.authorName}
+                avatarUrl={item.avatarUrl}
+                meta={item.authorMeta}
+                compact
+                size="compact"
+                className="mt-2 max-w-full"
+              />
+            ) : null}
+          </article>
         ))}
       </div>
     </section>

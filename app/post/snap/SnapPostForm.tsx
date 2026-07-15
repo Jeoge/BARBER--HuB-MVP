@@ -5,6 +5,13 @@ import Link from "next/link";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { SafetyChecklist } from "@/components/SafetyChecklist";
+import {
+  compressClientImage,
+  fileSizeLabel,
+  isHeicLikeImage,
+  waitForPaint,
+  type CompressedClientImage,
+} from "@/lib/clientImageCompression";
 import { isAllowedSnapSourceImageFile } from "@/lib/imageValidation";
 import { createSnapAction } from "./actions";
 
@@ -13,7 +20,6 @@ const MAX_SOURCE_IMAGE_SIZE = 25 * 1024 * 1024;
 const MAX_IMAGE_COUNT = 4;
 const MAX_TOTAL_COMPRESSED_BYTES = 4 * 1024 * 1024;
 const TARGET_IMAGE_BYTES = 900 * 1024;
-const IMAGE_LONG_EDGE_STEPS = [1600, 1400, 1200, 1000, 800] as const;
 const imageInputId = "snap-image-input";
 const snapSafetyItems = [
   {
@@ -22,23 +28,7 @@ const snapSafetyItems = [
   },
 ];
 
-type SelectedSnapImage = {
-  id: string;
-  sourceFile: File;
-  file: File;
-  previewUrl: string;
-  width: number;
-  height: number;
-  byteSize: number;
-  mimeType: string;
-};
-
-type LoadedImage = {
-  source: CanvasImageSource;
-  width: number;
-  height: number;
-  close?: () => void;
-};
+type SelectedSnapImage = CompressedClientImage;
 
 function SubmitButton({
   disabledByValidation,
@@ -65,185 +55,6 @@ function SubmitButton({
       {pending || busy ? busyLabel : "投稿する"}
     </button>
   );
-}
-
-function makeImageId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function isHeicLike(file: File) {
-  return file.type === "image/heic" || file.type === "image/heif" || /\.(heic|heif)$/i.test(file.name);
-}
-
-function fileSizeLabel(bytes: number) {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
-}
-
-function canvasToBlob(canvas: HTMLCanvasElement, type: "image/webp" | "image/jpeg", quality: number) {
-  return new Promise<Blob | null>((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), type, quality);
-  });
-}
-
-async function waitForPaint() {
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => resolve());
-  });
-}
-
-async function loadImageSource(file: File): Promise<LoadedImage> {
-  if ("createImageBitmap" in window) {
-    try {
-      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-      return {
-        source: bitmap,
-        width: bitmap.width,
-        height: bitmap.height,
-        close: () => bitmap.close(),
-      };
-    } catch {
-      // Fall back to HTMLImageElement decoding below.
-    }
-  }
-
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const image = new Image();
-
-    image.decoding = "async";
-    image.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve({
-        source: image,
-        width: image.naturalWidth,
-        height: image.naturalHeight,
-      });
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error("decode failed"));
-    };
-    image.src = objectUrl;
-  });
-}
-
-function makeCompressedFile(blob: Blob, index: number) {
-  const extension = blob.type === "image/webp" ? "webp" : "jpg";
-
-  return new File([blob], `snap-${index + 1}.${extension}`, {
-    type: blob.type,
-    lastModified: Date.now(),
-  });
-}
-
-async function compressSourceImage(file: File, index: number, totalCount: number): Promise<SelectedSnapImage> {
-  const decoded = await loadImageSource(file);
-
-  try {
-    if (decoded.width <= 0 || decoded.height <= 0) {
-      throw new Error("invalid dimensions");
-    }
-
-    const sourceLongEdge = Math.max(decoded.width, decoded.height);
-    const initialLongEdge = Math.min(sourceLongEdge, IMAGE_LONG_EDGE_STEPS[0]);
-    const targetLongEdges = [
-      initialLongEdge,
-      ...IMAGE_LONG_EDGE_STEPS.slice(1).filter((longEdge) => longEdge < initialLongEdge),
-    ];
-    const targetBytes = Math.min(TARGET_IMAGE_BYTES, Math.floor(MAX_TOTAL_COMPRESSED_BYTES / Math.max(totalCount, 1)));
-    const hardBytes = Math.floor(MAX_TOTAL_COMPRESSED_BYTES / Math.max(totalCount, 1));
-    const qualities = [0.84, 0.76, 0.68, 0.6, 0.52, 0.44];
-    let best: { blob: Blob; width: number; height: number } | null = null;
-    let webpSupported = false;
-
-    for (const targetLongEdge of targetLongEdges) {
-      const scale = targetLongEdge / sourceLongEdge;
-      const width = Math.max(1, Math.round(decoded.width * scale));
-      const height = Math.max(1, Math.round(decoded.height * scale));
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d", { alpha: false });
-
-      if (context == null) {
-        throw new Error("canvas unavailable");
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      context.drawImage(decoded.source, 0, 0, width, height);
-
-      for (const quality of qualities) {
-        const webp = await canvasToBlob(canvas, "image/webp", quality);
-
-        if (webp?.type === "image/webp") {
-          webpSupported = true;
-
-          if (best == null || webp.size < best.blob.size) {
-            best = { blob: webp, width, height };
-          }
-
-          if (webp.size <= targetBytes) {
-            return {
-              id: makeImageId(),
-              sourceFile: file,
-              file: makeCompressedFile(webp, index),
-              previewUrl: URL.createObjectURL(webp),
-              width,
-              height,
-              byteSize: webp.size,
-              mimeType: webp.type,
-            };
-          }
-        }
-      }
-
-      if (!webpSupported || (best != null && best.blob.size > hardBytes)) {
-        for (const quality of qualities) {
-          const jpeg = await canvasToBlob(canvas, "image/jpeg", quality);
-
-          if (jpeg?.type === "image/jpeg") {
-            if (best == null || jpeg.size < best.blob.size) {
-              best = { blob: jpeg, width, height };
-            }
-
-            if (jpeg.size <= targetBytes) {
-              return {
-                id: makeImageId(),
-                sourceFile: file,
-                file: makeCompressedFile(jpeg, index),
-                previewUrl: URL.createObjectURL(jpeg),
-                width,
-                height,
-                byteSize: jpeg.size,
-                mimeType: jpeg.type,
-              };
-            }
-          }
-        }
-      }
-    }
-
-    if (best != null && best.blob.size <= hardBytes) {
-      return {
-        id: makeImageId(),
-        sourceFile: file,
-        file: makeCompressedFile(best.blob, index),
-        previewUrl: URL.createObjectURL(best.blob),
-        width: best.width,
-        height: best.height,
-        byteSize: best.blob.size,
-        mimeType: best.blob.type,
-      };
-    }
-  } finally {
-    decoded.close?.();
-  }
-
-  throw new Error("compression failed");
 }
 
 export function SnapPostForm({
@@ -298,19 +109,27 @@ export function SnapPostForm({
   }
 
   async function compressAndSetImages(sourceFiles: File[]) {
-  const compressed: SelectedSnapImage[] = [];
-  const totalCount = sourceFiles.length;
+    const compressed: SelectedSnapImage[] = [];
+    const totalCount = sourceFiles.length;
 
-  try {
-    for (let index = 0; index < totalCount; index += 1) {
-      setCompressionStatus(`画像を圧縮しています... ${index + 1} / ${totalCount}`);
-      await waitForPaint();
-      compressed.push(await compressSourceImage(sourceFiles[index], index, totalCount));
+    try {
+      for (let index = 0; index < totalCount; index += 1) {
+        setCompressionStatus(`画像を圧縮しています... ${index + 1} / ${totalCount}`);
+        await waitForPaint();
+        compressed.push(
+          await compressClientImage(sourceFiles[index], {
+            index,
+            totalCount,
+            fileNamePrefix: "snap",
+            targetBytes: TARGET_IMAGE_BYTES,
+            hardBytes: MAX_TOTAL_COMPRESSED_BYTES,
+          })
+        );
+      }
+    } catch (error) {
+      compressed.forEach((image) => URL.revokeObjectURL(image.previewUrl));
+      throw error;
     }
-  } catch (error) {
-    compressed.forEach((image) => URL.revokeObjectURL(image.previewUrl));
-    throw error;
-  }
 
     const totalBytes = compressed.reduce((sum, image) => sum + image.byteSize, 0);
 
@@ -368,7 +187,7 @@ export function SnapPostForm({
       await compressAndSetImages(nextSourceFiles);
     } catch {
       setImageError(
-        filesToAdd.some(isHeicLike)
+        filesToAdd.some(isHeicLikeImage)
           ? "この写真形式は利用できません。JPEG、PNG、WebPまたはスクリーンショットをお試しください。"
           : "画像を圧縮できませんでした。別の写真をお試しください。"
       );

@@ -43,7 +43,7 @@ const SNAP_UPLOAD_MIME_TYPES = {
   "image/webp": "webp",
 } as const;
 
-type SnapUploadMimeType = keyof typeof SNAP_UPLOAD_MIME_TYPES;
+export type SnapUploadMimeType = keyof typeof SNAP_UPLOAD_MIME_TYPES;
 
 function extensionFromName(fileName: string) {
   const filePart = fileName.split(/[/\\]/).pop() || "";
@@ -98,6 +98,10 @@ export function allowedSnapUploadContentType(file: Pick<File, "name" | "type">) 
 export function snapUploadFileExtension(contentType: SnapUploadMimeType) {
   return SNAP_UPLOAD_MIME_TYPES[contentType];
 }
+
+export const allowedCompressedUploadContentType = allowedSnapUploadContentType;
+export const compressedUploadFileExtension = snapUploadFileExtension;
+export type CompressedUploadMimeType = SnapUploadMimeType;
 
 export function safeUploadFileName(fileName: string, contentType: AllowedImageMimeType, fallbackBase: string) {
   const filePart = fileName.split(/[/\\]/).pop() || "";

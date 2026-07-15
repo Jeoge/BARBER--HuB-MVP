@@ -12,8 +12,17 @@ import {
 } from "@/components/MagazineListLayout";
 import { PageChrome } from "@/components/PageChrome";
 import { ToolActionLinks } from "@/components/ToolActionLinks";
+import { imageVariantForArticleCategory } from "@/lib/articleCategories";
 import { toolPartners, type ToolPartner } from "@/lib/tool-partners";
 import { getTopicBundle, topics, type TopicBundle } from "@/lib/topics";
+import {
+  articleAuthorMeta,
+  articleAuthorName,
+  articleExcerpt,
+  listPublishedArticlesByTopic,
+  type ArticleWithAuthor,
+} from "@/lib/supabase/articles";
+import { createClient } from "@/lib/supabase/server";
 
 export function generateStaticParams() {
   return topics.map((topic) => ({ slug: topic.slug }));
@@ -40,6 +49,23 @@ function articleItem(article: TopicBundle["articles"][number]): MagazineListItem
     description: article.summary,
     imageUrl: article.imageUrl,
     variant: article.accent,
+    authorName: article.author,
+    profileId: article.profileId,
+  };
+}
+
+function dbArticleItem(article: ArticleWithAuthor): MagazineListItem {
+  return {
+    href: `/articles/${article.id}`,
+    label: article.category ?? "経験記事",
+    title: article.title,
+    description: articleExcerpt(article.body, 72),
+    imageUrl: article.image_url ?? undefined,
+    variant: imageVariantForArticleCategory(article.category),
+    authorName: articleAuthorName(article),
+    profileId: article.author_id,
+    avatarUrl: article.profiles?.avatar_url ?? null,
+    authorMeta: articleAuthorMeta(article),
   };
 }
 
@@ -55,11 +81,10 @@ function snapItem(snap: TopicBundle["snaps"][number]): MagazineListItem {
   };
 }
 
-function EditorsPick({ bundle }: { bundle: TopicBundle }) {
-  const pick = bundle.articles[0];
-  if (pick == null) return null;
+function EditorsPick({ item }: { item?: MagazineListItem }) {
+  if (item == null) return null;
 
-  return <MagazineFeaturedCard item={articleItem(pick)} />;
+  return <MagazineFeaturedCard item={item} />;
 }
 
 function SalonTransitionLinkCard({ title, body }: { title: string; body: string }) {
@@ -121,8 +146,8 @@ function ToolPartnerCard({ partner }: { partner: ToolPartner }) {
   );
 }
 
-function ToolsTopicPage({ bundle }: { bundle: TopicBundle }) {
-  const articleList = bundle.articles.slice(0, 6);
+function ToolsTopicPage({ bundle, articleItems }: { bundle: TopicBundle; articleItems: MagazineListItem[] }) {
+  const articleList = articleItems.slice(0, 6);
   const onlinePartners = toolPartners.filter((partner) => partner.type === "online-store");
   const consultPartners = toolPartners.filter((partner) => partner.type === "dealer" || partner.type === "regional-dealer");
   const learningPartners = toolPartners.filter((partner) => partner.type === "manufacturer" || partner.type === "seminar");
@@ -141,14 +166,14 @@ function ToolsTopicPage({ bundle }: { bundle: TopicBundle }) {
         </div>
       </section>
 
-      <EditorsPick bundle={bundle} />
+      <EditorsPick item={articleList[0]} />
 
       <SalonTransitionLinkCard
         title="開業前に見ておきたい情報"
         body="開業準備、居抜き、備品譲渡、地域ディーラー相談をまとめて確認できます。"
       />
 
-      <MagazineRail title="道具記事" eyebrow="FEATURES" items={articleList.slice(1, 5).map(articleItem)} />
+      <MagazineRail title="道具記事" eyebrow="FEATURES" items={articleList.slice(1, 5)} />
 
       <MagazineRail title="現場のSnap" eyebrow="SNAP" items={bundle.snaps.slice(0, 3).map(snapItem)} portrait />
 
@@ -197,11 +222,26 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
     notFound();
   }
 
-  if (bundle.topic.slug === "tools") {
-    return <ToolsTopicPage bundle={bundle} />;
+  const supabase = await createClient();
+  const { articles: dbTopicArticles, error: dbTopicArticlesError } = await listPublishedArticlesByTopic(supabase, slug, 8);
+
+  if (dbTopicArticlesError) {
+    console.error("Topic DB articles lookup failed", {
+      slug,
+    });
   }
 
-  const articleList = bundle.articles.length > 1 ? bundle.articles.slice(1, 5) : bundle.articles.slice(0, 1);
+  const dbArticleItems = dbTopicArticles.map(dbArticleItem);
+  const articleItems = [
+    ...dbArticleItems,
+    ...bundle.articles.map(articleItem).filter((item) => !dbArticleItems.some((dbItem) => dbItem.href === item.href)),
+  ];
+
+  if (bundle.topic.slug === "tools") {
+    return <ToolsTopicPage bundle={bundle} articleItems={articleItems} />;
+  }
+
+  const articleList = articleItems.length > 1 ? articleItems.slice(1, 5) : articleItems.slice(0, 1);
 
   return (
     <PageChrome>
@@ -212,7 +252,7 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
         tags={bundle.topic.tags}
       />
 
-      <EditorsPick bundle={bundle} />
+      <EditorsPick item={articleItems[0]} />
 
       {bundle.topic.slug === "management" ? (
         <SalonTransitionLinkCard
@@ -221,7 +261,7 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
         />
       ) : null}
 
-      <MagazineRail title="関連記事" eyebrow="FEATURES" items={articleList.map(articleItem)} />
+      <MagazineRail title="関連記事" eyebrow="FEATURES" items={articleList} />
 
       <MagazineRail title="関連Snap" eyebrow="SNAP" items={bundle.snaps.slice(0, 3).map(snapItem)} portrait />
 

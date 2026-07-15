@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { topicCategoriesForArticle } from "@/lib/articleCategories";
 
 export type ArticleAuthorProfile = {
   id: string;
@@ -19,6 +20,7 @@ export type ArticleRecord = {
   image_path: string | null;
   is_published: boolean | null;
   is_deleted: boolean | null;
+  editor_pick_at?: string | null;
   published_at: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -117,6 +119,30 @@ const articleBaseSelect = `
   updated_at
 `;
 
+const articleSelectWithEditorPick = `
+  id,
+  author_id,
+  title,
+  body,
+  category,
+  image_url,
+  image_path,
+  is_published,
+  is_deleted,
+  editor_pick_at,
+  published_at,
+  created_at,
+  updated_at,
+  profiles:author_id (
+    id,
+    display_name,
+    job_type,
+    salon_name,
+    region,
+    avatar_url
+  )
+`;
+
 const emptyMetrics: ArticleMetrics = {
   like_count: 0,
   thanks_count: 0,
@@ -134,6 +160,11 @@ function errorMessage(error: unknown) {
 
   if (error instanceof Error) return error.message;
   return String(error || "");
+}
+
+function isMissingEditorPickColumnError(error: unknown) {
+  const message = errorMessage(error).toLowerCase();
+  return message.includes("editor_pick_at") || (message.includes("schema cache") && message.includes("articles"));
 }
 
 function normalizeArticles(data: unknown): ArticleWithAuthor[] {
@@ -441,6 +472,167 @@ export async function listUserArticles(supabase: SupabaseClient, userId: string,
       message: errorMessage(error),
     });
     return { articles: [], error };
+  }
+}
+
+export async function listUserArticlesWithEditorPick(supabase: SupabaseClient, userId: string, limit = 20, viewerId?: string | null) {
+  try {
+    const { data, error } = await supabase
+      .from("articles")
+      .select(articleSelectWithEditorPick)
+      .eq("author_id", userId)
+      .eq("is_deleted", false)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("User articles editor pick select failed", {
+        userId,
+        message: error.message,
+      });
+      return listUserArticles(supabase, userId, limit, viewerId);
+    }
+
+    return { articles: await withArticleEngagement(supabase, normalizeArticles(data), viewerId), error };
+  } catch (error) {
+    console.error("User articles editor pick select threw", {
+      userId,
+      message: errorMessage(error),
+    });
+    return listUserArticles(supabase, userId, limit, viewerId);
+  }
+}
+
+export async function listPublishedArticles(supabase: SupabaseClient, limit = 5, viewerId?: string | null) {
+  try {
+    const { data, error } = await supabase
+      .from("articles")
+      .select(articleSelect)
+      .eq("is_published", true)
+      .eq("is_deleted", false)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Published articles joined select failed", {
+        message: error.message,
+      });
+
+      const fallback = await supabase
+        .from("articles")
+        .select(articleBaseSelect)
+        .eq("is_published", true)
+        .eq("is_deleted", false)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (!fallback.error) {
+        return { articles: await withArticleEngagement(supabase, normalizeArticles(fallback.data), viewerId), error: null };
+      }
+
+      console.error("Published articles fallback select failed", {
+        message: fallback.error.message,
+      });
+    }
+
+    return { articles: await withArticleEngagement(supabase, normalizeArticles(data), viewerId), error };
+  } catch (error) {
+    console.error("Published articles select threw", {
+      message: errorMessage(error),
+    });
+    return { articles: [], error };
+  }
+}
+
+export async function listPublishedArticlesByTopic(supabase: SupabaseClient, topicSlug: string, limit = 8, viewerId?: string | null) {
+  const categories = topicCategoriesForArticle(topicSlug);
+  if (categories.length === 0) return { articles: [], error: null };
+
+  try {
+    const { data, error } = await supabase
+      .from("articles")
+      .select(articleSelect)
+      .in("category", categories)
+      .eq("is_published", true)
+      .eq("is_deleted", false)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Topic published articles joined select failed", {
+        topicSlug,
+        message: error.message,
+      });
+
+      const fallback = await supabase
+        .from("articles")
+        .select(articleBaseSelect)
+        .in("category", categories)
+        .eq("is_published", true)
+        .eq("is_deleted", false)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (!fallback.error) {
+        return { articles: await withArticleEngagement(supabase, normalizeArticles(fallback.data), viewerId), error: null };
+      }
+
+      console.error("Topic published articles fallback select failed", {
+        topicSlug,
+        message: fallback.error.message,
+      });
+    }
+
+    return { articles: await withArticleEngagement(supabase, normalizeArticles(data), viewerId), error };
+  } catch (error) {
+    console.error("Topic published articles select threw", {
+      topicSlug,
+      message: errorMessage(error),
+    });
+    return { articles: [], error };
+  }
+}
+
+export async function listEditorPickArticles(supabase: SupabaseClient, limit = 3, viewerId?: string | null) {
+  try {
+    const { data, error } = await supabase
+      .from("articles")
+      .select(articleSelectWithEditorPick)
+      .eq("is_published", true)
+      .eq("is_deleted", false)
+      .not("editor_pick_at", "is", null)
+      .order("editor_pick_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      if (isMissingEditorPickColumnError(error)) {
+        return { articles: [], error: null, missingEditorPickColumn: true };
+      }
+
+      console.error("Editor pick articles select failed", {
+        message: error.message,
+      });
+      return { articles: [], error, missingEditorPickColumn: false };
+    }
+
+    return {
+      articles: await withArticleEngagement(supabase, normalizeArticles(data), viewerId),
+      error,
+      missingEditorPickColumn: false,
+    };
+  } catch (error) {
+    if (isMissingEditorPickColumnError(error)) {
+      return { articles: [], error: null, missingEditorPickColumn: true };
+    }
+
+    console.error("Editor pick articles select threw", {
+      message: errorMessage(error),
+    });
+    return { articles: [], error, missingEditorPickColumn: false };
   }
 }
 
