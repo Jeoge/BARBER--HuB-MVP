@@ -3,7 +3,12 @@
 import { Bell, CheckCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { markAllNotificationsReadAction, markNotificationReadAction } from "@/app/notifications/actions";
+import {
+  getNotificationsSnapshotAction,
+  markAllNotificationsReadAction,
+  markNotificationReadAction,
+} from "@/app/notifications/actions";
+import { dispatchNotificationUnreadCountChanged } from "@/lib/notificationUnreadEvents";
 import {
   notificationActorName,
   notificationHref,
@@ -34,9 +39,16 @@ export function NotificationsList({
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pendingAll, setPendingAll] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function markLocalRead(notificationId: string) {
+  function setSyncedUnreadCount(nextCount: number) {
+    const cleanCount = Math.max(0, nextCount);
+    setUnreadCount(cleanCount);
+    dispatchNotificationUnreadCountChanged(cleanCount);
+  }
+
+  function markLocalRead(notificationId: string, nextUnreadCount: number) {
     setNotifications((current) =>
       current.map((notification) =>
         notification.id === notificationId && notification.read_at == null
@@ -44,23 +56,57 @@ export function NotificationsList({
           : notification
       )
     );
-    setUnreadCount((current) => Math.max(0, current - 1));
+    setSyncedUnreadCount(nextUnreadCount);
+  }
+
+  function markAllLocalRead(nextUnreadCount: number) {
+    const readAt = new Date().toISOString();
+    setNotifications((current) => current.map((notification) => ({ ...notification, read_at: notification.read_at ?? readAt })));
+    setSyncedUnreadCount(nextUnreadCount);
+  }
+
+  async function syncFromServer() {
+    const snapshot = await getNotificationsSnapshotAction();
+
+    if (snapshot.status !== "ok") {
+      dispatchNotificationUnreadCountChanged();
+      return false;
+    }
+
+    setNotifications(snapshot.notifications);
+    setSyncedUnreadCount(snapshot.unreadCount);
+    return true;
   }
 
   function openNotification(notification: AppNotification) {
+    if (pendingId != null || pendingAll) return;
+
     const href = notificationHref(notification);
     const wasUnread = notification.read_at == null;
 
     setPendingId(notification.id);
-    if (wasUnread) markLocalRead(notification.id);
+    setErrorMessage(null);
 
-    startTransition(async () => {
-      try {
-        await markNotificationReadAction(notification.id);
-      } finally {
-        setPendingId(null);
-        router.push(href);
-      }
+    startTransition(() => {
+      void (async () => {
+        try {
+          if (wasUnread) {
+            const result = await markNotificationReadAction(notification.id);
+            if (result.status === "ok") {
+              markLocalRead(notification.id, result.unreadCount);
+            } else if (typeof result.unreadCount === "number") {
+              setSyncedUnreadCount(result.unreadCount);
+            } else {
+              dispatchNotificationUnreadCountChanged();
+            }
+          }
+        } catch {
+          dispatchNotificationUnreadCountChanged();
+        } finally {
+          setPendingId(null);
+          router.push(href);
+        }
+      })();
     });
   }
 
@@ -68,16 +114,31 @@ export function NotificationsList({
     if (unreadCount === 0 || pendingAll) return;
 
     setPendingAll(true);
-    setNotifications((current) => current.map((notification) => ({ ...notification, read_at: notification.read_at ?? new Date().toISOString() })));
-    setUnreadCount(0);
+    setErrorMessage(null);
 
-    startTransition(async () => {
-      try {
-        await markAllNotificationsReadAction();
-      } finally {
-        setPendingAll(false);
-        router.refresh();
-      }
+    startTransition(() => {
+      void (async () => {
+        try {
+          const result = await markAllNotificationsReadAction();
+
+          if (result.status === "ok") {
+            markAllLocalRead(result.unreadCount);
+            router.refresh();
+            return;
+          }
+
+          setErrorMessage(result.message);
+          if (typeof result.unreadCount === "number") {
+            setSyncedUnreadCount(result.unreadCount);
+          }
+          await syncFromServer();
+        } catch {
+          setErrorMessage("通知を既読にできませんでした。");
+          await syncFromServer();
+        } finally {
+          setPendingAll(false);
+        }
+      })();
     });
   }
 
@@ -98,6 +159,11 @@ export function NotificationsList({
           すべて既読
         </button>
       </div>
+      {errorMessage ? (
+        <p role="alert" className="mt-3 rounded-[8px] border border-blush/20 bg-blushSoft/60 px-3 py-2 text-xs font-bold text-blush">
+          {errorMessage}
+        </p>
+      ) : null}
 
       {notifications.length === 0 ? (
         <div className="mt-4 rounded-[8px] border border-line bg-white p-5 text-center shadow-sm">
@@ -112,14 +178,15 @@ export function NotificationsList({
           {notifications.map((notification) => {
             const actorName = notificationActorName(notification);
             const unread = notification.read_at == null;
-            const pending = pendingId === notification.id;
+            const pending = pendingId === notification.id || pendingAll;
+            const disabled = pendingId != null || pendingAll;
 
             return (
               <button
                 key={notification.id}
                 type="button"
                 onClick={() => openNotification(notification)}
-                disabled={pending}
+                disabled={disabled}
                 aria-busy={pending}
                 className={
                   "flex min-h-[4.5rem] w-full items-start gap-3 rounded-[8px] border p-3 text-left transition active:scale-[0.99] disabled:active:scale-100 disabled:cursor-wait " +

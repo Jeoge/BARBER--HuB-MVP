@@ -1,10 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { isMissingNotificationsError } from "@/lib/supabase/notifications";
+import {
+  getUnreadNotificationCount,
+  isMissingNotificationsError,
+  listMyNotifications,
+  type AppNotification,
+} from "@/lib/supabase/notifications";
 import { createClient } from "@/lib/supabase/server";
 
-export type NotificationActionResult = { status: "ok" } | { status: "error"; message: string };
+export type NotificationActionResult =
+  | { status: "ok"; unreadCount: number }
+  | { status: "error"; message: string; unreadCount?: number };
+
+export type NotificationsSnapshotResult =
+  | { status: "ok"; notifications: AppNotification[]; unreadCount: number }
+  | { status: "error"; message: string };
 
 export async function markNotificationReadAction(notificationId: string): Promise<NotificationActionResult> {
   const cleanId = notificationId.trim();
@@ -32,7 +43,7 @@ export async function markNotificationReadAction(notificationId: string): Promis
     .is("read_at", null);
 
   if (error) {
-    if (isMissingNotificationsError(error)) return { status: "ok" };
+    if (isMissingNotificationsError(error)) return { status: "ok", unreadCount: 0 };
 
     console.error("Notification read update failed", {
       notificationId: cleanId,
@@ -43,7 +54,7 @@ export async function markNotificationReadAction(notificationId: string): Promis
   }
 
   revalidatePath("/notifications");
-  return { status: "ok" };
+  return { status: "ok", unreadCount: await getUnreadNotificationCount(supabase) };
 }
 
 export async function markAllNotificationsReadAction(): Promise<NotificationActionResult> {
@@ -68,7 +79,7 @@ export async function markAllNotificationsReadAction(): Promise<NotificationActi
     .is("read_at", null);
 
   if (error) {
-    if (isMissingNotificationsError(error)) return { status: "ok" };
+    if (isMissingNotificationsError(error)) return { status: "ok", unreadCount: 0 };
 
     console.error("Notifications read-all update failed", {
       userId: user.id,
@@ -78,5 +89,28 @@ export async function markAllNotificationsReadAction(): Promise<NotificationActi
   }
 
   revalidatePath("/notifications");
-  return { status: "ok" };
+  return { status: "ok", unreadCount: await getUnreadNotificationCount(supabase) };
+}
+
+export async function getNotificationsSnapshotAction(): Promise<NotificationsSnapshotResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (user == null) {
+    if (userError) {
+      console.error("Notification snapshot auth lookup failed", { message: userError.message });
+    }
+
+    return { status: "error", message: "通知を再取得できませんでした。" };
+  }
+
+  const [{ notifications }, unreadCount] = await Promise.all([
+    listMyNotifications(supabase, 30),
+    getUnreadNotificationCount(supabase),
+  ]);
+
+  return { status: "ok", notifications, unreadCount };
 }

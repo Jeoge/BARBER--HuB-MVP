@@ -5,6 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AuthGateLink } from "./AuthGate";
+import {
+  NOTIFICATION_UNREAD_COUNT_CHANGED,
+  type NotificationUnreadCountChangedDetail,
+} from "@/lib/notificationUnreadEvents";
 import { createClient } from "@/lib/supabase/client";
 import { getUnreadNotificationCount } from "@/lib/supabase/notifications";
 
@@ -48,6 +52,17 @@ function useUnreadNotifications() {
 
     void loadUnreadCount();
 
+    function handleUnreadCountChanged(event: Event) {
+      const detail = event instanceof CustomEvent ? (event.detail as NotificationUnreadCountChangedDetail) : undefined;
+      if (typeof detail?.unreadCount === "number") {
+        setCount(Math.max(0, detail.unreadCount));
+      }
+
+      void loadUnreadCount();
+    }
+
+    window.addEventListener(NOTIFICATION_UNREAD_COUNT_CHANGED, handleUnreadCountChanged);
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(() => {
@@ -56,6 +71,7 @@ function useUnreadNotifications() {
 
     return () => {
       ignore = true;
+      window.removeEventListener(NOTIFICATION_UNREAD_COUNT_CHANGED, handleUnreadCountChanged);
       subscription.unsubscribe();
     };
   }, []);
