@@ -12,6 +12,8 @@ export type SnapComment = {
   body: string;
   created_at: string | null;
   author: SnapCommentAuthor | null;
+  like_count: number;
+  viewer_has_liked: boolean;
 };
 
 export type PublicSnapCommentCount = {
@@ -19,8 +21,84 @@ export type PublicSnapCommentCount = {
   comment_count: number;
 };
 
+type SnapCommentLikeCountRow = {
+  comment_id: string;
+  like_count: number | string;
+};
+
+type SnapCommentLikeRow = {
+  comment_id: string;
+  user_id: string;
+};
+
+function errorCode(error: unknown) {
+  return error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : "";
+}
+
+function errorMessage(error: unknown) {
+  if (error && typeof error === "object" && "message" in error && typeof error.message === "string") return error.message;
+  if (error instanceof Error) return error.message;
+  return String(error || "");
+}
+
+export function isMissingSnapCommentLikesError(error: unknown) {
+  const message = errorMessage(error).toLowerCase();
+
+  return (
+    errorCode(error) === "PGRST202" ||
+    errorCode(error) === "PGRST205" ||
+    ((message.includes("snap_comment_likes") || message.includes("get_public_snap_comment_like_counts")) &&
+      (message.includes("could not find") ||
+        message.includes("schema cache") ||
+        message.includes("does not exist") ||
+        message.includes("relation") ||
+        message.includes("not found")))
+  );
+}
+
+export async function listPublicSnapCommentLikeCounts(supabase: SupabaseClient, commentIds: string[]) {
+  if (commentIds.length === 0) return new Map<string, number>();
+
+  const { data, error } = await supabase.rpc("get_public_snap_comment_like_counts", {
+    p_comment_ids: commentIds,
+  });
+
+  if (error) {
+    if (!isMissingSnapCommentLikesError(error)) {
+      console.error("Public snap comment like counts RPC failed", { message: error.message });
+    }
+
+    return new Map<string, number>();
+  }
+
+  return new Map(
+    ((data ?? []) as SnapCommentLikeCountRow[]).map((row) => [row.comment_id, Number(row.like_count ?? 0)])
+  );
+}
+
+async function listViewerSnapCommentLikes(supabase: SupabaseClient, commentIds: string[], viewerId?: string | null) {
+  if (viewerId == null || commentIds.length === 0) return new Set<string>();
+
+  const { data, error } = await supabase
+    .from("snap_comment_likes")
+    .select("comment_id, user_id")
+    .in("comment_id", commentIds)
+    .eq("user_id", viewerId)
+    .returns<SnapCommentLikeRow[]>();
+
+  if (error) {
+    if (!isMissingSnapCommentLikesError(error)) {
+      console.error("Viewer snap comment likes select failed", { message: error.message });
+    }
+
+    return new Set<string>();
+  }
+
+  return new Set((data ?? []).map((row) => row.comment_id));
+}
+
 /** Snapのコメント一覧（古い順）＋投稿者プロフィール。 */
-export async function listSnapComments(supabase: SupabaseClient, snapId: string): Promise<SnapComment[]> {
+export async function listSnapComments(supabase: SupabaseClient, snapId: string, viewerId?: string | null): Promise<SnapComment[]> {
   const { data: rows, error } = await supabase
     .from("snap_comments")
     .select("id, snap_id, user_id, body, created_at")
@@ -34,19 +112,24 @@ export async function listSnapComments(supabase: SupabaseClient, snapId: string)
 
   const comments = (rows ?? []) as Omit<SnapComment, "author">[];
   const userIds = Array.from(new Set(comments.map((comment) => comment.user_id)));
+  const commentIds = comments.map((comment) => comment.id);
 
-  if (userIds.length === 0) return [];
+  if (userIds.length === 0 || commentIds.length === 0) return [];
 
-  const { data: profiles, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, display_name, avatar_url")
-    .in("id", userIds);
+  const [profileResult, likeCounts, viewerLikedCommentIds] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", userIds),
+    listPublicSnapCommentLikeCounts(supabase, commentIds),
+    listViewerSnapCommentLikes(supabase, commentIds, viewerId),
+  ]);
 
-  if (profileError) {
-    console.error("comment authors fetch failed", { snapId, message: profileError.message });
+  if (profileResult.error) {
+    console.error("comment authors fetch failed", { snapId, message: profileResult.error.message });
   }
 
-  const byId = new Map((profiles ?? []).map((profile) => [profile.id as string, profile]));
+  const byId = new Map((profileResult.data ?? []).map((profile) => [profile.id as string, profile]));
 
   return comments.map((comment) => {
     const profile = byId.get(comment.user_id);
@@ -58,6 +141,8 @@ export async function listSnapComments(supabase: SupabaseClient, snapId: string)
             avatar_url: (profile.avatar_url as string | null) ?? null,
           }
         : null,
+      like_count: likeCounts.get(comment.id) ?? 0,
+      viewer_has_liked: viewerLikedCommentIds.has(comment.id),
     };
   });
 }

@@ -3,7 +3,14 @@
 import { Bell, Home, Search, UserCircle, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { AuthGateLink } from "./AuthGate";
+import {
+  NOTIFICATION_UNREAD_COUNT_CHANGED,
+  type NotificationUnreadCountChangedDetail,
+} from "@/lib/notificationUnreadEvents";
+import { createClient } from "@/lib/supabase/client";
+import { getUnreadNotificationCountResult } from "@/lib/supabase/notifications";
 
 const navItems = [
   { label: "ホーム", href: "/", icon: Home },
@@ -13,8 +20,83 @@ const navItems = [
   { label: "マイページ", href: "/mypage", icon: UserCircle, auth: true },
 ];
 
+function badgeLabel(count: number) {
+  return count > 99 ? "99+" : String(count);
+}
+
+function useUnreadNotifications() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let ignore = false;
+    const supabase = createClient();
+
+    async function loadUnreadCount() {
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+        if (ignore) return;
+
+        if (sessionError) {
+          console.error("Notification unread session lookup failed", { message: sessionError.message });
+          return;
+        }
+
+        if (sessionData.session == null) {
+          setCount(0);
+          return;
+        }
+
+        const { data, error } = await supabase.auth.getUser();
+
+        if (ignore) return;
+
+        if (error || data.user == null) {
+          if (error) {
+            console.error("Notification unread user lookup failed", { message: error.message });
+          }
+          return;
+        }
+
+        const unreadResult = await getUnreadNotificationCountResult(supabase);
+        if (!ignore && unreadResult.status !== "error") setCount(unreadResult.count);
+      } catch (error) {
+        console.error("Notification unread count refresh failed", { error });
+      }
+    }
+
+    void loadUnreadCount();
+
+    function handleUnreadCountChanged(event: Event) {
+      const detail = event instanceof CustomEvent ? (event.detail as NotificationUnreadCountChangedDetail) : undefined;
+      if (typeof detail?.unreadCount === "number") {
+        setCount(Math.max(0, detail.unreadCount));
+      }
+
+      void loadUnreadCount();
+    }
+
+    window.addEventListener(NOTIFICATION_UNREAD_COUNT_CHANGED, handleUnreadCountChanged);
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      void loadUnreadCount();
+    });
+
+    return () => {
+      ignore = true;
+      window.removeEventListener(NOTIFICATION_UNREAD_COUNT_CHANGED, handleUnreadCountChanged);
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  return count;
+}
+
 export function BottomNavigation() {
   const pathname = usePathname();
+  const unreadNotifications = useUnreadNotifications();
 
   return (
     <nav className="fixed bottom-0 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-line/60 bg-white/88 px-3 pb-[max(env(safe-area-inset-bottom),0.45rem)] pt-1.5 shadow-[0_-6px_14px_rgba(17,17,17,0.025)] backdrop-blur-sm">
@@ -27,7 +109,14 @@ export function BottomNavigation() {
 
           const content = (
             <>
-              <Icon aria-hidden="true" size={17} strokeWidth={active ? 2.25 : 1.9} />
+              <span className="relative grid h-5 w-5 place-items-center">
+                <Icon aria-hidden="true" size={17} strokeWidth={active ? 2.25 : 1.9} />
+                {href === "/notifications" && unreadNotifications > 0 ? (
+                  <span className="absolute -right-2 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-blush px-1 text-[0.56rem] font-black leading-none text-white">
+                    {badgeLabel(unreadNotifications)}
+                  </span>
+                ) : null}
+              </span>
               <span>{displayLabel ?? label}</span>
             </>
           );
