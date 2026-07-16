@@ -4,6 +4,7 @@ import { LockKeyhole, X } from "lucide-react";
 import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { backRoomTheme } from "@/lib/backRoomTheme";
 import { createClient } from "@/lib/supabase/client";
 
 type GateKind = "default" | "backyard" | "jobs" | "succession";
@@ -85,13 +86,14 @@ function AuthRequiredModal({ kind = "default", targetHref, onClose }: AuthRequir
   const next = targetHref ?? defaultNextForKind(kind);
   const signupHref = pathWithParams("/signup", { next });
   const loginHref = pathWithParams("/login", { next });
+  const isBackroomGate = kind === "backyard";
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-ink/35 px-4 pb-4">
       <div className="w-full max-w-[398px] rounded-[8px] bg-white p-4 shadow-soft">
         <div className="flex items-start justify-between gap-3">
           <div className="flex gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blushSoft text-blush">
+            <div className={"grid h-10 w-10 shrink-0 place-items-center rounded-full " + (isBackroomGate ? backRoomTheme.iconSurface : "bg-blushSoft text-blush")}>
               <LockKeyhole aria-hidden="true" size={20} />
             </div>
             <div>
@@ -104,7 +106,7 @@ function AuthRequiredModal({ kind = "default", targetHref, onClose }: AuthRequir
           </button>
         </div>
         <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-          <Link href={signupHref} className="inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white transition active:scale-[0.98] active:opacity-70">
+          <Link href={signupHref} className={"inline-flex h-11 items-center justify-center rounded-[8px] px-4 text-sm font-black transition active:scale-[0.98] active:opacity-70 " + (isBackroomGate ? backRoomTheme.primaryButton : "bg-blush text-white")}>
             {copy.cta}
           </Link>
           <Link href={loginHref} className="inline-flex h-11 items-center justify-center rounded-[8px] border border-line bg-white px-4 text-sm font-black text-ink transition active:scale-[0.98] active:opacity-70">
@@ -181,12 +183,13 @@ export function AuthGateButton({ children, className, kind = "default", ariaLabe
 export function SignupRequiredCard({ kind = "default" }: { kind?: GateKind }) {
   const copy = copyMap[kind];
   const { isLoggedIn, userEmail } = useAuthState();
+  const isBackroomGate = kind === "backyard";
 
   if (isLoggedIn) {
     return (
       <section className="px-4 pt-5">
         <div className="rounded-[8px] border border-line bg-white p-5 shadow-sm">
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-blushSoft text-blush">
+          <div className={"grid h-12 w-12 place-items-center rounded-full " + (isBackroomGate ? backRoomTheme.iconSurface : "bg-blushSoft text-blush")}>
             <LockKeyhole aria-hidden="true" size={23} />
           </div>
           <h1 className="mt-4 text-[1.5rem] font-black leading-tight text-ink">ログイン済みです</h1>
@@ -203,13 +206,13 @@ export function SignupRequiredCard({ kind = "default" }: { kind?: GateKind }) {
 
   return (
     <section className="px-4 pt-5">
-      <div className="rounded-[8px] border border-blush/20 bg-white p-5 shadow-sm">
-        <div className="grid h-12 w-12 place-items-center rounded-full bg-blushSoft text-blush">
+      <div className={"rounded-[8px] bg-white p-5 " + (isBackroomGate ? "border " + backRoomTheme.threadCard : "border border-blush/20 shadow-sm")}>
+        <div className={"grid h-12 w-12 place-items-center rounded-full " + (isBackroomGate ? backRoomTheme.iconSurface : "bg-blushSoft text-blush")}>
           <LockKeyhole aria-hidden="true" size={23} />
         </div>
         <h1 className="mt-4 text-[1.5rem] font-black leading-tight text-ink">{copy.title}</h1>
         <p className="mt-2 text-sm font-medium leading-relaxed text-mute">{copy.body}</p>
-        <Link href={copy.href} className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-[8px] bg-blush text-sm font-black text-white">
+        <Link href={copy.href} className={"mt-4 inline-flex h-12 w-full items-center justify-center rounded-[8px] text-sm font-black " + (isBackroomGate ? backRoomTheme.primaryButton : "bg-blush text-white")}>
           {copy.cta}
         </Link>
         <Link href="/login" className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-[8px] border border-line bg-white text-sm font-black text-ink">

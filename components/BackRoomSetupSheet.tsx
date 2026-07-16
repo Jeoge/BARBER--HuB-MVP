@@ -3,6 +3,7 @@
 import { CheckCircle2, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { backRoomTheme } from "@/lib/backRoomTheme";
 
 type RoleAccess = "full" | "student" | "official";
 
@@ -72,7 +73,7 @@ export function BackRoomSetupSheet() {
 
   return (
     <section className="grid gap-4 px-4 pt-4">
-      <div className="rounded-[8px] border border-blush/20 bg-white p-4 shadow-sm">
+      <div className={"rounded-[8px] border bg-white p-4 " + backRoomTheme.threadCard}>
         <h2 className="text-lg font-black leading-tight text-ink">Back Roomに参加する</h2>
         <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
           Back Roomは、理容師を中心に、理美容業界の人が営業後にゆるく話せるコミュニティです。
@@ -85,7 +86,7 @@ export function BackRoomSetupSheet() {
           <label className="grid gap-2">
             <span className="text-sm font-black text-ink">Back Room用ニックネーム</span>
             <input
-              className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none focus:border-blush"
+              className={"h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none " + backRoomTheme.focusRing}
               placeholder="例：営業後の理容師"
             />
           </label>
@@ -93,7 +94,7 @@ export function BackRoomSetupSheet() {
           <label className="grid gap-2">
             <span className="text-sm font-black text-ink">職種</span>
             <select
-              className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none focus:border-blush"
+              className={"h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none " + backRoomTheme.focusRing}
               value={role}
               onChange={(event) => setRole(event.target.value)}
             >
@@ -105,7 +106,7 @@ export function BackRoomSetupSheet() {
 
           <label className="grid gap-2">
             <span className="text-sm font-black text-ink">地域</span>
-            <select className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none focus:border-blush" defaultValue="九州・沖縄">
+            <select className={"h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none " + backRoomTheme.focusRing} defaultValue="九州・沖縄">
               {areaOptions.map((area) => (
                 <option key={area}>{area}</option>
               ))}
@@ -114,9 +115,9 @@ export function BackRoomSetupSheet() {
         </div>
       </div>
 
-      <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-3">
+      <div className={"rounded-[8px] p-3 " + backRoomTheme.notice}>
         <div className="flex items-center gap-2 text-sm font-black text-ink">
-          <ShieldCheck aria-hidden="true" size={18} className="text-blush" />
+          <ShieldCheck aria-hidden="true" size={18} className={backRoomTheme.accentText} />
           参加前の確認
         </div>
         <div className="mt-3 grid gap-2.5">
@@ -125,7 +126,7 @@ export function BackRoomSetupSheet() {
               type="checkbox"
               checked={industryChecked}
               onChange={(event) => setIndustryChecked(event.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-blush"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[#18bfe4]"
             />
             私は理容師・美容師・理美容学生、または理美容業界関係者です。
           </label>
@@ -134,7 +135,7 @@ export function BackRoomSetupSheet() {
               type="checkbox"
               checked={rulesChecked}
               onChange={(event) => setRulesChecked(event.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-blush"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[#18bfe4]"
             />
             個人攻撃、晒し、誹謗中傷をしません。
           </label>
@@ -143,12 +144,12 @@ export function BackRoomSetupSheet() {
               type="checkbox"
               checked={rulesReadChecked}
               onChange={(event) => setRulesReadChecked(event.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-blush"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[#18bfe4]"
             />
             Back Room Rulesを確認しました。
           </label>
         </div>
-        <Link href="/backroom/rules" className="mt-3 inline-flex text-xs font-black text-blush">
+        <Link href="/backroom/rules" className={"mt-3 inline-flex text-xs font-black " + backRoomTheme.accentText}>
           Back Room Rulesを確認する
         </Link>
       </div>
@@ -162,7 +163,7 @@ export function BackRoomSetupSheet() {
       </div>
 
       {canEnter ? (
-        <Link href={copy.href} className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+        <Link href={copy.href} className={"inline-flex h-12 items-center justify-center gap-2 rounded-[8px] text-sm font-black " + backRoomTheme.primaryButton}>
           <CheckCircle2 aria-hidden="true" size={18} />
           {selectedRole.access === "full" ? "Back Roomに入る" : copy.cta}
         </Link>

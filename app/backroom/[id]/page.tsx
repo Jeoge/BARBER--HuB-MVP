@@ -5,6 +5,7 @@ import { BackroomSetupRequiredCard } from "@/components/BackroomSetupRequiredCar
 import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
+import { backRoomTheme } from "@/lib/backRoomTheme";
 import {
   backroomAuthorName,
   backroomCommentAuthorName,
@@ -52,7 +53,7 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
 
   if (user == null) {
     return (
-      <PageChrome>
+      <PageChrome variant="backroom">
         <section className="px-4 pt-4">
           <Link href="/backroom" className="inline-flex items-center gap-1.5 text-sm font-black text-ink">
             <ArrowLeft aria-hidden="true" size={17} />
@@ -68,7 +69,7 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
 
   if (backroomProfile == null) {
     return (
-      <PageChrome>
+      <PageChrome variant="backroom">
         <section className="px-4 pt-4">
           <Link href="/backroom" className="inline-flex items-center gap-1.5 text-sm font-black text-ink transition active:scale-[0.98]">
             <ArrowLeft aria-hidden="true" size={17} />
@@ -84,7 +85,7 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
 
   if (post == null) {
     return (
-      <PageChrome>
+      <PageChrome variant="backroom">
         <section className="px-4 pt-4">
           <Link href="/backroom" className="inline-flex items-center gap-1.5 text-sm font-black text-ink">
             <ArrowLeft aria-hidden="true" size={17} />
@@ -110,7 +111,7 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
   const authorName = backroomAuthorName(post);
 
   return (
-    <PageChrome>
+    <PageChrome variant="backroom">
       <section className="px-4 pt-4">
         <Link href={`/backroom?category=${encodeURIComponent(normalizeBackroomCategory(post.category))}`} className="inline-flex items-center gap-1.5 text-sm font-black text-ink transition active:scale-[0.98]">
           <ArrowLeft aria-hidden="true" size={17} />
@@ -120,10 +121,10 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
 
       <article className="px-4 pt-5">
         {query?.posted === "1" ? (
-          <div className="mb-3 rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-sm font-black text-ink">投稿しました。</div>
+          <div className={"mb-3 rounded-[8px] p-3 text-sm font-black text-ink " + backRoomTheme.notice}>投稿しました。</div>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-blushSoft px-2.5 py-1 text-[0.68rem] font-black text-blush">{normalizeBackroomCategory(post.category)}</span>
+          <span className={"rounded-full px-2.5 py-1 text-[0.68rem] font-black " + backRoomTheme.tag}>{normalizeBackroomCategory(post.category)}</span>
           <span className="text-xs font-bold text-mute">{backroomDateLabel(post)}</span>
           <span className="text-xs font-bold text-mute">コメント {comments.length}</span>
         </div>
@@ -145,12 +146,12 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
       <section className="px-4 pt-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="inline-flex items-center gap-2 text-base font-black text-ink">
-            <MessageCircle aria-hidden="true" size={18} className="text-blush" />
+            <MessageCircle aria-hidden="true" size={18} className={backRoomTheme.accentText} />
             コメント {comments.length}
           </h2>
         </div>
         {query?.comment === "posted" ? (
-          <div className="mt-3 rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-sm font-black text-ink">コメントしました。</div>
+          <div className={"mt-3 rounded-[8px] p-3 text-sm font-black text-ink " + backRoomTheme.notice}>コメントしました。</div>
         ) : null}
         {commentsError ? (
           <div className="mt-3 rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
@@ -160,7 +161,7 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
         <div className="mt-3 grid gap-2.5">
           {comments.length === 0 ? (
             <div className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-blushSoft text-blush">
+              <div className={"grid h-9 w-9 place-items-center rounded-full " + backRoomTheme.iconSurface}>
                 <UserRound aria-hidden="true" size={17} />
               </div>
               <p className="mt-2 text-sm font-black text-ink">まだコメントはありません</p>
@@ -187,11 +188,11 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
               rows={4}
               maxLength={1000}
               required
-              className="resize-none rounded-[8px] border border-line bg-neutral-50 px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush focus:bg-white"
+              className={"resize-none rounded-[8px] border border-line bg-neutral-50 px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:bg-white " + backRoomTheme.focusRing}
               placeholder="相談、経験共有、雑談を気軽に残してください。"
             />
           </label>
-          <LoadingSubmitButton pendingText="コメント中..." className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+          <LoadingSubmitButton pendingText="コメント中..." className={"mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] text-sm font-black " + backRoomTheme.primaryButton}>
             <Send aria-hidden="true" size={16} />
             コメント投稿
           </LoadingSubmitButton>

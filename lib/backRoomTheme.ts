@@ -1,0 +1,18 @@
+export const backRoomTheme = {
+  page: "back-room-page",
+  hero: "back-room-hero",
+  badge: "back-room-badge",
+  badgeIcon: "back-room-badge-icon",
+  primaryButton: "back-room-primary-button",
+  activeChip: "back-room-active-chip",
+  inactiveChip: "back-room-inactive-chip",
+  tag: "back-room-tag",
+  threadCard: "back-room-thread-card",
+  notice: "back-room-notice",
+  iconSurface: "back-room-icon-surface",
+  focusRing: "back-room-focus-ring",
+  accentText: "back-room-accent-text",
+  fabGradient: "back-room-fab-gradient",
+  logoIcon: "back-room-logo-icon",
+  logoHub: "back-room-logo-hub",
+} as const;

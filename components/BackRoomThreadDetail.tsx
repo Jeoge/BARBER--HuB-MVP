@@ -3,6 +3,7 @@
 import { Flag, LockKeyhole, MessageCircle, RefreshCw, Send } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { backRoomTheme } from "@/lib/backRoomTheme";
 import {
   BACK_ROOM_COMMENTS_STEP,
   BACK_ROOM_COMMENT_LIMIT,
@@ -70,7 +71,7 @@ export function BackRoomThreadDetail({ thread }: { thread: BackyardPost }) {
     <>
       <article className="px-4 pt-5">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="rounded-full bg-blushSoft px-2.5 py-1 text-[0.68rem] font-black text-blush">{thread.category}</span>
+          <span className={"rounded-full px-2.5 py-1 text-[0.68rem] font-black " + backRoomTheme.tag}>{thread.category}</span>
           {label ? <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-[0.64rem] font-black text-mute">{label}</span> : null}
         </div>
         <h1 className="mt-3 text-[1.45rem] font-black leading-tight text-ink">{thread.title ?? thread.body}</h1>
@@ -83,7 +84,7 @@ export function BackRoomThreadDetail({ thread }: { thread: BackyardPost }) {
           <span>{thread.comments}コメント</span>
         </div>
 
-        <div className="mt-4 rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-[0.78rem] font-black leading-relaxed text-ink">
+        <div className={"mt-4 rounded-[8px] p-3 text-[0.78rem] font-black leading-relaxed text-ink " + backRoomTheme.notice}>
           Back Room投稿です。表プロフィールとは別のニックネームで、落ち着いて会話します。
         </div>
 
@@ -103,7 +104,7 @@ export function BackRoomThreadDetail({ thread }: { thread: BackyardPost }) {
       <section className="px-4 pt-5">
         <div className="rounded-[8px] border border-line bg-white p-3">
           <div className="flex items-center gap-2 text-sm font-black text-ink">
-            <MessageCircle aria-hidden="true" size={17} className="text-blush" />
+            <MessageCircle aria-hidden="true" size={17} className={backRoomTheme.accentText} />
             コメント
           </div>
           <p className="mt-1 text-xs font-medium leading-relaxed text-mute">
@@ -142,7 +143,7 @@ export function BackRoomThreadDetail({ thread }: { thread: BackyardPost }) {
         ) : isLocked ? (
           <div className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2 text-sm font-black text-ink">
-              <LockKeyhole aria-hidden="true" size={17} className="text-blush" />
+              <LockKeyhole aria-hidden="true" size={17} className={backRoomTheme.accentText} />
               このスレッドはロック中です
             </div>
             <p className="mt-1 text-xs font-medium leading-relaxed text-mute">運営確認中のため、コメント投稿を一時停止しています。</p>
@@ -153,11 +154,11 @@ export function BackRoomThreadDetail({ thread }: { thread: BackyardPost }) {
               <span className="text-sm font-black text-ink">コメントする</span>
               <textarea
                 rows={4}
-                className="resize-none rounded-[8px] border border-line bg-neutral-50 px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush focus:bg-white"
+                className={"resize-none rounded-[8px] border border-line bg-neutral-50 px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:bg-white " + backRoomTheme.focusRing}
                 placeholder="相談、経験共有、雑談は歓迎です。個人名・店舗名を出した攻撃や晒しは禁止です。"
               />
             </label>
-            <button type="button" className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+            <button type="button" className={"mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] text-sm font-black " + backRoomTheme.primaryButton}>
               <Send aria-hidden="true" size={16} />
               コメント投稿
             </button>

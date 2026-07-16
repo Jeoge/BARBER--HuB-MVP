@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { pathWithParams, safeNextPath } from "@/lib/auth/redirects";
+import { backRoomTheme } from "@/lib/backRoomTheme";
 import { getBackroomProfile } from "@/lib/supabase/backroom";
 import { createClient } from "@/lib/supabase/server";
 import { saveBackroomProfileAction } from "./actions";
@@ -34,23 +35,23 @@ export default async function BackroomSetupPage({ searchParams }: BackroomSetupP
   const { profile, error } = await getBackroomProfile(supabase, user.id);
 
   return (
-    <PageChrome>
+    <PageChrome variant="backroom">
       <section className="px-4 pt-4">
         <Link href="/backroom" className="inline-flex items-center gap-1.5 text-sm font-black text-ink transition active:scale-[0.98]">
           <ArrowLeft aria-hidden="true" size={17} />
           Back Roomへ戻る
         </Link>
-        <div className="mt-4 rounded-[10px] border border-blush/20 bg-white p-4 shadow-sm">
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-blushSoft text-blush ring-4 ring-blush/10">
+        <div className={"mt-4 rounded-[10px] border bg-white p-4 " + backRoomTheme.threadCard}>
+          <div className={"grid h-12 w-12 place-items-center rounded-full " + backRoomTheme.iconSurface}>
             <LockKeyhole aria-hidden="true" size={24} />
           </div>
-          <p className="mt-3 text-[0.68rem] font-black uppercase tracking-[0.14em] text-blush">BACK ROOM SETUP</p>
+          <p className={"mt-3 text-[0.68rem] font-black uppercase tracking-[0.14em] " + backRoomTheme.accentText}>BACK ROOM SETUP</p>
           <h1 className="mt-1 text-[1.5rem] font-black leading-tight text-ink">Back Room参加設定</h1>
           <p className="mt-2 text-[0.86rem] font-medium leading-relaxed text-mute">
             Back Roomでは、通常プロフィールとは別のニックネームで参加できます。
           </p>
-          <div className="mt-3 flex items-start gap-2 rounded-[8px] bg-blushSoft p-3">
-            <UserRoundPlus aria-hidden="true" size={17} className="mt-0.5 shrink-0 text-blush" />
+          <div className={"mt-3 flex items-start gap-2 rounded-[8px] p-3 " + backRoomTheme.notice}>
+            <UserRoundPlus aria-hidden="true" size={17} className={"mt-0.5 shrink-0 " + backRoomTheme.accentText} />
             <p className="text-[0.78rem] font-black leading-relaxed text-ink">
               ニックネームを設定すると、カテゴリー内のスレッド一覧、詳細、コメントが見られるようになります。
             </p>
@@ -79,13 +80,13 @@ export default async function BackroomSetupPage({ searchParams }: BackroomSetupP
             maxLength={20}
             defaultValue={profile?.nickname ?? ""}
             placeholder="例：営業後の理容師"
-            className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none focus:border-blush"
+            className={"h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none " + backRoomTheme.focusRing}
           />
           <span className="text-[0.68rem] font-semibold leading-relaxed text-mute">20文字以内。通常プロフィールの表示名や店舗名とは別に保存されます。</span>
         </label>
         <LoadingSubmitButton
           pendingText="保存中..."
-          className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink text-sm font-black text-white"
+          className={"inline-flex h-12 items-center justify-center gap-2 rounded-[8px] text-sm font-black " + backRoomTheme.primaryButton}
         >
           <Save aria-hidden="true" size={17} />
           保存してBack Roomへ

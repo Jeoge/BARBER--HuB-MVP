@@ -2,16 +2,21 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { PageChrome } from "./PageChrome";
 import { PageHeaderBlock } from "./PageHeaderBlock";
+import { backRoomTheme } from "@/lib/backRoomTheme";
 import type { LegalPage } from "@/lib/legalPages";
 
 type LegalPageContentProps = {
   page: LegalPage;
+  variant?: "default" | "backroom";
 };
 
-export function LegalPageContent({ page }: LegalPageContentProps) {
+export function LegalPageContent({ page, variant = "default" }: LegalPageContentProps) {
+  const isBackroom = variant === "backroom";
+  const accentClass = isBackroom ? backRoomTheme.accentText : "text-blush";
+
   return (
-    <PageChrome>
-      <PageHeaderBlock eyebrow={page.eyebrow} title={page.title} body={page.body} />
+    <PageChrome variant={variant}>
+      <PageHeaderBlock eyebrow={page.eyebrow} title={page.title} body={page.body} variant={variant} />
 
       <section className="grid gap-4 px-4 pt-5">
         {page.sections.map((section) => (
@@ -20,7 +25,7 @@ export function LegalPageContent({ page }: LegalPageContentProps) {
             <div className="mt-3 grid gap-2.5">
               {section.items.map((item) => (
                 <div key={item} className="flex items-start gap-2">
-                  <CheckCircle2 aria-hidden="true" size={16} className="mt-0.5 shrink-0 text-blush" />
+                  <CheckCircle2 aria-hidden="true" size={16} className={"mt-0.5 shrink-0 " + accentClass} />
                   <p className="text-[0.84rem] font-medium leading-relaxed text-ink">{item}</p>
                 </div>
               ))}
@@ -42,8 +47,8 @@ export function LegalPageContent({ page }: LegalPageContentProps) {
       ) : null}
 
       <section className="px-4 pt-5">
-        <div className="flex items-start gap-2 rounded-[8px] border border-blush/20 bg-blushSoft p-3">
-          <AlertCircle aria-hidden="true" size={17} className="mt-0.5 shrink-0 text-blush" />
+        <div className={"flex items-start gap-2 rounded-[8px] p-3 " + (isBackroom ? backRoomTheme.notice : "border border-blush/20 bg-blushSoft")}>
+          <AlertCircle aria-hidden="true" size={17} className={"mt-0.5 shrink-0 " + accentClass} />
           <p className="text-[0.72rem] font-bold leading-relaxed text-mute">
             内容はサービスの運用状況に合わせて更新する場合があります。重要な判断が必要な場合は、当事者間で確認してください。
           </p>
