@@ -4,6 +4,7 @@ import { BackroomSetupRequiredCard } from "@/components/BackroomSetupRequiredCar
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { PendingLink } from "@/components/PendingLink";
+import { backRoomTheme } from "@/lib/backRoomTheme";
 import {
   BACKROOM_CATEGORIES,
   backroomAuthorMeta,
@@ -40,10 +41,10 @@ function AuthorLine({ post }: { post: BackroomPostWithAuthor }) {
 
 function BackroomCard({ post }: { post: BackroomPostWithAuthor }) {
   return (
-    <article className="rounded-[10px] border border-line bg-white p-4 shadow-sm">
+    <article className={"rounded-[10px] border bg-white p-4 " + backRoomTheme.threadCard}>
       <PendingLink href={`/backroom/${post.id}`} pendingLabel="開いています..." className="block">
         <div className="flex items-start justify-between gap-3">
-          <span className="rounded-full bg-blushSoft px-2.5 py-1 text-[0.66rem] font-black text-blush">{normalizeBackroomCategory(post.category)}</span>
+          <span className={"rounded-full px-2.5 py-1 text-[0.66rem] font-black " + backRoomTheme.tag}>{normalizeBackroomCategory(post.category)}</span>
           <span className="shrink-0 text-[0.66rem] font-bold text-mute">{backroomDateLabel(post)}</span>
         </div>
         <h2 className="mt-3 line-clamp-2 text-[1rem] font-black leading-snug text-ink">{post.title}</h2>
@@ -72,11 +73,12 @@ export default async function BackroomPage({ searchParams }: BackroomPageProps) 
 
   if (user == null) {
     return (
-      <PageChrome>
+      <PageChrome variant="backroom">
         <PageHeaderBlock
           eyebrow="BACK ROOM"
           title="Back Room"
           body="理美容業界の営業後コミュニティ。"
+          variant="backroom"
         />
         <SignupRequiredCard kind="backyard" />
       </PageChrome>
@@ -87,11 +89,12 @@ export default async function BackroomPage({ searchParams }: BackroomPageProps) 
 
   if (backroomProfile == null) {
     return (
-      <PageChrome>
+      <PageChrome variant="backroom">
         <PageHeaderBlock
           eyebrow="BACK ROOM"
           title="Back Room"
           body="理美容業界の営業後コミュニティ。参加には通常ログインに加えて、Back Room専用ニックネームが必要です。"
+          variant="backroom"
         />
         <BackroomSetupRequiredCard next="/backroom" />
       </PageChrome>
@@ -101,21 +104,18 @@ export default async function BackroomPage({ searchParams }: BackroomPageProps) 
   const { posts, error } = await listBackroomPosts(supabase, 40, selectedCategory);
 
   return (
-    <PageChrome>
+    <PageChrome variant="backroom">
       <section className="px-4 pt-5">
-        <div className="rounded-[10px] bg-ink p-4 text-white">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[0.64rem] font-black shadow-[0_0_0_3px_rgba(255,59,134,0.12)]">
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-white/12 text-white ring-2 ring-blush/35">
+        <div className={"rounded-[10px] p-4 text-white " + backRoomTheme.hero}>
+          <div className={"inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[0.64rem] font-black " + backRoomTheme.badge}>
+            <span className={"grid h-6 w-6 place-items-center rounded-full " + backRoomTheme.badgeIcon}>
               <LockKeyhole aria-hidden="true" size={15} strokeWidth={2.6} />
             </span>
             会員限定
           </div>
           <h1 className="editorial-serif mt-3 text-[1.8rem] leading-tight">Back Room</h1>
-          <p className="mt-2 text-[0.88rem] font-semibold leading-relaxed text-white/72">理美容業界の営業後コミュニティ</p>
-          <p className="mt-2 text-sm font-medium leading-relaxed text-white/68">
-            営業後に、少しだけ本音で話せる場所。経営、技術、独立、スタッフ、集客、STU、アシスタント、趣味の話を気軽に残せます。
-          </p>
-          <PendingLink href="/post/backroom" pendingLabel="投稿画面へ..." className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-blush text-sm font-black text-white">
+          <p className="mt-2 text-[0.88rem] font-semibold leading-relaxed text-white/88">理美容業界の営業後コミュニティ</p>
+          <PendingLink href="/post/backroom" pendingLabel="投稿画面へ..." className={"mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] text-sm font-black " + backRoomTheme.primaryButton}>
             <Plus aria-hidden="true" size={17} />
             スレッドを立てる
           </PendingLink>
@@ -128,7 +128,7 @@ export default async function BackroomPage({ searchParams }: BackroomPageProps) 
             href="/backroom"
             className={
               "shrink-0 rounded-full px-3 py-1.5 text-[0.66rem] font-black " +
-              (selectedCategory == null ? "bg-blush text-white" : "border border-line bg-white text-ink/76")
+              (selectedCategory == null ? backRoomTheme.activeChip : backRoomTheme.inactiveChip)
             }
           >
             すべて
@@ -139,7 +139,7 @@ export default async function BackroomPage({ searchParams }: BackroomPageProps) 
               href={`/backroom?category=${encodeURIComponent(category)}`}
               className={
                 "shrink-0 rounded-full px-3 py-1.5 text-[0.66rem] font-black " +
-                (selectedCategory === category ? "bg-blush text-white" : "border border-line bg-white text-ink/76")
+                (selectedCategory === category ? backRoomTheme.activeChip : backRoomTheme.inactiveChip)
               }
             >
               {category}
@@ -150,10 +150,10 @@ export default async function BackroomPage({ searchParams }: BackroomPageProps) 
 
       <section className="grid gap-3 px-4 pt-4">
         {params?.posted === "1" ? (
-          <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-sm font-black text-ink">スレッドを作成しました。</div>
+          <div className={"rounded-[8px] p-3 text-sm font-black text-ink " + backRoomTheme.notice}>スレッドを作成しました。</div>
         ) : null}
         {params?.joined === "1" ? (
-          <div className="rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-sm font-black text-ink">Back Room参加設定を保存しました。</div>
+          <div className={"rounded-[8px] p-3 text-sm font-black text-ink " + backRoomTheme.notice}>Back Room参加設定を保存しました。</div>
         ) : null}
         {error ? (
           <div className="rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
@@ -161,13 +161,13 @@ export default async function BackroomPage({ searchParams }: BackroomPageProps) 
           </div>
         ) : null}
         {posts.length === 0 ? (
-          <div className="rounded-[10px] border border-line bg-white p-4 shadow-sm">
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-blushSoft text-blush">
+          <div className={"rounded-[10px] border bg-white p-4 " + backRoomTheme.threadCard}>
+            <div className={"grid h-10 w-10 place-items-center rounded-full " + backRoomTheme.iconSurface}>
               <UserRound aria-hidden="true" size={19} />
             </div>
             <h2 className="mt-3 text-base font-black text-ink">まだスレッドはありません</h2>
             <p className="mt-1 text-sm font-medium leading-relaxed text-mute">このカテゴリーに最初のスレッドを立てると、ここに表示されます。</p>
-            <PendingLink href="/post/backroom" pendingLabel="投稿画面へ..." className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+            <PendingLink href="/post/backroom" pendingLabel="投稿画面へ..." className={"mt-3 inline-flex h-10 items-center justify-center rounded-[8px] px-4 text-xs font-black " + backRoomTheme.primaryButton}>
               スレッドを立てる
             </PendingLink>
           </div>

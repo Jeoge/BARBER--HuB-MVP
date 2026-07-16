@@ -144,7 +144,7 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
 
   if (backyardPost != null) {
     return (
-      <PageChrome>
+      <PageChrome variant="backroom">
         <BackRoomThreadDetail thread={backyardPost} />
       </PageChrome>
     );

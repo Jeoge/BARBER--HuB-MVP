@@ -157,3 +157,119 @@ body[data-comment-sheet-open="true"] .global-post-fab {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
+
+.back-room-page {
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f3fbff 42%, #ffffff 100%);
+}
+
+.back-room-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(178, 246, 236, 0.72);
+  background:
+    linear-gradient(128deg, #083fc8 0%, #176ff0 34%, #19bfe2 64%, #b9f6dd 100%);
+  box-shadow: 0 16px 34px rgba(9, 91, 185, 0.16);
+}
+
+.back-room-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(152deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 28%),
+    linear-gradient(72deg, transparent 61%, rgba(255, 255, 255, 0.18) 61.4%, transparent 62.2%, transparent 70%, rgba(255, 255, 255, 0.14) 70.4%, transparent 71.2%),
+    linear-gradient(18deg, rgba(255, 255, 255, 0.1), transparent 34%);
+  opacity: 0.92;
+}
+
+.back-room-hero > * {
+  position: relative;
+}
+
+.back-room-badge {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.9);
+  color: #06245e;
+  box-shadow:
+    0 0 0 3px rgba(115, 245, 220, 0.22),
+    0 10px 22px rgba(5, 57, 130, 0.16);
+  backdrop-filter: blur(10px);
+}
+
+.back-room-badge-icon {
+  background: rgba(8, 90, 204, 0.08);
+  color: #075fd8;
+  box-shadow: 0 0 0 2px rgba(92, 240, 226, 0.42);
+}
+
+.back-room-primary-button {
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: linear-gradient(98deg, #32dfbd 0%, #18bfe4 48%, #2476f0 100%);
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(6, 81, 173, 0.2);
+}
+
+.back-room-active-chip {
+  background: linear-gradient(135deg, #175df0 0%, #19bee3 58%, #54eac8 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(12, 126, 207, 0.16);
+}
+
+.back-room-inactive-chip {
+  border: 1px solid rgba(9, 70, 132, 0.1);
+  background: rgba(255, 255, 255, 0.94);
+  color: rgba(8, 28, 62, 0.82);
+  box-shadow: 0 4px 12px rgba(14, 65, 110, 0.05);
+}
+
+.back-room-tag {
+  border: 1px solid rgba(37, 190, 222, 0.18);
+  background: rgba(232, 251, 255, 0.86);
+  color: #0869b5;
+}
+
+.back-room-thread-card {
+  border-color: #e2f2f8;
+  box-shadow: 0 10px 24px rgba(14, 87, 139, 0.055);
+}
+
+.back-room-notice {
+  border: 1px solid rgba(31, 192, 224, 0.18);
+  background: linear-gradient(135deg, rgba(232, 251, 255, 0.9), rgba(237, 255, 248, 0.92));
+}
+
+.back-room-icon-surface {
+  background: #eafdff;
+  color: #0874cb;
+  box-shadow: 0 0 0 4px rgba(92, 240, 226, 0.12);
+}
+
+.back-room-focus-ring:focus {
+  border-color: #18bfe4;
+}
+
+.back-room-accent-text {
+  color: #0d71d9;
+}
+
+.back-room-fab-gradient {
+  background: linear-gradient(135deg, #1766f1 0%, #17c4e5 56%, #41e8c5 100%);
+  box-shadow: 0 8px 18px rgba(13, 116, 205, 0.22);
+}
+
+.back-room-logo-icon {
+  background: #061f55;
+  color: #5cf0e2;
+  box-shadow:
+    inset 0 0 0 1px rgba(92, 240, 226, 0.2),
+    0 5px 14px rgba(6, 31, 85, 0.12);
+}
+
+.back-room-logo-hub {
+  background: linear-gradient(100deg, #1766f1 0%, #12bee4 56%, #50e9c7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

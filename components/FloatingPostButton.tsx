@@ -27,6 +27,7 @@ import {
   classifyAccountType,
   type AccountProfileLike,
 } from "@/lib/accountTypes";
+import { backRoomTheme } from "@/lib/backRoomTheme";
 import type { PostCapability } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/client";
 import { AuthGateLink } from "./AuthGate";
@@ -63,7 +64,11 @@ function canUseCapability(profile: MenuProfile | null, capability: PostCapabilit
   return canCreateSuccession(profile);
 }
 
-export function FloatingPostButton() {
+type FloatingPostButtonProps = {
+  variant?: "default" | "backroom";
+};
+
+export function FloatingPostButton({ variant = "default" }: FloatingPostButtonProps) {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -152,13 +157,15 @@ export function FloatingPostButton() {
 
   const accountClassification = classifyAccountType(profile);
   const allowedItems = postItems.filter((item) => canUseCapability(profile, item.capability));
+  const isBackroom = variant === "backroom";
+  const accentClass = isBackroom ? backRoomTheme.accentText : "text-blush";
 
   return (
     <div className="global-post-fab pointer-events-none fixed bottom-[4.5rem] left-1/2 z-50 w-full max-w-[430px] -translate-x-1/2 px-4">
       {open ? (
         <div className="pointer-events-auto mb-2.5 ml-auto w-64 rounded-[8px] border border-line/80 bg-white p-2 shadow-[0_14px_30px_rgba(17,17,17,0.1)]">
           <div className="mb-1 flex items-center gap-2 px-3 py-2 text-[0.72rem] font-black text-mute">
-            <FileText aria-hidden="true" size={15} className="text-blush" />
+            <FileText aria-hidden="true" size={15} className={accentClass} />
             投稿メニュー
           </div>
           {!isLoggedIn ? (
@@ -171,7 +178,7 @@ export function FloatingPostButton() {
                 ariaLabel={label}
                 signupNextHref={signupNextHref}
               >
-                <Icon aria-hidden="true" size={18} className="text-blush" />
+                <Icon aria-hidden="true" size={18} className={accentClass} />
                 {label}
               </AuthGateLink>
             ))
@@ -192,7 +199,7 @@ export function FloatingPostButton() {
             <div className="grid gap-2 px-2 pb-2">
               <div className="rounded-[8px] bg-neutral-50 p-3">
                 <div className="flex items-center gap-2 text-sm font-black text-ink">
-                  <Megaphone aria-hidden="true" size={17} className="text-blush" />
+                  <Megaphone aria-hidden="true" size={17} className={accentClass} />
                   PR・協賛導線
                 </div>
                 <p className="mt-2 text-xs font-bold leading-relaxed text-mute">
@@ -215,7 +222,7 @@ export function FloatingPostButton() {
                 aria-label={label}
                 onClick={() => setOpen(false)}
               >
-                <Icon aria-hidden="true" size={18} className="text-blush" />
+                <Icon aria-hidden="true" size={18} className={accentClass} />
                 {label}
               </Link>
             ))
@@ -223,7 +230,7 @@ export function FloatingPostButton() {
         </div>
       ) : null}
       <button
-        className="pointer-events-auto ml-auto grid h-9 w-9 place-items-center rounded-full bg-blush text-white shadow-[0_6px_14px_rgba(255,59,134,0.18)] transition active:scale-90"
+        className={"pointer-events-auto ml-auto grid h-9 w-9 place-items-center rounded-full text-white transition active:scale-90 " + (isBackroom ? backRoomTheme.fabGradient : "bg-blush shadow-[0_6px_14px_rgba(255,59,134,0.18)]")}
         aria-label={open ? "投稿メニューを閉じる" : "投稿メニューを開く"}
         onClick={() => setOpen((current) => !current)}
       >
