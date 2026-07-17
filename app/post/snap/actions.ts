@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 const MAX_SNAP_IMAGE_COUNT = 4;
 const MAX_TOTAL_COMPRESSED_IMAGE_SIZE = 4 * 1024 * 1024;
 const SNAP_IMAGE_BUCKET = "snap-images";
+const SNAP_DEFAULT_CATEGORY = "日常";
 
 type SnapUploadContentType = "image/jpeg" | "image/webp";
 
@@ -396,7 +397,7 @@ export async function createSnapAction(formData: FormData) {
   }
 
   const caption = cleanText(formData.get("caption"));
-  const category = cleanText(formData.get("category")) || "日常";
+  const category = SNAP_DEFAULT_CATEGORY;
   const region = cleanText(formData.get("region")) || profile.region || "";
   const submittedImages = formData
     .getAll("images")

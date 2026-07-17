@@ -27,7 +27,7 @@ export function SnapImageCarousel({
 }: SnapImageCarouselProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [maxLoadedIndex, setMaxLoadedIndex] = useState(Math.min(1, Math.max(images.length - 1, 0)));
+  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(() => new Set());
   const displayImages = useMemo(
     () =>
       images
@@ -36,15 +36,12 @@ export function SnapImageCarousel({
         .slice(0, 4),
     [images]
   );
+  const imageSignature = displayImages.map((image) => `${image.id}:${image.url}`).join("|");
 
   useEffect(() => {
     setActiveIndex(0);
-    setMaxLoadedIndex(Math.min(1, Math.max(displayImages.length - 1, 0)));
-  }, [displayImages.length]);
-
-  useEffect(() => {
-    setMaxLoadedIndex((current) => Math.max(current, Math.min(activeIndex + 1, displayImages.length - 1)));
-  }, [activeIndex, displayImages.length]);
+    setFailedImageIds(new Set());
+  }, [imageSignature]);
 
   if (displayImages.length === 0) {
     return <VisualTile variant={variant} className={className} />;
@@ -81,9 +78,10 @@ export function SnapImageCarousel({
   }
 
   const frameClassName = "relative overflow-hidden rounded-[7px] bg-neutral-900 " + className;
-  const imageNode = (image: SnapDisplayImage & { url: string }, index: number) => {
-    const shouldLoad = index <= maxLoadedIndex;
-    const node = shouldLoad ? (
+  const imageNode = (image: SnapDisplayImage & { url: string }) => {
+    const node = failedImageIds.has(image.id) ? (
+      <VisualTile variant={variant} className="h-full w-full" />
+    ) : (
       <img
         src={image.url}
         alt={alt}
@@ -91,9 +89,15 @@ export function SnapImageCarousel({
         loading="lazy"
         decoding="async"
         sizes="(max-width: 430px) calc(100vw - 2rem), 398px"
+        onError={() => {
+          setFailedImageIds((current) => {
+            if (current.has(image.id)) return current;
+            const next = new Set(current);
+            next.add(image.id);
+            return next;
+          });
+        }}
       />
-    ) : (
-      <div className="h-full w-full bg-neutral-100" aria-hidden="true" />
     );
 
     if (!href) return node;
@@ -118,7 +122,7 @@ export function SnapImageCarousel({
       >
         {displayImages.map((image, index) => (
           <div key={image.id} className="h-full w-full shrink-0 snap-center">
-            {imageNode(image, index)}
+            {imageNode(image)}
           </div>
         ))}
       </div>

@@ -23,7 +23,7 @@ export default async function SnapPage({ searchParams }: SnapPageProps) {
       <MagazinePageHeader
         eyebrow="SNAP"
         title="SNAP"
-        description="理容師の日常と気づきを切り取る。写真から、技術・道具・営業の空気が見えてくる。"
+        description="今日の1コマ　なんでも"
         tags={["技術", "道具", "営業メモ", "日常", "編集部へ共有"]}
       />
 

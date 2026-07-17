@@ -17,13 +17,13 @@ export const PERSONAL_ACCOUNT_TYPE_OPTIONS: AccountTypeOption[] = [
   { value: "美容師", label: "美容師", classification: "personal" },
   { value: "理容学生", label: "理容学生", classification: "personal" },
   { value: "美容学生", label: "美容学生", classification: "personal" },
-  { value: "理美容アシスタント", label: "理美容アシスタント", classification: "personal" },
   { value: "アシスタント", label: "アシスタント", classification: "personal" },
   { value: "サロン", label: "サロン", classification: "personal" },
   { value: "サロンオーナー", label: "サロンオーナー", classification: "personal" },
-  { value: "サロンスタッフ", label: "サロンスタッフ", classification: "personal" },
   { value: "理美容関係の個人", label: "理美容関係の個人", classification: "personal" },
 ];
+
+export const LEGACY_PERSONAL_ACCOUNT_TYPE_VALUES = ["理美容アシスタント", "サロンスタッフ"] as const;
 
 export const ORGANIZATION_ACCOUNT_TYPE_OPTIONS: AccountTypeOption[] = [
   { value: "学校", label: "学校", classification: "organization" },
@@ -47,6 +47,7 @@ export const ACCOUNT_TYPE_OPTIONS = [
 
 const personalAliases = [
   ...PERSONAL_ACCOUNT_TYPE_OPTIONS.map((option) => option.value),
+  ...LEGACY_PERSONAL_ACCOUNT_TYPE_VALUES,
   "barber",
   "stylist",
   "student",
@@ -121,6 +122,11 @@ function normalizedSet(values: string[]) {
 const personalAccountTypes = normalizedSet(personalAliases);
 const organizationAccountTypes = normalizedSet(organizationAliases);
 const salonOwnerAccountTypes = normalizedSet(salonOwnerAliases);
+const selectableAccountTypes = normalizedSet(ACCOUNT_TYPE_OPTIONS.map((option) => option.value));
+
+export function isSelectableAccountType(value: string | null | undefined) {
+  return selectableAccountTypes.has(normalizeAccountType(value));
+}
 
 export function getAccountType(profileOrValue: AccountProfileLike | string | null | undefined) {
   if (typeof profileOrValue === "string") {

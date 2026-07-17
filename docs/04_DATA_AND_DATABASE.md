@@ -62,6 +62,8 @@
 - `storage_path`, `public_url`, `width`, `height`, `byte_size`, `mime_type` を保持する。
 - 新規投稿では1枚目を `snaps.image_url` / `snaps.image_path` にも保存し、既存表示との互換性を保つ。
 - 読み取り時は `snap_images` があれば順序順に使い、なければ既存の `image_url` を1枚目として使う。
+- 読み取り時は `storage_path` から現在のStorage URLを組み立てられる場合はそれを優先し、保存済み `public_url` は互換fallbackとして扱う。
+- 新規Snap投稿では、UIでカテゴリーを選択させず、既存の安全なカテゴリー値「日常」をServer Action側で保存する。既存Snapのカテゴリー値は変更しない。
 - 既存の1枚Snapは自動移行しない。
 
 ## 記事画像とEDITOR'S PICK

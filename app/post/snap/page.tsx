@@ -86,7 +86,7 @@ export default async function SnapPostPage({ searchParams }: SnapPostPageProps) 
           <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-blush">SNAP POST</p>
           <h1 className="mt-1 text-[1.5rem] font-black leading-tight text-ink">スナップ投稿</h1>
           <p className="mt-2 text-[0.86rem] font-medium leading-relaxed text-mute">
-            今日の営業の1コマ、道具の感想、ちょっとした気づきを共有できます。
+            今日の1コマ　なんでも
           </p>
         </div>
       </section>
