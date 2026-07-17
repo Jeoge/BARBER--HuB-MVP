@@ -513,41 +513,7 @@ export const posts: Post[] = [
   },
 ];
 
-export const qaItems: QaItem[] = [
-  {
-    id: "fade-blend",
-    profileId: "fukuoka-barber",
-    title: "フェードのぼかしがつながらない",
-    category: "技術",
-    topicSlugs: ["technique", "tools"],
-    status: "みんなで解決中",
-    body: "0.8mmから上のつなぎで、片側だけ濃く残ることがあります。光の当たり方なのか、手順なのか、確認する順番を知りたいです。",
-    comments: 24,
-    ideas: 11,
-  },
-  {
-    id: "price-raise",
-    profileId: "anonymous-barber",
-    title: "値上げの伝え方に悩んでいる",
-    category: "価格改定",
-    topicSlugs: ["management"],
-    status: "ただ聞いてほしい",
-    body: "長年通ってくださっているお客様ほど、価格改定の伝え方に悩みます。角が立たない一言を知りたいです。",
-    comments: 18,
-    ideas: 7,
-  },
-  {
-    id: "google-review-request",
-    profileId: "barber-sample-fukuoka-nishi",
-    title: "Google口コミを自然にお願いする方法",
-    category: "集客",
-    topicSlugs: ["marketing", "ai"],
-    status: "みんなで解決中",
-    body: "口コミをお願いしたいのですが、押し売りっぽくならない言い方を探しています。",
-    comments: 16,
-    ideas: 8,
-  },
-];
+export const qaItems: QaItem[] = [];
 
 export const seminars: Seminar[] = [
   { id: "seminar-fade", title: "福岡フェードセミナー 要点まとめ", category: "講習会", topicSlugs: ["technique", "tools"], meta: "アーカイブ", accent: "seminar", imageUrl: "/images/fade-cut.jpg" },
@@ -793,8 +759,6 @@ const relatedProductMap: Record<string, string[]> = {
   "fukuoka-seminar": ["fade-brush-comb-set", "quiet-clipper-pro"],
   "gray-blending-40s-article": ["gray-blend-toner"],
   "google-review-growth": ["review-request-card", "scalp-care-starter"],
-  "fade-blend": ["quiet-clipper-pro", "fade-brush-comb-set"],
-  "google-review-request": ["review-request-card"],
   "seminar-fade": ["fade-brush-comb-set", "quiet-clipper-pro"],
   "online-gray": ["gray-blend-toner"],
 };

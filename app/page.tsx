@@ -7,7 +7,6 @@ import { Header } from "@/components/Header";
 import { HorizontalRail } from "@/components/HorizontalRail";
 import { LiveEditorialCover } from "@/components/LiveEditorialCover";
 import { LegalLinks } from "@/components/LegalLinks";
-import { MainFeature } from "@/components/MainFeature";
 import { QASection } from "@/components/QASection";
 import { SnapSection } from "@/components/SnapSection";
 import { SponsorSection } from "@/components/SponsorSection";
@@ -27,6 +26,7 @@ import {
   type ArticleWithAuthor,
 } from "@/lib/supabase/articles";
 import { getPublicBarberShopCount } from "@/lib/supabase/barber-shops";
+import { listQaQuestions } from "@/lib/supabase/qa";
 import { createClient } from "@/lib/supabase/server";
 
 function articleRailItem(article: ArticleWithAuthor) {
@@ -51,11 +51,13 @@ export default async function Home() {
     { news: approvedNews, error: publicNewsError },
     editorPickResult,
     latestArticleResult,
+    qaQuestionResult,
   ] = await Promise.all([
     getPublicBarberShopCount(supabase),
     listPublicNews(supabase, 4),
     listEditorPickArticles(supabase, 3),
     listPublishedArticles(supabase, 5),
+    listQaQuestions(supabase, 3),
   ]);
 
   if (storeCountError) {
@@ -74,6 +76,10 @@ export default async function Home() {
 
   if (latestArticleResult.error) {
     console.error("Latest articles lookup failed");
+  }
+
+  if (qaQuestionResult.error) {
+    console.error("Home Q&A questions lookup failed");
   }
 
   const [editorPickArticles, latestArticles] = await Promise.all([
@@ -108,8 +114,7 @@ export default async function Home() {
         <StoreDirectoryStatsCard count={storeCount} />
         <HorizontalRail title="新着記事" items={homeArticleRailItems} />
         <ContributionSection />
-        <QASection />
-        <MainFeature />
+        <QASection questions={qaQuestionResult.questions} />
         <HorizontalRail title="メーカー新商品" items={articles.filter((article) => article.category === "メーカー新商品")} />
         <HorizontalRail title="講習会" items={seminars} hrefPrefix="/seminars" />
         <HorizontalRail title="学生・求人" items={jobs} hrefPrefix="/jobs" />
