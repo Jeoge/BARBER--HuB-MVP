@@ -15,7 +15,6 @@ import {
 import { isAllowedSnapSourceImageFile } from "@/lib/imageValidation";
 import { createSnapAction } from "./actions";
 
-const categories = ["技術", "道具", "営業メモ", "集客", "日常", "編集部へ共有"];
 const MAX_SOURCE_IMAGE_SIZE = 25 * 1024 * 1024;
 const MAX_IMAGE_COUNT = 4;
 const MAX_TOTAL_COMPRESSED_BYTES = 4 * 1024 * 1024;
@@ -246,17 +245,6 @@ export function SnapPostForm({
           ) : null}
         </div>
       ) : null}
-
-      <label className="grid gap-2">
-        <span className="text-sm font-black text-ink">カテゴリー</span>
-        <select name="category" className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none focus:border-blush">
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-      </label>
 
       <label className="grid gap-2">
         <span className="text-sm font-black text-ink">地域</span>

@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { isSelectableAccountType } from "@/lib/accountTypes";
 import { allowedImageContentType, isAllowedImageFile, safeUploadFileName } from "@/lib/imageValidation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,6 +15,18 @@ function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function cleanStoredText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : null;
+}
+
+function safeSubmittedJobType(submittedJobType: string | null, existingJobType: string | null) {
+  if (submittedJobType == null) return null;
+  if (isSelectableAccountType(submittedJobType)) return submittedJobType;
+  if (existingJobType != null && submittedJobType === existingJobType) return existingJobType;
+  return undefined;
 }
 
 function cleanUrl(value: FormDataEntryValue | null) {
@@ -135,9 +148,9 @@ export async function saveProfileAction(formData: FormData) {
   const now = new Date().toISOString();
   const { data: existingProfile, error: existingError } = await supabase
     .from("profiles")
-    .select("id, avatar_url, cover_url")
+    .select("id, job_type, avatar_url, cover_url")
     .eq("id", user.id)
-    .maybeSingle<{ id: string; avatar_url: string | null; cover_url: string | null }>();
+    .maybeSingle<{ id: string; job_type: string | null; avatar_url: string | null; cover_url: string | null }>();
 
   if (existingError) {
     console.error("Profile lookup before save failed", {
@@ -166,10 +179,18 @@ export async function saveProfileAction(formData: FormData) {
     coverUrl = upload.url;
   }
 
+  const submittedJobType = cleanText(formData.get("job_type"));
+  const existingJobType = cleanStoredText(existingProfile?.job_type);
+  const jobType = safeSubmittedJobType(submittedJobType, existingJobType);
+
+  if (jobType === undefined) {
+    redirectToEdit("登録区分は選択肢から選んでください。");
+  }
+
   const profilePayload = {
     id: user.id,
     display_name: cleanText(formData.get("display_name")),
-    job_type: cleanText(formData.get("job_type")),
+    job_type: jobType,
     salon_name: cleanText(formData.get("salon_name")),
     region: cleanText(formData.get("region")),
     bio: cleanText(formData.get("bio")),

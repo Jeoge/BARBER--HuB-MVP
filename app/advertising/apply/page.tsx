@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { SafetyChecklistSubmit } from "@/components/SafetyChecklist";
-import { ACCOUNT_TYPE_OPTIONS } from "@/lib/accountTypes";
+import { ACCOUNT_TYPE_OPTIONS, isSelectableAccountType } from "@/lib/accountTypes";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
@@ -141,6 +141,8 @@ export default async function AdvertisingApplyPage({ searchParams }: Advertising
   }
 
   const { profile } = await getAccountProfile(supabase, user.id);
+  const currentJobType = profile?.job_type?.trim() ?? "";
+  const showCurrentJobType = currentJobType.length > 0 && !isSelectableAccountType(currentJobType);
 
   return (
     <PageChrome>
@@ -184,6 +186,7 @@ export default async function AdvertisingApplyPage({ searchParams }: Advertising
             className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none focus:border-blush"
           >
             <option value="">未設定</option>
+            {showCurrentJobType ? <option value={currentJobType}>現在の登録値：{currentJobType}</option> : null}
             {ACCOUNT_TYPE_OPTIONS.map((type) => (
               <option key={type.value} value={type.value}>
                 {type.label}

@@ -4,7 +4,7 @@ import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { SafetyNotice } from "@/components/SafetyNotice";
-import { ACCOUNT_TYPE_OPTIONS } from "@/lib/accountTypes";
+import { ACCOUNT_TYPE_OPTIONS, isSelectableAccountType } from "@/lib/accountTypes";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
@@ -96,6 +96,8 @@ export default async function ProfileEditPage({ searchParams }: ProfileEditPageP
   }
 
   const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+  const currentJobType = profile?.job_type?.trim() ?? "";
+  const showCurrentJobType = currentJobType.length > 0 && !isSelectableAccountType(currentJobType);
 
   return (
     <PageChrome>
@@ -142,6 +144,7 @@ export default async function ProfileEditPage({ searchParams }: ProfileEditPageP
             defaultValue={profile?.job_type ?? ""}
           >
             <option value="">未設定</option>
+            {showCurrentJobType ? <option value={currentJobType}>現在の登録値：{currentJobType}</option> : null}
             {ACCOUNT_TYPE_OPTIONS.map((type) => (
               <option key={type.value} value={type.value}>
                 {type.label}

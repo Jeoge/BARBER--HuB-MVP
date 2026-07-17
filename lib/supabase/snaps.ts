@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { listPublicSnapCommentCounts } from "@/lib/supabase/comments";
 
+const SNAP_IMAGE_BUCKET = "snap-images";
+
 export type SnapAuthorProfile = {
   id: string;
   display_name: string | null;
@@ -63,6 +65,8 @@ type RawSnapWithAuthor = SnapRecord & {
   profiles?: SnapAuthorProfile | SnapAuthorProfile[] | null;
   snap_images?: SnapImageRecord | SnapImageRecord[] | null;
 };
+
+type SnapStorageUrlResolver = (storagePath: string | null | undefined) => string | null;
 
 export const snapSelect = `
   id,
@@ -150,24 +154,36 @@ export function snapDateLabel(snap: SnapWithAuthor) {
   }).format(createdAt);
 }
 
-function normalizeSnapImages(snap: RawSnapWithAuthor): SnapDisplayImage[] {
+function normalizeSnapImages(snap: RawSnapWithAuthor, resolveStorageUrl?: SnapStorageUrlResolver): SnapDisplayImage[] {
   const rawImages = Array.isArray(snap.snap_images)
     ? snap.snap_images
     : snap.snap_images
       ? [snap.snap_images]
       : [];
+  const seenImageKeys = new Set<string>();
   const orderedImages = rawImages
-    .filter((image) => typeof image.public_url === "string" && image.public_url.trim().length > 0)
-    .map((image) => ({
-      id: image.id,
-      url: image.public_url.trim(),
-      storage_path: image.storage_path || null,
-      display_order: Number(image.display_order ?? 0),
-      width: image.width ?? null,
-      height: image.height ?? null,
-      byte_size: image.byte_size ?? null,
-      mime_type: image.mime_type ?? null,
-    }))
+    .map((image) => {
+      const storagePath = image.storage_path?.trim() || null;
+      const url = resolveStorageUrl?.(storagePath)?.trim() || image.public_url?.trim() || "";
+
+      return {
+        id: image.id,
+        url,
+        storage_path: storagePath,
+        display_order: Number(image.display_order ?? 0),
+        width: image.width ?? null,
+        height: image.height ?? null,
+        byte_size: image.byte_size ?? null,
+        mime_type: image.mime_type ?? null,
+      };
+    })
+    .filter((image) => {
+      if (!image.url) return false;
+      const imageKey = image.storage_path ?? image.url;
+      if (seenImageKeys.has(imageKey)) return false;
+      seenImageKeys.add(imageKey);
+      return true;
+    })
     .sort((first, second) => first.display_order - second.display_order)
     .slice(0, 4);
 
@@ -221,11 +237,11 @@ export function primarySnapImageUrl(snap: Parameters<typeof snapDisplayImages>[0
   return snapDisplayImages(snap)[0]?.url ?? null;
 }
 
-function normalizeSnaps(data: unknown): SnapWithAuthor[] {
+function normalizeSnaps(data: unknown, resolveStorageUrl?: SnapStorageUrlResolver): SnapWithAuthor[] {
   return ((data ?? []) as RawSnapWithAuthor[]).map((snap) => ({
     ...snap,
     profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles ?? null,
-    images: normalizeSnapImages(snap),
+    images: normalizeSnapImages(snap, resolveStorageUrl),
     thanks_count: 0,
     like_count: 0,
     comment_count: 0,
@@ -234,14 +250,14 @@ function normalizeSnaps(data: unknown): SnapWithAuthor[] {
   }));
 }
 
-function normalizeSnap(data: unknown): SnapWithAuthor | null {
+function normalizeSnap(data: unknown, resolveStorageUrl?: SnapStorageUrlResolver): SnapWithAuthor | null {
   const snap = data as RawSnapWithAuthor | null;
   if (snap == null) return null;
 
   return {
     ...snap,
     profiles: Array.isArray(snap.profiles) ? snap.profiles[0] ?? null : snap.profiles ?? null,
-    images: normalizeSnapImages(snap),
+    images: normalizeSnapImages(snap, resolveStorageUrl),
     thanks_count: 0,
     like_count: 0,
     comment_count: 0,
@@ -409,6 +425,16 @@ async function withReactionSummaries(supabase: SupabaseClient, snaps: SnapWithAu
   }));
 }
 
+function publicSnapImageUrlResolver(supabase: SupabaseClient): SnapStorageUrlResolver {
+  return (storagePath) => {
+    const normalizedPath = storagePath?.trim();
+    if (!normalizedPath) return null;
+
+    const { data } = supabase.storage.from(SNAP_IMAGE_BUCKET).getPublicUrl(normalizedPath);
+    return data.publicUrl?.trim() || null;
+  };
+}
+
 export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20, viewerId?: string | null) {
   try {
     const { data, error } = await selectSnapRowsWithFallback(
@@ -423,7 +449,7 @@ export async function listPublishedSnaps(supabase: SupabaseClient, limit = 20, v
       "Published snap"
     );
 
-    return { snaps: await withReactionSummaries(supabase, normalizeSnaps(data), viewerId), error };
+    return { snaps: await withReactionSummaries(supabase, normalizeSnaps(data, publicSnapImageUrlResolver(supabase)), viewerId), error };
   } catch (error) {
     console.error("Published snap select threw", {
       message: error instanceof Error ? error.message : String(error),
@@ -447,7 +473,7 @@ export async function listUserSnaps(supabase: SupabaseClient, userId: string, li
       { userId }
     );
 
-    return { snaps: await withReactionSummaries(supabase, normalizeSnaps(data), viewerId), error };
+    return { snaps: await withReactionSummaries(supabase, normalizeSnaps(data, publicSnapImageUrlResolver(supabase)), viewerId), error };
   } catch (error) {
     console.error("User snap select threw", {
       userId,
@@ -472,7 +498,7 @@ export async function getPublishedSnapById(supabase: SupabaseClient, id: string,
       { snapId: id }
     );
 
-    const snap = normalizeSnap(data);
+    const snap = normalizeSnap(data, publicSnapImageUrlResolver(supabase));
     const snapWithReactions = snap ? await withReactionSummaries(supabase, [snap], viewerId) : [];
 
     return { snap: snapWithReactions[0] ?? null, error };
