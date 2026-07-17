@@ -11,6 +11,22 @@
 - 本番DB変更は承認制にする。
 - 本番データを削除・初期化しない。
 
+## Supabase Auth / メール確認
+
+会員登録後のメール確認は、Supabase Authの確認リンクをアプリ側の `/auth/callback` で受け、サーバー側でセッションへ交換します。
+
+守ること:
+
+- callbackで受け取った `code` は `exchangeCodeForSession` で処理し、成功後に `getUser()` でログイン状態を確認する。
+- Supabaseメールテンプレートが `token_hash` 型の場合は `verifyOtp` で処理し、同様に `getUser()` で確認する。
+- `code` 交換失敗、`token_hash` 検証失敗、確認リンクの二重クリック、使用済み、期限切れ、パラメータ不足の場合も、エラー画面へ進む前に既存の有効セッションを `getUser()` で確認する。
+- セッション交換後は専用の確認完了画面へ移動し、ユーザーが「BARBER HUBを開く」ボタンを押した時点でServer Actionから再度 `getUser()` を実行する。
+- 正常なセッションがある場合は、メールアドレスとパスワードの再入力を求めない。
+- callback失敗かつ有効セッションがない場合はトップへ直接送らず、`safeNextPath` 済みの `next` を使って `/login?next=...` へ案内する。
+- PKCEの `code_verifier` Cookieがない別ブラウザでは、セキュリティ上セッション交換できないことがある。その場合は成功扱いにせず、専用画面でログイン状態を確認できないことを案内する。
+- `next` は `safeNextPath` で相対パスだけを許可し、外部サイトへのopen redirectを防ぐ。
+- 認証コード、token、パスワード、メールアドレス、Supabaseの詳細エラーをログ、PR本文、docs、画面へ出さない。
+
 ## Secrets
 
 Secretとして扱うもの:

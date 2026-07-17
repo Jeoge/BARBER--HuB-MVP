@@ -1,13 +1,15 @@
 import { BrandLogo } from "@/components/BrandLogo";
+import { safeNextPath } from "@/lib/auth/redirects";
 import { normalizeSignupStatus, SignupStatusCard } from "../SignupStatusCard";
 
 type SignupCompletePageProps = {
-  searchParams?: Promise<{ status?: string }>;
+  searchParams?: Promise<{ next?: string; status?: string }>;
 };
 
 export default async function SignupCompletePage({ searchParams }: SignupCompletePageProps) {
   const params = await searchParams;
   const status = normalizeSignupStatus(params?.status);
+  const next = safeNextPath(params?.next, "/");
 
   return (
     <main className="mx-auto min-h-screen max-w-[430px] bg-white px-4 pb-12 pt-6 shadow-[0_0_80px_rgba(17,17,17,0.08)]">
@@ -19,7 +21,7 @@ export default async function SignupCompletePage({ searchParams }: SignupComplet
       </section>
 
       <section className="pt-7">
-        <SignupStatusCard status={status} />
+        <SignupStatusCard status={status} next={next} />
       </section>
     </main>
   );

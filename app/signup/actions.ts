@@ -21,7 +21,7 @@ function isValidEmail(value: string) {
 export async function signUpAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const next = safeNextPath(formData.get("next"), "/mypage");
+  const next = safeNextPath(formData.get("next"), "/");
 
   if (!email) {
     redirectToSignup({ error: "メールアドレスを入力してください", next });
