@@ -129,6 +129,35 @@ function normalizeVerificationStatus(value: string): { status: BarberShopVerific
   return { status: "unverified", error: "認証状態は 未認証 / 認証申請中 / 認証済み のいずれかで入力してください。" };
 }
 
+function deriveMunicipality(rawMunicipality: string, address: string, source: string) {
+  if (rawMunicipality) return rawMunicipality;
+
+  const normalizedAddress = cleanImportText(address, 120);
+  const normalizedSource = cleanImportText(source, 120);
+  const fukuokaWards = ["東区", "博多区", "中央区", "南区", "西区", "城南区", "早良区"];
+  const kitakyushuWards = ["門司区", "若松区", "戸畑区", "小倉北区", "小倉南区", "八幡東区", "八幡西区"];
+
+  for (const ward of fukuokaWards) {
+    if (
+      normalizedAddress.startsWith(`福岡市${ward}`)
+      || (normalizedSource.includes("福岡市") && normalizedAddress.startsWith(ward))
+    ) {
+      return `福岡市${ward}`;
+    }
+  }
+
+  for (const ward of kitakyushuWards) {
+    if (
+      normalizedAddress.startsWith(`北九州市${ward}`)
+      || (normalizedSource.includes("北九州市") && normalizedAddress.startsWith(ward))
+    ) {
+      return `北九州市${ward}`;
+    }
+  }
+
+  return "";
+}
+
 function isDuplicateCandidate(row: PreparedImportRow, shop: ExistingShopForDuplicate) {
   if (row.prefecture !== shop.prefecture) return false;
 
@@ -169,10 +198,10 @@ function prepareRows(headers: string[], rows: string[][]) {
   return rows.map((csvRow, rowIndex): PreparedImportRow => {
     const name = cleanImportText(rowValue(csvRow, index, "店名"), 160);
     const prefecture = cleanImportText(rowValue(csvRow, index, "都道府県"), 20);
-    const municipality = cleanImportText(rowValue(csvRow, index, "市区町村"), 80);
     const address = cleanImportText(rowValue(csvRow, index, "住所"), 240);
     const phone = cleanImportPhone(rowValue(csvRow, index, "電話番号"));
     const source = cleanImportText(rowValue(csvRow, index, "掲載元"), 240);
+    const municipality = deriveMunicipality(cleanImportText(rowValue(csvRow, index, "市区町村"), 80), address, source);
     const statusResult = normalizeVerificationStatus(rowValue(csvRow, index, "認証状態"));
     const normalizedName = normalizeShopSearchText(name);
     const validationErrors: string[] = [];
