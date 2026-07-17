@@ -29,8 +29,17 @@ export function SafetyChecklist({
   onRequiredCompleteChange,
 }: SafetyChecklistProps) {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const itemNames = useMemo(() => items.map((item) => item.name), [items]);
   const requiredNames = useMemo(() => items.filter((item) => item.required !== false).map((item) => item.name), [items]);
   const allRequiredChecked = requiredNames.every((name) => checked[name]);
+
+  useEffect(() => {
+    setChecked((current) => {
+      const activeNames = new Set(itemNames);
+      const next = Object.fromEntries(Object.entries(current).filter(([name]) => activeNames.has(name)));
+      return Object.keys(next).length === Object.keys(current).length ? current : next;
+    });
+  }, [itemNames]);
 
   useEffect(() => {
     onRequiredCompleteChange?.(allRequiredChecked);

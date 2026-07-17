@@ -3,7 +3,12 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { MAX_ARTICLE_IMAGE_COUNT, normalizeArticleImageMarkers, normalizeYoutubeUrl } from "@/lib/articleMedia";
+import {
+  MAX_ARTICLE_IMAGE_COUNT,
+  normalizeArticleImageMarkers,
+  normalizeYoutubeUrl,
+  shouldRequireArticleVideoRightsConfirmation,
+} from "@/lib/articleMedia";
 import { supportsArticleYoutubeUrl, topicSlugsForArticleCategory } from "@/lib/articleCategories";
 import { pathWithParams } from "@/lib/auth/redirects";
 import {
@@ -377,9 +382,7 @@ export async function createArticleAction(formData: FormData) {
     redirectToArticlePost({ error: "本文を入力してください。" });
   }
 
-  const requiredSafetyFields = youtubeSupported ? [...ARTICLE_SAFETY_FIELDS, ARTICLE_VIDEO_SAFETY_FIELD] : ARTICLE_SAFETY_FIELDS;
-
-  if (!hasSafetyConfirmations(formData, requiredSafetyFields)) {
+  if (!hasSafetyConfirmations(formData, ARTICLE_SAFETY_FIELDS)) {
     redirectToArticlePost({ error: SAFETY_CONFIRMATION_ERROR });
   }
 
@@ -395,6 +398,16 @@ export async function createArticleAction(formData: FormData) {
 
   if (normalizedYoutube.error) {
     redirectToArticlePost({ error: normalizedYoutube.error });
+  }
+
+  const videoConfirmationRequired = shouldRequireArticleVideoRightsConfirmation({
+    youtubeSupported,
+    youtubeInput,
+    normalizedYoutubeUrl: normalizedYoutube.url,
+  });
+
+  if (videoConfirmationRequired && !hasSafetyConfirmations(formData, [ARTICLE_VIDEO_SAFETY_FIELD])) {
+    redirectToArticlePost({ error: SAFETY_CONFIRMATION_ERROR });
   }
 
   if (editorPickRequested && !canSetEditorPick) {

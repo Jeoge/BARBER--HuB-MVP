@@ -45,6 +45,22 @@ export function removeArticleImageMarkerReferences(body: string, removedIndex: n
   });
 }
 
+export function shouldShowArticleVideoRightsConfirmation(youtubeSupported: boolean, youtubeInput: string) {
+  return youtubeSupported && youtubeInput.trim().length > 0;
+}
+
+export function shouldRequireArticleVideoRightsConfirmation({
+  youtubeSupported,
+  youtubeInput,
+  normalizedYoutubeUrl,
+}: {
+  youtubeSupported: boolean;
+  youtubeInput: string;
+  normalizedYoutubeUrl: string | null;
+}) {
+  return shouldShowArticleVideoRightsConfirmation(youtubeSupported, youtubeInput) && normalizedYoutubeUrl != null;
+}
+
 export function normalizeYoutubeUrl(value: string) {
   const candidate = value.trim();
 

@@ -82,7 +82,7 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - 一般ユーザーが任意のStorage pathを渡してsigned URLを取得できるAPIやServer Actionを作らない。
 - アップロード後に投稿保存が失敗した場合は、今回アップロードしたStorage objectを削除する。
 - 投稿本文のHTMLやscriptを実行させない。
-- 記事のYouTube URLは対象カテゴリだけで受け付け、Server Action側でもYouTubeドメイン、https、動画ID、長さを検証する。iframe埋め込み、自動再生、直接動画アップロード、動画Storageは行わない。
+- 記事のYouTube URLは対象カテゴリだけで受け付け、Server Action側でもYouTubeドメイン、https、動画ID、長さを検証する。検証済みURLが入力された場合だけ動画権利確認を必須にする。iframe埋め込み、自動再生、直接動画アップロード、動画Storageは行わない。
 - 画像URLが `undefined` でも画面全体をクラッシュさせない。
 - 外部URLを扱う場合はNext/Imageやドメイン設定との整合を確認する。
 

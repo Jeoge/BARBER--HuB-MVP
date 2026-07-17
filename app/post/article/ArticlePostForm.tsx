@@ -4,7 +4,12 @@ import { Image as ImageIcon, ImagePlus, Save, Send, Trash2 } from "lucide-react"
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { SafetyChecklist } from "@/components/SafetyChecklist";
-import { articleImageMarker, MAX_ARTICLE_IMAGE_COUNT, removeArticleImageMarkerReferences } from "@/lib/articleMedia";
+import {
+  articleImageMarker,
+  MAX_ARTICLE_IMAGE_COUNT,
+  removeArticleImageMarkerReferences,
+  shouldShowArticleVideoRightsConfirmation,
+} from "@/lib/articleMedia";
 import { ARTICLE_CATEGORIES, supportsArticleYoutubeUrl } from "@/lib/articleCategories";
 import {
   compressClientImage,
@@ -81,6 +86,7 @@ export function ArticlePostForm({
 }) {
   const [category, setCategory] = useState(defaultCategory);
   const [body, setBody] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [selectedImages, setSelectedImages] = useState<SelectedArticleImage[]>([]);
   const [imageError, setImageError] = useState("");
   const [imageNotice, setImageNotice] = useState("");
@@ -93,10 +99,17 @@ export function ArticlePostForm({
   const selectedImagesRef = useRef<SelectedArticleImage[]>([]);
   const bodyRequired = body.trim().length === 0;
   const youtubeEnabled = supportsArticleYoutubeUrl(category);
+  const youtubeVideoConfirmationRequired = shouldShowArticleVideoRightsConfirmation(youtubeEnabled, youtubeUrl);
 
   useEffect(() => {
     selectedImagesRef.current = selectedImages;
   }, [selectedImages]);
+
+  useEffect(() => {
+    if (!youtubeEnabled && youtubeUrl) {
+      setYoutubeUrl("");
+    }
+  }, [youtubeEnabled, youtubeUrl]);
 
   useEffect(() => {
     return () => {
@@ -250,7 +263,10 @@ export function ArticlePostForm({
   }, [bodyRequired, imageError]);
   const busyLabel = isCompressing ? "圧縮中..." : "投稿中...";
   const compressedTotalBytes = selectedImages.reduce((sum, image) => sum + image.byteSize, 0);
-  const articleSafetyItems = youtubeEnabled ? [...baseArticleSafetyItems, youtubeSafetyItem] : baseArticleSafetyItems;
+  const articleSafetyItems = useMemo(
+    () => (youtubeVideoConfirmationRequired ? [...baseArticleSafetyItems, youtubeSafetyItem] : baseArticleSafetyItems),
+    [youtubeVideoConfirmationRequired]
+  );
 
   async function submitArticle(formData: FormData) {
     if (bodyRequired || imageError || isCompressing || isSubmitting || !safetyReady) return;
@@ -313,6 +329,8 @@ export function ArticlePostForm({
             name="youtubeUrl"
             type="url"
             maxLength={300}
+            value={youtubeUrl}
+            onChange={(event) => setYoutubeUrl(event.target.value)}
             className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush"
             placeholder="https://www.youtube.com/watch?v=..."
           />
