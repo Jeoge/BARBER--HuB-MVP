@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
+import { configuredBarberHubAdminIds, isBarberHubAdminUserId } from "@/lib/admin/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { NewsContentPillar, NewsRelevanceDirection } from "./quality";
 
@@ -50,15 +51,11 @@ export type NewsReviewUser = {
 };
 
 export function configuredNewsReviewAdminIds() {
-  return (process.env.NEWS_REVIEW_ADMIN_USER_IDS ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
+  return configuredBarberHubAdminIds();
 }
 
 export function isNewsReviewAdminUserId(userId: string | null | undefined) {
-  if (!userId) return false;
-  return configuredNewsReviewAdminIds().includes(userId);
+  return isBarberHubAdminUserId(userId);
 }
 
 export async function requireNewsReviewAdmin(): Promise<NewsReviewUser> {

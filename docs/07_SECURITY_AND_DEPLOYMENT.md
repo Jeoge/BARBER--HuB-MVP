@@ -124,7 +124,7 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - Vercel Cronは `/api/news-drafts/run` を呼び出すが、secret未設定なら実行されない。
 - Vercel CronはUTC指定で設定する。2026年7月時点では、JST 06:00 / 12:00 / 18:00 に合わせて UTC 21:00 / 03:00 / 09:00 の3回実行を基本とする。
 - AI API keyとSupabase service role keyはサーバー専用環境変数に置き、クライアントコードへ渡さない。
-- `/news-review` は `NEWS_REVIEW_ADMIN_USER_IDS` に登録したSupabase user IDだけが開ける。
+- `/news-review` と `/admin/barber-shops/import` は、`BARBER_HUB_ADMIN_USER_IDS` または互換用の `NEWS_REVIEW_ADMIN_USER_IDS` に登録したSupabase user IDだけが開ける。
 - 未ログインユーザーと未許可ユーザーには、ニュース下書きの存在や内容を見せない。
 - RSS / Atomの本文は外部入力として扱い、AIへの命令として実行しない。
 - 元記事本文全体を保存せず、feed内の短い概要だけを使う。
@@ -142,7 +142,7 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 
 ## 記事EDITOR'S PICK
 
-- EDITOR'S PICK掲載指定は `NEWS_REVIEW_ADMIN_USER_IDS` に登録した運営者だけが使える。
+- EDITOR'S PICK掲載指定は `BARBER_HUB_ADMIN_USER_IDS` または互換用の `NEWS_REVIEW_ADMIN_USER_IDS` に登録した運営者だけが使える。
 - allowlistの値やservice role keyはクライアントコードへ渡さない。
 - 一般ユーザー向けUIでは掲載項目を表示せず、Server Actionでも同じ運営者判定を行う。
 - `editor_pick_at` 更新はサーバー側の管理用Supabase clientで実行する。
