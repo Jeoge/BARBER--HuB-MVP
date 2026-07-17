@@ -13,7 +13,9 @@ import {
   findSimilarRecentNews,
   lowValueRejectReason,
   newsDuplicateKey,
+  type NewsContentPillar,
   type NewsDiversityGroup,
+  type NewsRelevanceDirection,
   type SimilarNewsRecord,
 } from "./quality";
 
@@ -27,6 +29,10 @@ type FeedItem = {
   sourceType: string;
   categoryHint: string;
   sourceGroup: NewsDiversityGroup;
+  contentPillar: NewsContentPillar;
+  topicHint: string;
+  relevanceDirection: NewsRelevanceDirection;
+  usageNote: string;
   sourcePriority: number;
   maxCandidatesPerRun: number;
 };
@@ -35,6 +41,10 @@ type RelevanceResult = {
   score: number;
   reason: string;
   category: string;
+  contentPillar: NewsContentPillar;
+  topicCategory: string;
+  relevanceDirection: NewsRelevanceDirection;
+  conversationValue: string;
   riskLevel: "low" | "medium" | "high";
   rejectReason: string | null;
 };
@@ -46,6 +56,10 @@ type AiEditorialEvaluation = {
   practicalScore: number;
   conversationScore: number;
   diversityGroup: NewsDiversityGroup | null;
+  contentPillar: NewsContentPillar | null;
+  topicCategory: string;
+  relevanceDirection: NewsRelevanceDirection | null;
+  conversationValue: string;
   rejectReason: string;
   recommended: boolean;
 };
@@ -62,6 +76,7 @@ type GeneratedDraft = {
   draft_body: string;
   morning_tip: string;
   conversation_tip: string;
+  conversation_value: string;
   relevance_reason: string;
   fact_check_notes: string;
   risk_level: "low" | "medium" | "high";
@@ -75,6 +90,7 @@ export type NewsDraftPipelineResult = {
   failedCount: number;
   insertedCount: number;
   sourceErrorCount: number;
+  pillarCounts: Record<NewsContentPillar, number>;
   sourceStats: NewsDraftSourceStats[];
   errors: string[];
 };
@@ -82,6 +98,7 @@ export type NewsDraftPipelineResult = {
 export type NewsDraftSourceStats = {
   sourceName: string;
   sourceGroup: NewsDiversityGroup;
+  contentPillar: NewsContentPillar;
   success: boolean;
   fetchedCount: number;
   candidateCount: number;
@@ -156,6 +173,77 @@ const CONVERSATION_KEYWORDS = [
   "男性",
 ];
 
+const STYLE_KEYWORDS = [
+  "メンズ",
+  "男性",
+  "ファッション",
+  "スニーカー",
+  "ストリート",
+  "カジュアル",
+  "ビジネスカジュアル",
+  "帽子",
+  "アクセサリー",
+  "香水",
+  "フレグランス",
+  "身だしなみ",
+  "清潔感",
+  "ヘアスタイル",
+  "髪型",
+  "パーマ",
+  "フェード",
+  "センターパート",
+  "短髪",
+  "カラー",
+  "白髪",
+  "トリートメント",
+  "ヘアケア",
+  "頭皮",
+  "スカルプ",
+  "シャンプー",
+  "スタイリング",
+  "ワックス",
+  "グリース",
+  "ジェル",
+  "ドライヤー",
+  "スキンケア",
+  "洗顔",
+  "化粧水",
+  "日焼け止め",
+  "シェービング",
+  "ひげ",
+  "体臭",
+  "メンズ美容",
+];
+
+const TALK_KEYWORDS = [
+  "音楽",
+  "アーティスト",
+  "ライブ",
+  "フェス",
+  "プレイリスト",
+  "BGM",
+  "映画",
+  "ドラマ",
+  "配信",
+  "公開",
+  "イベント",
+  "日本代表",
+  "ワールドカップ",
+  "W杯",
+  "オリンピック",
+  "五輪",
+  "大谷",
+  "サッカー",
+  "野球",
+  "バスケットボール",
+  "格闘技",
+  "大会",
+];
+
+const STYLE_EXCLUSION_KEYWORDS = ["レディース", "ウィメンズ", "女性向け", "女子", "キッズ", "ベビー"];
+const ENTERTAINMENT_SAFE_KEYWORDS = ["作品", "映画", "ドラマ", "配信", "公開", "イベント", "主演", "出演", "予告", "ライブ", "ツアー", "アルバム", "リリース", "楽曲", "フェス"];
+const SPORTS_MAJOR_KEYWORDS = ["日本代表", "侍ジャパン", "SAMURAI BLUE", "ワールドカップ", "W杯", "オリンピック", "五輪", "世界選手権", "国際大会", "決勝", "準決勝", "優勝", "大谷", "八村", "久保", "三笘", "大坂", "日本人選手"];
+
 const HIGH_RISK_KEYWORDS = [
   "回収",
   "リコール",
@@ -180,6 +268,7 @@ const MEDIUM_RISK_KEYWORDS = ["補助金", "助成金", "賃金", "社会保険"
 const FEED_ACCEPT_HEADER = "application/atom+xml, application/rss+xml, application/rdf+xml, application/xml, text/xml";
 const FEED_USER_AGENT = "BARBER HUB news draft bot; RSS/Atom metadata only";
 const XML_CONTENT_TYPE_PATTERN = /(xml|rss|atom|rdf)/i;
+const TRACKING_QUERY_PARAMS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid", "gclid"];
 
 function clampText(value: unknown, maxLength: number) {
   if (typeof value !== "string") return "";
@@ -202,6 +291,21 @@ function decodeXml(value: string) {
     .replace(/&#x([0-9a-fA-F]+);/g, (_, code) => String.fromCharCode(Number.parseInt(code, 16)))
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function decodeFeedBody(body: ArrayBuffer, contentType: string) {
+  const bytes = new Uint8Array(body);
+  const head = new TextDecoder("ascii").decode(bytes.slice(0, Math.min(bytes.length, 240)));
+  const charset =
+    contentType.match(/charset=([^;]+)/i)?.[1]?.trim().replace(/^["']|["']$/g, "") ||
+    head.match(/<\?xml[^>]*encoding=["']([^"']+)["']/i)?.[1]?.trim() ||
+    "utf-8";
+
+  try {
+    return new TextDecoder(charset).decode(bytes);
+  } catch {
+    return new TextDecoder("utf-8").decode(bytes);
+  }
 }
 
 function qualifiedTagPattern(tagName: string) {
@@ -240,9 +344,28 @@ function atomLinkHref(xml: string) {
 
 function normalizeUrl(url: string, baseUrl: string) {
   try {
-    return new URL(url, baseUrl).toString();
+    const parsed = new URL(url, baseUrl);
+    parsed.hash = "";
+    for (const param of TRACKING_QUERY_PARAMS) {
+      parsed.searchParams.delete(param);
+    }
+    return parsed.toString();
   } catch {
     return "";
+  }
+}
+
+function isAllowedSourceUrl(sourceUrl: string, source: NewsSource) {
+  if (source.allowedSourceHosts.length === 0) return true;
+
+  try {
+    const host = new URL(sourceUrl).hostname.toLowerCase();
+    return source.allowedSourceHosts.some((allowedHost) => {
+      const normalizedHost = allowedHost.toLowerCase();
+      return host === normalizedHost || host.endsWith(`.${normalizedHost}`);
+    });
+  } catch {
+    return false;
   }
 }
 
@@ -278,11 +401,15 @@ function extractFeedItems(xml: string, source: NewsSource): FeedItem[] {
         sourceType: source.sourceType,
         categoryHint: source.categoryHint,
         sourceGroup: source.sourceGroup,
+        contentPillar: source.contentPillar,
+        topicHint: source.topicHint,
+        relevanceDirection: source.relevanceDirection,
+        usageNote: source.usageNote,
         sourcePriority: source.priority,
         maxCandidatesPerRun: source.maxCandidatesPerRun,
       };
     })
-    .filter((item) => item.sourceTitle && item.sourceUrl);
+    .filter((item) => item.sourceTitle && item.sourceUrl && isAllowedSourceUrl(item.sourceUrl, source));
 }
 
 function keywordHits(text: string, keywords: string[]) {
@@ -300,8 +427,76 @@ function categoryForText(text: string, fallback: string) {
   if (/(賃金|求人|人材|雇用|働き方)/.test(text)) return "求人・人材";
   if (/(AI|デジタル|個人情報|セキュリティ|予約|キャッシュレス)/.test(text)) return "デジタル・集客";
   if (/(補助金|助成金|税|社会保険|物価|電気|料金|物流|生産性|中小企業)/.test(text)) return "店舗経営";
-  if (/(季節|天候|猛暑|花粉|スポーツ|地域|景気)/.test(text)) return "会話ネタ";
+  if (/(メンズ|ファッション|スニーカー|香水|身だしなみ|ヘアスタイル|髪型|ヘアケア|頭皮|スキンケア|シェービング)/.test(text)) return "STYLE";
+  if (/(音楽|アーティスト|ライブ|フェス|映画|ドラマ|配信|日本代表|ワールドカップ|W杯|スポーツ)/.test(text)) return "会話ネタ";
+  if (/(季節|天候|猛暑|花粉|地域|景気)/.test(text)) return "会話ネタ";
   return fallback;
+}
+
+function topicCategoryForText(text: string, fallback: string) {
+  if (/(メンズ|男性).{0,20}(ファッション|コーデ|服|ブランド)|スニーカー|ストリート|カジュアル|帽子|アクセサリー|流行色/.test(text)) return "mens_fashion";
+  if (/(メンズ|男性).{0,20}(ヘア|髪型|パーマ|フェード|センターパート|短髪|カラー)|ヘアスタイル|白髪ぼかし/.test(text)) return "mens_hair";
+  if (/(ヘアケア|トリートメント|ダメージケア|シャンプー|スタイリング|ワックス|グリース|ジェル|ドライヤー|頭皮|スカルプ|育毛)/.test(text)) return "haircare_scalp";
+  if (/(メンズ|男性).{0,20}(スキンケア|美容|洗顔|化粧水|日焼け止め|シェービング|ひげ|体臭|清潔感)|香水|フレグランス/.test(text)) return "mens_grooming";
+  if (/(音楽|アーティスト|ライブ|フェス|プレイリスト|BGM|楽曲|アルバム|リリース)/.test(text)) return "music_bgm";
+  if (/(映画|ドラマ|配信|公開|予告|主演|出演|イベント|作品)/.test(text)) return "entertainment";
+  if (/(スポーツ|日本代表|ワールドカップ|W杯|オリンピック|五輪|サッカー|野球|バスケットボール|格闘技|大会)/.test(text)) return "sports";
+  if (/(衛生|健康|医療|感染|安全|回収|リコール)/.test(text)) return "safety_health";
+  if (/(賃金|求人|人材|雇用|働き方)/.test(text)) return "recruit_labor";
+  if (/(AI|デジタル|個人情報|セキュリティ|予約|キャッシュレス)/.test(text)) return "digital_security";
+  if (/(補助金|助成金|税|社会保険|物価|電気|料金|物流|生産性|中小企業)/.test(text)) return "business_money";
+  return fallback;
+}
+
+function contentPillarForText(item: FeedItem, text: string): NewsContentPillar {
+  if (keywordHits(text, STYLE_KEYWORDS).length > 0) return "style";
+  if (keywordHits(text, TALK_KEYWORDS).length > 0) return "talk";
+  return item.contentPillar;
+}
+
+function relevanceDirectionForPillar(pillar: NewsContentPillar, item: FeedItem): NewsRelevanceDirection {
+  if (pillar === "style") return "proposal";
+  if (pillar === "talk") return "conversation";
+  return item.relevanceDirection;
+}
+
+function conversationValueForText(pillar: NewsContentPillar, topicCategory: string) {
+  if (pillar === "style") {
+    if (topicCategory === "mens_hair" || topicCategory === "haircare_scalp") return "髪型提案、店販、ホームケア説明に使える";
+    if (topicCategory === "mens_grooming") return "シェービング、肌ケア、香り、清潔感の提案に使える";
+    return "男性客の服装や身だしなみの会話、似合わせ提案に使える";
+  }
+
+  if (pillar === "talk") {
+    if (topicCategory === "music_bgm") return "音楽の好みや店内BGMの雰囲気づくりの会話に使える";
+    if (topicCategory === "sports") return "広く話しやすいスポーツの近況として接客中の会話に使える";
+    return "映画、ドラマ、イベントなど相手の好みを聞く入口に使える";
+  }
+
+  return "営業前の確認、店舗運営、スタッフ共有に使える";
+}
+
+function styleTopicHasBarberValue(text: string) {
+  const styleHits = keywordHits(text, STYLE_KEYWORDS);
+  if (styleHits.length === 0) return false;
+  const womenOnly = keywordHits(text, STYLE_EXCLUSION_KEYWORDS).length > 0 && !/(メンズ|男性|ユニセックス|香水|フレグランス|ヘア|髪|頭皮|シャンプー|スキンケア|美容)/.test(text);
+  return !womenOnly;
+}
+
+function talkTopicHasBarberValue(item: FeedItem, text: string) {
+  if (item.sourceGroup === "sports_talk") {
+    return SPORTS_MAJOR_KEYWORDS.some((keyword) => text.includes(keyword));
+  }
+
+  if (item.topicHint === "entertainment") {
+    return ENTERTAINMENT_SAFE_KEYWORDS.some((keyword) => text.includes(keyword));
+  }
+
+  if (item.topicHint === "music_bgm") {
+    return /(音楽|アーティスト|ライブ|フェス|ツアー|アルバム|リリース|楽曲|BGM|プレイリスト|イベント)/.test(text);
+  }
+
+  return keywordHits(text, TALK_KEYWORDS).length > 0;
 }
 
 function judgeRelevance(item: FeedItem): RelevanceResult {
@@ -310,6 +505,12 @@ function judgeRelevance(item: FeedItem): RelevanceResult {
   const direct = keywordHits(text, DIRECT_KEYWORDS);
   const business = keywordHits(text, BUSINESS_KEYWORDS);
   const conversation = keywordHits(text, CONVERSATION_KEYWORDS);
+  const style = keywordHits(text, STYLE_KEYWORDS);
+  const talk = keywordHits(text, TALK_KEYWORDS);
+  const topicCategory = topicCategoryForText(text, item.topicHint);
+  const contentPillar = contentPillarForText(item, text);
+  const relevanceDirection = relevanceDirectionForPillar(contentPillar, item);
+  const conversationValue = conversationValueForText(contentPillar, topicCategory);
   const reasons: string[] = [];
 
   if (rejectReason) {
@@ -317,8 +518,40 @@ function judgeRelevance(item: FeedItem): RelevanceResult {
       score: 0,
       reason: rejectReason,
       category: categoryForText(text, item.categoryHint),
+      contentPillar,
+      topicCategory,
+      relevanceDirection,
+      conversationValue,
       riskLevel: detectRiskLevel(text),
       rejectReason,
+    };
+  }
+
+  if (item.contentPillar === "style" && !styleTopicHasBarberValue(text)) {
+    return {
+      score: 0,
+      reason: "メンズ客への提案、店販、身だしなみ会話につながる根拠が弱い",
+      category: categoryForText(text, item.categoryHint),
+      contentPillar: "style",
+      topicCategory,
+      relevanceDirection: "proposal",
+      conversationValue,
+      riskLevel: detectRiskLevel(text),
+      rejectReason: "STYLE候補だがBARBER HUBとの接点が弱い",
+    };
+  }
+
+  if (item.contentPillar === "talk" && !talkTopicHasBarberValue(item, text)) {
+    return {
+      score: 0,
+      reason: "接客中に広く話しやすい作品・音楽・スポーツ話題としての根拠が弱い",
+      category: categoryForText(text, item.categoryHint),
+      contentPillar: "talk",
+      topicCategory,
+      relevanceDirection: "conversation",
+      conversationValue,
+      riskLevel: detectRiskLevel(text),
+      rejectReason: "TALK候補だが会話価値が弱い",
     };
   }
 
@@ -337,6 +570,16 @@ function judgeRelevance(item: FeedItem): RelevanceResult {
   if (conversation.length > 0) {
     score += Math.min(28, 12 + conversation.length * 5);
     reasons.push(`お客様との会話に使える語句: ${conversation.slice(0, 4).join("、")}`);
+  }
+
+  if (style.length > 0) {
+    score += Math.min(42, 20 + style.length * 6);
+    reasons.push(`提案・店販・身だしなみに使える語句: ${style.slice(0, 4).join("、")}`);
+  }
+
+  if (talk.length > 0) {
+    score += Math.min(34, 16 + talk.length * 5);
+    reasons.push(`接客中の会話に使える語句: ${talk.slice(0, 4).join("、")}`);
   }
 
   if (item.sourceName.includes("経済産業省")) {
@@ -359,6 +602,21 @@ function judgeRelevance(item: FeedItem): RelevanceResult {
     reasons.push("衛生・労務・健康など理容店の日常運営と接点がある");
   }
 
+  if (item.sourceGroup === "fashion_beauty") {
+    score += 12;
+    reasons.push("若い男性客へのスタイル提案や身だしなみの会話に使える可能性がある");
+  }
+
+  if (item.sourceGroup === "music_entertainment") {
+    score += 8;
+    reasons.push("作品・音楽・イベントを接客中の会話の入口にできる可能性がある");
+  }
+
+  if (item.sourceGroup === "sports_talk") {
+    score += 8;
+    reasons.push("多くのお客様と話しやすい主要スポーツ話題として使える可能性がある");
+  }
+
   const riskLevel = detectRiskLevel(text);
   if (riskLevel === "high") score += 8;
 
@@ -366,6 +624,10 @@ function judgeRelevance(item: FeedItem): RelevanceResult {
     score: Math.min(score + Math.min(item.sourcePriority, 100) / 10, 100),
     reason: reasons.length > 0 ? reasons.join("。") : "理容師の営業・経営・会話に直接結びつく根拠が弱い",
     category: categoryForText(text, item.categoryHint),
+    contentPillar,
+    topicCategory,
+    relevanceDirection,
+    conversationValue,
     riskLevel,
     rejectReason: null,
   };
@@ -412,6 +674,7 @@ function parseGeneratedDraft(raw: string): GeneratedDraft {
     draft_body: clampText(parsed.draft_body, 1800),
     morning_tip: clampText(parsed.morning_tip, 180),
     conversation_tip: clampText(parsed.conversation_tip, 180),
+    conversation_value: clampText(parsed.conversation_value, 500),
     relevance_reason: clampText(parsed.relevance_reason, 400),
     fact_check_notes: clampText(parsed.fact_check_notes, 600),
     risk_level: riskLevel,
@@ -425,7 +688,28 @@ function clampScore(value: unknown) {
 }
 
 function normalizeDiversityGroup(value: unknown): NewsDiversityGroup | null {
-  if (value === "health_labor" || value === "business_money" || value === "digital_security" || value === "product_safety") return value;
+  if (
+    value === "health_labor" ||
+    value === "business_money" ||
+    value === "digital_security" ||
+    value === "product_safety" ||
+    value === "industry_media" ||
+    value === "fashion_beauty" ||
+    value === "music_entertainment" ||
+    value === "sports_talk"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function normalizeContentPillar(value: unknown): NewsContentPillar | null {
+  if (value === "work" || value === "style" || value === "talk") return value;
+  return null;
+}
+
+function normalizeRelevanceDirection(value: unknown): NewsRelevanceDirection | null {
+  if (value === "direct" || value === "proposal" || value === "conversation") return value;
   return null;
 }
 
@@ -439,6 +723,10 @@ function parseAiEvaluation(raw: string): AiEditorialEvaluation {
     practicalScore: clampScore(parsed.practicalScore),
     conversationScore: clampScore(parsed.conversationScore),
     diversityGroup: normalizeDiversityGroup(parsed.diversityGroup),
+    contentPillar: normalizeContentPillar(parsed.contentPillar),
+    topicCategory: clampText(parsed.topicCategory, 80),
+    relevanceDirection: normalizeRelevanceDirection(parsed.relevanceDirection),
+    conversationValue: clampText(parsed.conversationValue, 500),
     rejectReason: clampText(parsed.rejectReason, 240),
     recommended: parsed.recommended === true,
   };
@@ -485,7 +773,18 @@ async function evaluateNewsInterest(item: FeedItem, relevance: RelevanceResult):
           role: "user",
           content: JSON.stringify({
             question: "このニュースは、理容師が朝・昼・夕方にBARBER HUBを開いて、3分を使って読む価値があるか。",
-            audience: ["理容師", "サロン経営者", "スタッフ", "理美容学生"],
+            audience: ["若い男性理容師", "理容師", "サロン経営者", "スタッフ", "理美容学生"],
+            required_value: [
+              "理容師本人に役立つ",
+              "お客様への提案に使える",
+              "接客中の自然な会話に使える",
+              "店内体験づくりに使える",
+            ],
+            content_pillars: {
+              work: "仕事、技術、経営、制度、衛生、安全、人材、AI、店舗運営に直接関係する",
+              style: "メンズファッション、メンズヘア、ヘアケア、頭皮ケア、メンズスキンケア、香水、身だしなみなど提案や店販に使える",
+              talk: "音楽、店内BGM、映画・ドラマ、エンタメ、主要スポーツ、若い男性の生活トレンドなど接客中の会話に使える",
+            },
             high_value: [
               "明日から仕事で使える",
               "店舗経営へ金銭的な影響がある",
@@ -496,6 +795,9 @@ async function evaluateNewsInterest(item: FeedItem, relevance: RelevanceResult):
               "光熱費、物価、税、キャッシュレス",
               "AI、予約、個人情報、セキュリティ",
               "多くのお客様との会話に使える",
+              "男性客への髪型、ヘアケア、スキンケア、香り、服装の提案に使える",
+              "店内BGMや店内体験づくりの考え方に使える",
+              "若い男性客と広く話しやすい作品、音楽、主要スポーツの話題",
               "全国の理容師に関係する",
               "今知る意味がある",
               "読後に行動や会話へつながる",
@@ -512,6 +814,12 @@ async function evaluateNewsInterest(item: FeedItem, relevance: RelevanceResult):
               "タイトルだけでは価値が分からない事務的告知",
               "一般閲覧者には理解しにくい専門行政文書",
               "理容師との接点を無理に作らないと成立しない話題",
+              "不倫、離婚、恋愛ゴシップ、私生活の暴露、SNS炎上だけの記事",
+              "容姿、年齢、病気、家族問題を消費する記事",
+              "スポーツの細かな試合結果や速報を大量に追うだけの記事",
+              "セール、価格、在庫、クーポンだけの記事",
+              "医療効果、発毛効果、美容効果を断定する記事",
+              "歌詞、音源、写真、動画、SNS投稿の転載が必要になる記事",
             ],
             return_json_keys: [
               "relevanceScore",
@@ -520,10 +828,16 @@ async function evaluateNewsInterest(item: FeedItem, relevance: RelevanceResult):
               "practicalScore",
               "conversationScore",
               "diversityGroup",
+              "contentPillar",
+              "topicCategory",
+              "relevanceDirection",
+              "conversationValue",
               "rejectReason",
               "recommended",
             ],
-            diversity_groups: ["health_labor", "business_money", "digital_security", "product_safety"],
+            diversity_groups: ["health_labor", "business_money", "digital_security", "product_safety", "industry_media", "fashion_beauty", "music_entertainment", "sports_talk"],
+            topic_categories: ["mens_fashion", "mens_hair", "haircare_scalp", "mens_grooming", "music_bgm", "entertainment", "sports", "safety_health", "recruit_labor", "digital_security", "business_money"],
+            relevance_directions: ["direct", "proposal", "conversation"],
             rule_hint: relevance,
             source: {
               sourceName: item.sourceName,
@@ -532,7 +846,10 @@ async function evaluateNewsInterest(item: FeedItem, relevance: RelevanceResult):
               sourcePublishedAt: item.sourcePublishedAt,
               sourceExcerpt: item.sourceExcerpt,
               sourceGroup: item.sourceGroup,
+              contentPillar: item.contentPillar,
+              topicHint: item.topicHint,
               categoryHint: item.categoryHint,
+              sourceUsageNote: item.usageNote,
             },
           }),
         },
@@ -582,6 +899,10 @@ function combineRelevanceWithAi(relevance: RelevanceResult, evaluation: AiEditor
     ...relevance,
     score: Math.max(0, Math.min(combinedScore, 100)),
     reason: `${relevance.reason}。${aiReason}`,
+    contentPillar: evaluation.contentPillar ?? relevance.contentPillar,
+    topicCategory: evaluation.topicCategory || relevance.topicCategory,
+    relevanceDirection: evaluation.relevanceDirection ?? relevance.relevanceDirection,
+    conversationValue: evaluation.conversationValue || relevance.conversationValue,
     rejectReason: evaluation.recommended ? null : evaluation.rejectReason || "AI判定で3分読む価値が弱いと判断",
   };
 }
@@ -604,8 +925,13 @@ async function generateDraft(item: FeedItem, relevance: RelevanceResult): Promis
     source_published_at: item.sourcePublishedAt,
     source_excerpt: item.sourceExcerpt,
     category_hint: relevance.category,
+    content_pillar: relevance.contentPillar,
+    topic_category: relevance.topicCategory,
+    relevance_direction: relevance.relevanceDirection,
     relevance_score: relevance.score,
     relevance_reason: relevance.reason,
+    conversation_value: relevance.conversationValue,
+    source_usage_note: item.usageNote,
     risk_level_hint: relevance.riskLevel,
   };
 
@@ -629,21 +955,30 @@ async function generateDraft(item: FeedItem, relevance: RelevanceResult): Promis
           role: "user",
           content: JSON.stringify({
             rules: [
-              "title_workは仕事・経営視点。サロン経営、雇用、制度、技術、道具、集客など仕事への影響が伝わるタイトルにする",
-              "title_personalは理容師本人のメリット視点。健康、生活、趣味、お金、体調管理など本人にとっての価値が伝わるタイトルにする",
-              "title_conversationはお客様との会話視点。接客中の話題としてどう使えるかが伝わるタイトルにする",
+              "title_workは仕事に役立つ視点。サロン経営、雇用、制度、技術、道具、集客、店販など仕事への影響が伝わるタイトルにする",
+              "title_personalは若い理容師が開きたくなる視点。堅すぎず、内容が分かり、誇張しないタイトルにする",
+              "title_conversationはお客様との会話につながる視点。接客中の話題としてどう使えるかが伝わるタイトルにする",
               "各タイトルは24〜42文字程度を目安に、重要な言葉を前半に置き、原則1文で内容と一致させる",
               "官公庁や企業の原題を単に短くするだけでなく、誰に関係するか、何が変わるか、読むと何が分かるかのうち最低1つを伝える",
               "理容師との関連性が弱く価値ある候補を作れない視点は空文字にする",
-              "禁止表現: 絶対、必ず、知らないと損、業界激震、業界騒然、売上が倍増、これだけで痩せる、誰でも成功、今すぐやらないと危険",
+              "禁止表現: 絶対、必ず、知らないと損、業界激震、業界騒然、ヤバすぎる、衝撃、売上が倍増、これだけで痩せる、誰でも成功、今すぐやらないと危険",
+              "有名人名だけ、容姿や年齢の揶揄、病気や家族問題、恋愛ゴシップをクリック誘導に使わない",
               "元記事にない数字、効果、利用方法を作らない",
               "使える表現例: どう変わる？、現場への影響は？、今確認したいこと、サロンが知っておきたいこと、理容師が見直したいこと、お客様との会話で使える、営業前に確認したい、選ぶポイントは？",
               "recommended_angleはwork、personal、conversationのいずれか。空でない候補から最もBARBER HUBに向くものを選ぶ",
               "過剰な煽り表現や断定表現は禁止",
-              "医療、法律、税務、災害、安全、商品回収は断定を避けrisk_levelを高める",
+              "医療、発毛、薄毛、皮膚疾患、法律、税務、災害、安全、商品回収は断定を避けrisk_levelを高める",
+              "美容効果、医療効果、発毛効果を断定しない。必要なら公式情報確認を促す",
+              "音楽・BGMでは歌詞や音源を転載せず、店舗BGM利用条件は公式情報の確認を促す",
+              "エンタメは公式発表、作品、イベント、ファッション、ヘア、会話性を中心にする。私生活や噂を扱わない",
+              "スポーツは主要大会、日本人選手、広く会話に使える話題に絞り、速報サイトのように細かな結果を追わない",
               "PRではないものを広告のように書かない",
-              "draft_bodyは 何が起きたか / 理容師やサロンにどう関係するか / 現場で何を確認するか の順で短く書く",
-              "返すJSON keys: title_work, title_personal, title_conversation, recommended_angle, draft_summary, draft_body, morning_tip, conversation_tip, relevance_reason, fact_check_notes, risk_level",
+              "draft_bodyは 何が起きたか / 理容師やサロンにどう関係するか / お客様との会話や提案にどう使えるか / 詳細は出典元で確認する案内 の順で短く書く",
+              "WORK記事は仕事への影響、店舗運営への影響、明日から確認すべきことを意識する",
+              "STYLE記事は若い男性に注目される理由、ヘア提案・店販・身だしなみとの関係、理容師が知っておくとよいポイントを意識する",
+              "TALK記事は接客中に話しやすい要点、知ったかぶりにならない表現、相手の好みを聞く入口を意識する",
+              "conversation_valueは、BARBER HUBとの関連理由とは別に、会話・提案・店内体験での使い道を1文で書く",
+              "返すJSON keys: title_work, title_personal, title_conversation, recommended_angle, draft_summary, draft_body, morning_tip, conversation_tip, conversation_value, relevance_reason, fact_check_notes, risk_level",
             ],
             source: sourcePayload,
           }),
@@ -714,12 +1049,12 @@ async function fetchSource(source: NewsSource) {
     throw new Error("feed content-type is not XML");
   }
 
-  const body = Buffer.from(await response.arrayBuffer());
+  const body = await response.arrayBuffer();
   if (body.byteLength === 0) {
     throw new Error("feed body is empty");
   }
 
-  const items = extractFeedItems(new TextDecoder("utf-8").decode(body), source);
+  const items = extractFeedItems(decodeFeedBody(body, contentType), source);
   if (items.length === 0) {
     throw new Error("feed parsed zero items");
   }
@@ -775,9 +1110,11 @@ function summarizeForLog(result: NewsDraftPipelineResult) {
     generatedCount: result.generatedCount,
     failedCount: result.failedCount,
     sourceErrorCount: result.sourceErrorCount,
+    pillarCounts: result.pillarCounts,
     sources: result.sourceStats.map((source) => ({
       sourceName: source.sourceName,
       sourceGroup: source.sourceGroup,
+      contentPillar: source.contentPillar,
       success: source.success,
       fetchedCount: source.fetchedCount,
       candidateCount: source.candidateCount,
@@ -793,6 +1130,7 @@ function createSourceStats(source: NewsSource): NewsDraftSourceStats {
   return {
     sourceName: source.sourceName,
     sourceGroup: source.sourceGroup,
+    contentPillar: source.contentPillar,
     success: false,
     fetchedCount: 0,
     candidateCount: 0,
@@ -816,6 +1154,11 @@ export async function runNewsDraftPipeline(options: { maxItems?: number } = {}):
     failedCount: 0,
     insertedCount: 0,
     sourceErrorCount: 0,
+    pillarCounts: {
+      work: 0,
+      style: 0,
+      talk: 0,
+    },
     sourceStats: [],
     errors: [],
   };
@@ -863,6 +1206,7 @@ export async function runNewsDraftPipeline(options: { maxItems?: number } = {}):
   const seenUrls = new Set<string>();
   const seenDuplicateKeys = new Set<string>();
   const groupCounts = new Map<NewsDiversityGroup, number>();
+  const pillarCounts = new Map<NewsContentPillar, number>();
   const sourceCounts = new Map<string, number>();
 
   for (const { item, relevance: ruleRelevance } of evaluatedItems) {
@@ -871,6 +1215,7 @@ export async function runNewsDraftPipeline(options: { maxItems?: number } = {}):
     const stats = sourceStats.get(item.sourceName);
     const key = duplicateKey(item.sourceTitle);
     const groupCount = groupCounts.get(item.sourceGroup) ?? 0;
+    const pillarCount = pillarCounts.get(ruleRelevance.contentPillar) ?? 0;
     const sourceCount = sourceCounts.get(item.sourceName) ?? 0;
 
     if (ruleRelevance.score < threshold || ruleRelevance.rejectReason) {
@@ -880,6 +1225,13 @@ export async function runNewsDraftPipeline(options: { maxItems?: number } = {}):
     }
 
     if (groupCount >= 2 || sourceCount >= item.maxCandidatesPerRun) {
+      result.skippedCount += 1;
+      if (stats) stats.skippedCount += 1;
+      continue;
+    }
+
+    const pillarLimit = ruleRelevance.contentPillar === "work" ? 3 : ruleRelevance.contentPillar === "style" ? 2 : 1;
+    if (pillarCount >= pillarLimit) {
       result.skippedCount += 1;
       if (stats) stats.skippedCount += 1;
       continue;
@@ -920,6 +1272,9 @@ export async function runNewsDraftPipeline(options: { maxItems?: number } = {}):
       source_excerpt: item.sourceExcerpt,
       source_type: item.sourceType,
       category: relevance.category,
+      content_pillar: relevance.contentPillar,
+      topic_category: relevance.topicCategory,
+      relevance_direction: relevance.relevanceDirection,
       relevance_score: relevance.score,
       relevance_reason: generated.draft?.relevance_reason || relevance.reason,
       draft_title: generated.draft?.draft_title || null,
@@ -929,6 +1284,7 @@ export async function runNewsDraftPipeline(options: { maxItems?: number } = {}):
       draft_body: generated.draft?.draft_body || null,
       morning_tip: generated.draft?.morning_tip || null,
       conversation_tip: generated.draft?.conversation_tip || null,
+      conversation_value: generated.draft?.conversation_value || relevance.conversationValue,
       fact_check_notes:
         generated.draft?.fact_check_notes ||
         "RSS/Atom feedのタイトル、URL、公開日時、短い概要のみを元にしています。元記事の確認が必要です。",
@@ -956,6 +1312,7 @@ export async function runNewsDraftPipeline(options: { maxItems?: number } = {}):
     result.insertedCount += 1;
     if (generated.draft) {
       result.generatedCount += 1;
+      result.pillarCounts[relevance.contentPillar] += 1;
     } else {
       result.failedCount += 1;
     }
@@ -964,6 +1321,7 @@ export async function runNewsDraftPipeline(options: { maxItems?: number } = {}):
     if (key) seenDuplicateKeys.add(key);
     seenUrls.add(item.sourceUrl);
     groupCounts.set(item.sourceGroup, groupCount + 1);
+    pillarCounts.set(relevance.contentPillar, (pillarCounts.get(relevance.contentPillar) ?? 0) + 1);
     sourceCounts.set(item.sourceName, sourceCount + 1);
   }
 

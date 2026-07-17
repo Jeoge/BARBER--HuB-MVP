@@ -17,8 +17,8 @@ import { ProfileMiniLink } from "./ProfileMiniLink";
 const newsTitles: Record<string, string> = {
   "scalp-care-rainy": "梅雨時期の頭皮ケア需要が増加中",
   "google-review-reply": "口コミ返信で新規予約率が変わる",
-  "silent-clipper-news": "静音バリカンの新商品が話題",
-  "gray-blending-40s": "40代男性に白髪ぼかし提案が増加",
+  "grooming-fragrance-summer": "夏の身だしなみ、香りは控えめに",
+  "music-bgm-smalltalk": "店内BGM、今日は少しだけ軽く",
   "heatstroke-smalltalk": "今日の時事メモ：熱中症対策を早めに",
 };
 

@@ -112,6 +112,33 @@ const lowValue = quality.lowValueRejectReason({
 });
 assert(Boolean(lowValue), "Committee material notices should be rejected as low value");
 
+const gossip = quality.lowValueRejectReason({
+  sourceTitle: "人気俳優に熱愛報道 SNSで炎上",
+  sourceExcerpt: "",
+});
+assert(Boolean(gossip), "Entertainment gossip should be rejected before AI");
+
+const medicalClaim = quality.lowValueRejectReason({
+  sourceTitle: "薄毛が必ず改善する新スカルプ施術を発表",
+  sourceExcerpt: "",
+});
+assert(Boolean(medicalClaim), "Medical and beauty effect claims should be rejected before AI");
+
+const minorSports = quality.lowValueRejectReason({
+  sourceTitle: "練習試合で白星 2勝1敗に",
+  sourceExcerpt: "",
+  sourceGroup: "sports_talk",
+});
+assert(Boolean(minorSports), "Minor sports result items should be rejected before AI");
+
+const styleCandidate = quality.lowValueRejectReason({
+  sourceTitle: "メンズヘアの新しいフェード提案を解説",
+  sourceExcerpt: "男性客へのヘアスタイル提案に使える内容です。",
+  sourceGroup: "fashion_beauty",
+  contentPillar: "style",
+});
+assert(!styleCandidate, "Relevant men's style items should pass low-value rejection");
+
 const similar = quality.findSimilarRecentNews(
   { sourceTitle: "サイバーセキュリティ対策の注意喚起", sourceExcerpt: "" },
   [{ id: "recent-1", source_title: "サイバーセキュリティ対策に関する注意喚起", duplicate_key: "" }]

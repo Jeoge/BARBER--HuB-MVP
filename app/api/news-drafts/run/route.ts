@@ -48,6 +48,7 @@ async function handleRun(request: NextRequest) {
       generatedCount: result.generatedCount,
       failedCount: result.failedCount,
       insertedCount: result.insertedCount,
+      pillarCounts: result.pillarCounts,
       sourceErrorCount: result.sourceErrorCount,
       sourceStats: result.sourceStats,
     });
