@@ -20,6 +20,9 @@ type NewsReviewPageProps = {
     generated?: string;
     failed?: string;
     sourceErrors?: string;
+    work?: string;
+    style?: string;
+    talk?: string;
   }>;
 };
 
@@ -50,6 +53,20 @@ function riskClass(riskLevel: string | null) {
   if (riskLevel === "high") return "border-red-200 bg-red-50 text-red-700";
   if (riskLevel === "medium") return "border-amber-200 bg-amber-50 text-amber-700";
   return "border-line bg-neutral-50 text-mute";
+}
+
+function pillarLabel(value: string | null | undefined) {
+  if (value === "work") return "WORK";
+  if (value === "style") return "STYLE";
+  if (value === "talk") return "TALK";
+  return "未分類";
+}
+
+function relevanceDirectionLabel(value: string | null | undefined) {
+  if (value === "direct") return "直接関連";
+  if (value === "proposal") return "提案関連";
+  if (value === "conversation") return "会話関連";
+  return "未設定";
 }
 
 function tabHref(tab: string) {
@@ -99,7 +116,7 @@ function RunSummary({ params }: { params: Awaited<NewsReviewPageProps["searchPar
   return (
     <Banner
       type="info"
-      message={`収集 ${params.fetched ?? "0"}件 / 重複 ${params.duplicate ?? "0"}件 / 対象外 ${params.skipped ?? "0"}件 / AI生成成功 ${params.generated ?? "0"}件 / 失敗 ${params.failed ?? "0"}件 / 取得元エラー ${params.sourceErrors ?? "0"}件`}
+      message={`収集 ${params.fetched ?? "0"}件 / 重複 ${params.duplicate ?? "0"}件 / 対象外 ${params.skipped ?? "0"}件 / AI生成成功 ${params.generated ?? "0"}件 / 失敗 ${params.failed ?? "0"}件 / WORK ${params.work ?? "0"}件 / STYLE ${params.style ?? "0"}件 / TALK ${params.talk ?? "0"}件 / 取得元エラー ${params.sourceErrors ?? "0"}件`}
     />
   );
 }
@@ -125,6 +142,8 @@ function DraftList({ drafts, selectedId, activeTab }: { drafts: NewsDraftRecord[
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5 text-[0.68rem] font-bold text-mute">
             <span>{draft.category || "ニュース"}</span>
+            <span>{pillarLabel(draft.content_pillar)}</span>
+            {draft.topic_category ? <span>{draft.topic_category}</span> : null}
             <span>{draft.source_name}</span>
             <span>score {draft.relevance_score ?? 0}</span>
             <span className={`rounded-full border px-1.5 ${riskClass(draft.risk_level)}`}>{draft.risk_level ?? "low"}</span>
@@ -173,6 +192,34 @@ function DetailForm({ draft }: { draft: NewsDraftRecord | null }) {
             <dd className="mt-1 font-semibold text-ink">{dateLabel(draft.source_published_at)}</dd>
           </div>
         </dl>
+      </section>
+
+      <section className="rounded-[8px] border border-line bg-neutral-50 p-3">
+        <h2 className="text-xs font-black text-mute">内部判定</h2>
+        <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
+          <div>
+            <dt className="font-black text-mute">分類</dt>
+            <dd className="mt-1 font-semibold text-ink">{pillarLabel(draft.content_pillar)}</dd>
+          </div>
+          <div>
+            <dt className="font-black text-mute">詳細トピック</dt>
+            <dd className="mt-1 font-semibold text-ink">{draft.topic_category || "未設定"}</dd>
+          </div>
+          <div>
+            <dt className="font-black text-mute">関連方向</dt>
+            <dd className="mt-1 font-semibold text-ink">{relevanceDirectionLabel(draft.relevance_direction)}</dd>
+          </div>
+          <div>
+            <dt className="font-black text-mute">自動判定</dt>
+            <dd className="mt-1 font-semibold text-ink">score {draft.relevance_score ?? 0} / {draft.risk_level ?? "low"}</dd>
+          </div>
+        </dl>
+        {draft.conversation_value ? (
+          <div className="mt-3">
+            <h3 className="text-xs font-black text-mute">会話・提案への使い方</h3>
+            <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{draft.conversation_value}</p>
+          </div>
+        ) : null}
       </section>
 
       {draft.generation_error ? <Banner type="error" message={draft.generation_error} /> : null}

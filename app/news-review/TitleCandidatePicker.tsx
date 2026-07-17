@@ -12,7 +12,7 @@ type TitleCandidatePickerProps = {
 
 const titleAngles = [
   { id: "work", label: "仕事・経営" },
-  { id: "personal", label: "自分にプラス" },
+  { id: "personal", label: "若手目線" },
   { id: "conversation", label: "お客様との会話" },
 ] as const;
 

@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import type { NewsContentPillar, NewsRelevanceDirection } from "./quality";
 
 export type NewsDraftStatus = "pending" | "approved" | "rejected";
 export type NewsDraftRiskLevel = "low" | "medium" | "high";
@@ -19,6 +20,9 @@ export type NewsDraftRecord = {
   source_excerpt: string | null;
   source_type: string | null;
   category: string | null;
+  content_pillar: NewsContentPillar | null;
+  topic_category: string | null;
+  relevance_direction: NewsRelevanceDirection | null;
   relevance_score: number | null;
   relevance_reason: string | null;
   draft_title: string | null;
@@ -28,6 +32,7 @@ export type NewsDraftRecord = {
   draft_body: string | null;
   morning_tip: string | null;
   conversation_tip: string | null;
+  conversation_value: string | null;
   fact_check_notes: string | null;
   risk_level: NewsDraftRiskLevel | null;
   status: NewsDraftStatus;
@@ -93,6 +98,9 @@ export async function listNewsDrafts(supabase: SupabaseClient, limit = 80) {
       source_excerpt,
       source_type,
       category,
+      content_pillar,
+      topic_category,
+      relevance_direction,
       relevance_score,
       relevance_reason,
       draft_title,
@@ -102,6 +110,7 @@ export async function listNewsDrafts(supabase: SupabaseClient, limit = 80) {
       draft_body,
       morning_tip,
       conversation_tip,
+      conversation_value,
       fact_check_notes,
       risk_level,
       status,

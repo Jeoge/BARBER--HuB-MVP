@@ -145,6 +145,9 @@ export async function runNewsDraftIngestAction() {
     generated: String(result.generatedCount),
     failed: String(result.failedCount),
     sourceErrors: String(result.sourceErrorCount),
+    work: String(result.pillarCounts.work),
+    style: String(result.pillarCounts.style),
+    talk: String(result.pillarCounts.talk),
   });
 
   revalidatePath("/news-review");
