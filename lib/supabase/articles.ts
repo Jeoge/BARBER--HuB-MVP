@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { stripArticleImageMarkers } from "@/lib/articleMedia";
 import { topicCategoriesForArticle } from "@/lib/articleCategories";
 
 export type ArticleAuthorProfile = {
@@ -16,6 +17,7 @@ export type ArticleRecord = {
   title: string;
   body: string;
   category: string | null;
+  youtube_url: string | null;
   image_url: string | null;
   image_path: string | null;
   is_published: boolean | null;
@@ -39,7 +41,30 @@ export type ArticleMetrics = {
 export type ArticleWithAuthor = ArticleRecord &
   ArticleMetrics & {
     profiles: ArticleAuthorProfile | null;
+    images: ArticleDisplayImage[];
   };
+
+export type ArticleImageRecord = {
+  id: string;
+  article_id: string;
+  storage_path: string | null;
+  display_order: number | null;
+  width: number | null;
+  height: number | null;
+  byte_size: number | null;
+  mime_type: string | null;
+};
+
+export type ArticleDisplayImage = {
+  id: string;
+  url: string | null;
+  storage_path: string | null;
+  display_order: number;
+  width: number | null;
+  height: number | null;
+  byte_size: number | null;
+  mime_type: string | null;
+};
 
 export type ArticleComment = {
   id: string;
@@ -87,6 +112,7 @@ export const articleSelect = `
   title,
   body,
   category,
+  youtube_url,
   image_url,
   image_path,
   is_published,
@@ -120,6 +146,31 @@ const articleBaseSelect = `
 `;
 
 const articleSelectWithEditorPick = `
+  id,
+  author_id,
+  title,
+  body,
+  category,
+  youtube_url,
+  image_url,
+  image_path,
+  is_published,
+  is_deleted,
+  editor_pick_at,
+  published_at,
+  created_at,
+  updated_at,
+  profiles:author_id (
+    id,
+    display_name,
+    job_type,
+    salon_name,
+    region,
+    avatar_url
+  )
+`;
+
+const articleSelectWithEditorPickLegacy = `
   id,
   author_id,
   title,
@@ -164,26 +215,49 @@ function errorMessage(error: unknown) {
 
 function isMissingEditorPickColumnError(error: unknown) {
   const message = errorMessage(error).toLowerCase();
+  if (message.includes("youtube_url")) return false;
   return message.includes("editor_pick_at") || (message.includes("schema cache") && message.includes("articles"));
 }
 
-function normalizeArticles(data: unknown): ArticleWithAuthor[] {
-  return ((data ?? []) as RawArticleWithAuthor[]).map((article) => ({
+function fallbackArticleImages(article: Pick<ArticleRecord, "id" | "image_path" | "image_url">): ArticleDisplayImage[] {
+  const storagePath = article.image_path?.trim() || null;
+  const legacyUrl = storagePath == null ? article.image_url?.trim() || null : null;
+
+  if (storagePath == null && legacyUrl == null) return [];
+
+  return [
+    {
+      id: `${article.id}:legacy-image`,
+      url: legacyUrl,
+      storage_path: storagePath,
+      display_order: 0,
+      width: null,
+      height: null,
+      byte_size: null,
+      mime_type: null,
+    },
+  ];
+}
+
+function articleWithDefaults(article: RawArticleWithAuthor): ArticleWithAuthor {
+  return {
     ...article,
-    profiles: Array.isArray(article.profiles) ? article.profiles[0] ?? null : article.profiles,
+    youtube_url: article.youtube_url ?? null,
+    profiles: Array.isArray(article.profiles) ? article.profiles[0] ?? null : article.profiles ?? null,
+    images: fallbackArticleImages(article),
     ...emptyMetrics,
-  }));
+  };
+}
+
+function normalizeArticles(data: unknown): ArticleWithAuthor[] {
+  return ((data ?? []) as RawArticleWithAuthor[]).map(articleWithDefaults);
 }
 
 function normalizeArticle(data: unknown): ArticleWithAuthor | null {
   const article = data as RawArticleWithAuthor | null;
   if (article == null) return null;
 
-  return {
-    ...article,
-    profiles: Array.isArray(article.profiles) ? article.profiles[0] ?? null : article.profiles,
-    ...emptyMetrics,
-  };
+  return articleWithDefaults(article);
 }
 
 function normalizeComments(data: unknown): ArticleComment[] {
@@ -191,6 +265,77 @@ function normalizeComments(data: unknown): ArticleComment[] {
     ...comment,
     profiles: Array.isArray(comment.profiles) ? comment.profiles[0] ?? null : comment.profiles,
   }));
+}
+
+function isMissingArticleImagesTableError(error: unknown) {
+  const message = errorMessage(error).toLowerCase();
+  return message.includes("article_images") || (message.includes("schema cache") && message.includes("article"));
+}
+
+function normalizeArticleImageRows(rows: ArticleImageRecord[]) {
+  const seenPaths = new Set<string>();
+
+  return rows
+    .map((row) => ({
+      id: row.id,
+      url: null,
+      storage_path: row.storage_path?.trim() || null,
+      display_order: Number(row.display_order ?? 0),
+      width: row.width ?? null,
+      height: row.height ?? null,
+      byte_size: row.byte_size ?? null,
+      mime_type: row.mime_type ?? null,
+    }))
+    .filter((image) => {
+      if (image.storage_path == null) return false;
+      if (seenPaths.has(image.storage_path)) return false;
+      seenPaths.add(image.storage_path);
+      return true;
+    })
+    .sort((first, second) => first.display_order - second.display_order)
+    .slice(0, 4);
+}
+
+async function withArticleImages(supabase: SupabaseClient, articles: ArticleWithAuthor[]) {
+  const articleIds = articles.map((article) => article.id).filter(isUuid);
+  if (articleIds.length === 0) return articles;
+
+  try {
+    const { data, error } = await supabase
+      .from("article_images")
+      .select("id, article_id, storage_path, display_order, width, height, byte_size, mime_type")
+      .in("article_id", articleIds)
+      .order("display_order", { ascending: true })
+      .returns<ArticleImageRecord[]>();
+
+    if (error) {
+      if (!isMissingArticleImagesTableError(error)) {
+        console.error("Article images select failed", {
+          articleCount: articles.length,
+          message: error.message,
+        });
+      }
+      return articles;
+    }
+
+    const rowsByArticleId = new Map<string, ArticleImageRecord[]>();
+    (data ?? []).forEach((row) => {
+      rowsByArticleId.set(row.article_id, [...(rowsByArticleId.get(row.article_id) ?? []), row]);
+    });
+
+    return articles.map((article) => {
+      const images = normalizeArticleImageRows(rowsByArticleId.get(article.id) ?? []);
+      return images.length > 0 ? { ...article, images } : article;
+    });
+  } catch (error) {
+    if (!isMissingArticleImagesTableError(error)) {
+      console.error("Article images select threw", {
+        articleCount: articles.length,
+        message: errorMessage(error),
+      });
+    }
+    return articles;
+  }
 }
 
 function isUuid(value: string) {
@@ -222,7 +367,7 @@ export function articleDateLabel(article: Pick<ArticleRecord, "published_at" | "
 }
 
 export function articleExcerpt(body: string, maxLength = 72) {
-  const singleLine = body.replace(/\s+/g, " ").trim();
+  const singleLine = stripArticleImageMarkers(body).replace(/\s+/g, " ").trim();
   if (singleLine.length <= maxLength) return singleLine;
   return `${singleLine.slice(0, maxLength)}...`;
 }
@@ -383,6 +528,11 @@ async function withArticleEngagement(supabase: SupabaseClient, articles: Article
   }));
 }
 
+async function hydrateArticles(supabase: SupabaseClient, articles: ArticleWithAuthor[], viewerId?: string | null) {
+  const withImages = await withArticleImages(supabase, articles);
+  return withArticleEngagement(supabase, withImages, viewerId);
+}
+
 export async function getPublishedArticleById(supabase: SupabaseClient, id: string, viewerId?: string | null) {
   try {
     const { data, error } = await supabase
@@ -409,7 +559,7 @@ export async function getPublishedArticleById(supabase: SupabaseClient, id: stri
 
       if (!fallback.error) {
         const article = normalizeArticle(fallback.data);
-        const withEngagement = article ? await withArticleEngagement(supabase, [article], viewerId) : [];
+        const withEngagement = article ? await hydrateArticles(supabase, [article], viewerId) : [];
         return { article: withEngagement[0] ?? null, error: null };
       }
 
@@ -420,7 +570,7 @@ export async function getPublishedArticleById(supabase: SupabaseClient, id: stri
     }
 
     const article = normalizeArticle(data);
-    const withEngagement = article ? await withArticleEngagement(supabase, [article], viewerId) : [];
+    const withEngagement = article ? await hydrateArticles(supabase, [article], viewerId) : [];
     return { article: withEngagement[0] ?? null, error };
   } catch (error) {
     console.error("Article detail select threw", {
@@ -456,7 +606,7 @@ export async function listUserArticles(supabase: SupabaseClient, userId: string,
         .limit(limit);
 
       if (!fallback.error) {
-        return { articles: await withArticleEngagement(supabase, normalizeArticles(fallback.data), viewerId), error: null };
+        return { articles: await hydrateArticles(supabase, normalizeArticles(fallback.data), viewerId), error: null };
       }
 
       console.error("User articles fallback select failed", {
@@ -465,7 +615,7 @@ export async function listUserArticles(supabase: SupabaseClient, userId: string,
       });
     }
 
-    return { articles: await withArticleEngagement(supabase, normalizeArticles(data), viewerId), error };
+    return { articles: await hydrateArticles(supabase, normalizeArticles(data), viewerId), error };
   } catch (error) {
     console.error("User articles select threw", {
       userId,
@@ -490,10 +640,23 @@ export async function listUserArticlesWithEditorPick(supabase: SupabaseClient, u
         userId,
         message: error.message,
       });
+
+      const legacy = await supabase
+        .from("articles")
+        .select(articleSelectWithEditorPickLegacy)
+        .eq("author_id", userId)
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (!legacy.error) {
+        return { articles: await hydrateArticles(supabase, normalizeArticles(legacy.data), viewerId), error: null };
+      }
+
       return listUserArticles(supabase, userId, limit, viewerId);
     }
 
-    return { articles: await withArticleEngagement(supabase, normalizeArticles(data), viewerId), error };
+    return { articles: await hydrateArticles(supabase, normalizeArticles(data), viewerId), error };
   } catch (error) {
     console.error("User articles editor pick select threw", {
       userId,
@@ -529,7 +692,7 @@ export async function listPublishedArticles(supabase: SupabaseClient, limit = 5,
         .limit(limit);
 
       if (!fallback.error) {
-        return { articles: await withArticleEngagement(supabase, normalizeArticles(fallback.data), viewerId), error: null };
+        return { articles: await hydrateArticles(supabase, normalizeArticles(fallback.data), viewerId), error: null };
       }
 
       console.error("Published articles fallback select failed", {
@@ -537,7 +700,7 @@ export async function listPublishedArticles(supabase: SupabaseClient, limit = 5,
       });
     }
 
-    return { articles: await withArticleEngagement(supabase, normalizeArticles(data), viewerId), error };
+    return { articles: await hydrateArticles(supabase, normalizeArticles(data), viewerId), error };
   } catch (error) {
     console.error("Published articles select threw", {
       message: errorMessage(error),
@@ -578,7 +741,7 @@ export async function listPublishedArticlesByTopic(supabase: SupabaseClient, top
         .limit(limit);
 
       if (!fallback.error) {
-        return { articles: await withArticleEngagement(supabase, normalizeArticles(fallback.data), viewerId), error: null };
+        return { articles: await hydrateArticles(supabase, normalizeArticles(fallback.data), viewerId), error: null };
       }
 
       console.error("Topic published articles fallback select failed", {
@@ -587,7 +750,7 @@ export async function listPublishedArticlesByTopic(supabase: SupabaseClient, top
       });
     }
 
-    return { articles: await withArticleEngagement(supabase, normalizeArticles(data), viewerId), error };
+    return { articles: await hydrateArticles(supabase, normalizeArticles(data), viewerId), error };
   } catch (error) {
     console.error("Topic published articles select threw", {
       topicSlug,
@@ -616,11 +779,33 @@ export async function listEditorPickArticles(supabase: SupabaseClient, limit = 3
       console.error("Editor pick articles select failed", {
         message: error.message,
       });
-      return { articles: [], error, missingEditorPickColumn: false };
+
+      const legacy = await supabase
+        .from("articles")
+        .select(articleSelectWithEditorPickLegacy)
+        .eq("is_published", true)
+        .eq("is_deleted", false)
+        .not("editor_pick_at", "is", null)
+        .order("editor_pick_at", { ascending: false })
+        .limit(limit);
+
+      if (!legacy.error) {
+        return {
+          articles: await hydrateArticles(supabase, normalizeArticles(legacy.data), viewerId),
+          error: null,
+          missingEditorPickColumn: false,
+        };
+      }
+
+      if (isMissingEditorPickColumnError(legacy.error)) {
+        return { articles: [], error: null, missingEditorPickColumn: true };
+      }
+
+      return { articles: [], error: legacy.error, missingEditorPickColumn: false };
     }
 
     return {
-      articles: await withArticleEngagement(supabase, normalizeArticles(data), viewerId),
+      articles: await hydrateArticles(supabase, normalizeArticles(data), viewerId),
       error,
       missingEditorPickColumn: false,
     };
@@ -675,7 +860,7 @@ export async function listSavedArticles(supabase: SupabaseClient, userId: string
     }
 
     const order = new Map(articleIds.map((articleId, index) => [articleId, index]));
-    const normalized = await withArticleEngagement(supabase, normalizeArticles(data), viewerId);
+    const normalized = await hydrateArticles(supabase, normalizeArticles(data), viewerId);
     normalized.sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
 
     return { articles: normalized, error: null };

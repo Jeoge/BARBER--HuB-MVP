@@ -20,7 +20,7 @@
 | プロフィール | `profiles` |
 | Snap | `snaps`, `snap_images`, `snap_reactions`, `snap_comments`, `snap_comment_likes`, `saved_snaps` |
 | フォロー | `follows` |
-| 記事 | `articles`, `article_reactions`, `article_comments` |
+| 記事 | `articles`, `article_images`, `article_reactions`, `article_comments` |
 | 通知 | `notifications` |
 | Back Room | `backroom_profiles`, `backroom_posts`, `backroom_comments` |
 | Q&A | `qa_questions`, `qa_answers` |
@@ -64,22 +64,25 @@
 - 読み取り時は `snap_images` があれば順序順に使い、なければ既存の `image_url` を1枚目として使う。
 - 既存の1枚Snapは自動移行しない。
 
-## 記事画像とEDITOR'S PICK
+## 記事画像、YouTube URL、EDITOR'S PICK
 
-`articles` には `image_url` / `image_path` があり、記事画像はこの既存カラムへ保存します。
+`articles` には既存互換用の `image_url` / `image_path` が残ります。複数画像のメタデータは `article_images` に保存し、`articles.image_path` は代表画像互換として1枚目のStorage pathを保持します。
 
 主な設計:
 
-- 1記事につき画像は最大1枚。
+- 1記事につき画像は最大4枚。
+- 複数画像は `article_images` に `display_order` 0〜3で保存し、同一記事内で `display_order` と `storage_path` は重複させない。
 - 記事画像bucketは `article-images`。
-- Storage pathは `userId/articleId/timestamp-random.ext` とし、ユーザー提供ファイル名を使わない。
+- Storage pathは `userId/articleId/timestamp-index-random.ext` とし、ユーザー提供ファイル名を使わない。
 - 許可MIMEは `image/webp` と `image/jpeg`。
 - 1枚あたりのStorage上限は2MB。
+- 1記事あたりの圧縮後画像合計はアプリ側で約4MB以内に制御する。
 - `article-images` bucketはprivateにする。
 - 新規投稿では `image_path` にStorage object pathを保存し、恒久的なStorage公開URLを `image_url` へ保存しない。
-- 公開中かつ未削除の記事を表示するときだけ、サーバー側で30分程度の短時間signed URLを生成して表示用 `image_url` として扱う。
+- 公開中かつ未削除の記事を表示するときだけ、サーバー側で30分程度の短時間signed URLを生成して表示用 `image_url` と `images[].url` として扱う。
 - `image_path` がなく既存の `image_url` だけを持つ記事は、既存互換としてそのURLを表示に使える。
 - 記事保存失敗、保存確認失敗、例外発生時は、今回アップロードしたStorage objectを削除する。
+- `articles.youtube_url` は対象カテゴリの記事だけが持てる任意URL。アプリ側でYouTubeドメインと動画IDを検証し、直接動画アップロードや動画Storageは行わない。
 - EDITOR'S PICK選定日時は `articles.editor_pick_at` に保存する。booleanではなく日時にすることで、最新選定順と将来の解除を扱えるようにする。
 - 手動並べ替えUIはまだ実装しない。表示順は `editor_pick_at desc` を基本にする。
 
@@ -124,6 +127,7 @@
 - `snap_images`: 公開中かつ未削除Snapに属する画像情報だけをanon / authenticatedが閲覧できる。投稿者本人は自分のSnap画像情報を閲覧・追加・更新・削除できる。
 - `snap-images`: 本人フォルダだけアップロードできる。新規Snap画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。
 - `articles`: 公開中かつ未削除の記事、または本人の記事だけを閲覧できる。本人によるINSERT / UPDATEでも `editor_pick_at` を直接設定・変更できないようにする。
+- `article_images`: 公開中かつ未削除記事、または本人の記事に属する画像メタデータだけを閲覧できる。追加・更新・削除は本人の記事に限定し、Storage pathは `userId/articleId/` 配下だけを許可する。
 - `article-images`: private bucket。本人フォルダだけアップロード、更新、削除できる。authenticatedは本人フォルダのobject行だけをSELECTできる。公開記事画像の表示は、DB上の公開中・未削除記事確認後にサーバー側で発行する30分程度の短時間signed URLで行う。新規記事画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。
 - `barber_shops`: 公開情報は閲覧可能。編集は認証済みオーナーに限定する。
 - `barber_shop_claims`: 申請者本人が自分の申請を確認・作成できる。

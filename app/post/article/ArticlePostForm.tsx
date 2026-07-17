@@ -1,9 +1,11 @@
 "use client";
 
-import { ImagePlus, Save, Send, Trash2 } from "lucide-react";
+import { Image as ImageIcon, ImagePlus, Save, Send, Trash2 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { SafetyChecklist } from "@/components/SafetyChecklist";
+import { articleImageMarker, MAX_ARTICLE_IMAGE_COUNT, removeArticleImageMarkerReferences } from "@/lib/articleMedia";
+import { ARTICLE_CATEGORIES, supportsArticleYoutubeUrl } from "@/lib/articleCategories";
 import {
   compressClientImage,
   fileSizeLabel,
@@ -11,16 +13,15 @@ import {
   waitForPaint,
   type CompressedClientImage,
 } from "@/lib/clientImageCompression";
-import { ARTICLE_CATEGORIES } from "@/lib/articleCategories";
 import { isAllowedSnapSourceImageFile } from "@/lib/imageValidation";
 import { createArticleAction } from "./actions";
 
 const MAX_SOURCE_IMAGE_SIZE = 25 * 1024 * 1024;
-const TARGET_IMAGE_BYTES = 1500 * 1024;
-const MAX_COMPRESSED_IMAGE_BYTES = 2 * 1024 * 1024;
+const TARGET_IMAGE_BYTES = 900 * 1024;
+const MAX_TOTAL_COMPRESSED_IMAGE_BYTES = 4 * 1024 * 1024;
 const imageInputId = "article-image-input";
 
-const articleSafetyItems = [
+const baseArticleSafetyItems = [
   {
     name: "articleExperienceConfirmed",
     label: "自分の経験・考えとして投稿します。",
@@ -34,6 +35,13 @@ const articleSafetyItems = [
     label: "企業依頼・報酬・商品提供がある場合はPRとして申告します。",
   },
 ];
+
+const youtubeSafetyItem = {
+  name: "articleVideoRightsConfirmed",
+  label: "動画URLは自分が公開権限を持ち、関係者の許可に配慮したものです。",
+};
+
+type SelectedArticleImage = CompressedClientImage;
 
 function SubmitButton({
   disabledByValidation,
@@ -71,7 +79,9 @@ export function ArticlePostForm({
   error?: string;
   canSetEditorPick: boolean;
 }) {
-  const [selectedImage, setSelectedImage] = useState<CompressedClientImage | null>(null);
+  const [category, setCategory] = useState(defaultCategory);
+  const [body, setBody] = useState("");
+  const [selectedImages, setSelectedImages] = useState<SelectedArticleImage[]>([]);
   const [imageError, setImageError] = useState("");
   const [imageNotice, setImageNotice] = useState("");
   const [compressionStatus, setCompressionStatus] = useState("");
@@ -79,29 +89,38 @@ export function ArticlePostForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [safetyReady, setSafetyReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const selectedImageRef = useRef<CompressedClientImage | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const selectedImagesRef = useRef<SelectedArticleImage[]>([]);
+  const bodyRequired = body.trim().length === 0;
+  const youtubeEnabled = supportsArticleYoutubeUrl(category);
 
   useEffect(() => {
-    selectedImageRef.current = selectedImage;
-  }, [selectedImage]);
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
 
   useEffect(() => {
     return () => {
-      if (selectedImageRef.current) {
-        URL.revokeObjectURL(selectedImageRef.current.previewUrl);
-      }
+      selectedImagesRef.current.forEach((image) => URL.revokeObjectURL(image.previewUrl));
     };
   }, []);
 
-  function replaceSelectedImage(nextImage: CompressedClientImage | null) {
-    setSelectedImage((current) => {
-      if (current) URL.revokeObjectURL(current.previewUrl);
-      return nextImage;
+  function replaceSelectedImages(nextImages: SelectedArticleImage[]) {
+    setSelectedImages((current) => {
+      current.forEach((image) => URL.revokeObjectURL(image.previewUrl));
+      return nextImages;
     });
   }
 
-  function removeSelectedImage() {
-    replaceSelectedImage(null);
+  function removeSelectedImage(imageId: string) {
+    const removeIndex = selectedImages.findIndex((image) => image.id === imageId);
+    if (removeIndex < 0) return;
+
+    setSelectedImages((current) => {
+      const target = current[removeIndex];
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return current.filter((image) => image.id !== imageId);
+    });
+    setBody((current) => removeArticleImageMarkerReferences(current, removeIndex));
     setImageError("");
     setImageNotice("");
     if (fileInputRef.current) {
@@ -109,7 +128,41 @@ export function ArticlePostForm({
     }
   }
 
-  async function checkImage(event: ChangeEvent<HTMLInputElement>) {
+  async function compressAndSetImages(sourceFiles: File[]) {
+    const compressed: SelectedArticleImage[] = [];
+    const totalCount = sourceFiles.length;
+
+    try {
+      for (let index = 0; index < totalCount; index += 1) {
+        setCompressionStatus(`画像を圧縮しています... ${index + 1} / ${totalCount}`);
+        await waitForPaint();
+        compressed.push(
+          await compressClientImage(sourceFiles[index], {
+            index,
+            totalCount,
+            fileNamePrefix: "article",
+            targetBytes: TARGET_IMAGE_BYTES,
+            hardBytes: MAX_TOTAL_COMPRESSED_IMAGE_BYTES,
+          })
+        );
+      }
+    } catch (error) {
+      compressed.forEach((image) => URL.revokeObjectURL(image.previewUrl));
+      throw error;
+    }
+
+    const totalBytes = compressed.reduce((sum, image) => sum + image.byteSize, 0);
+
+    if (totalBytes > MAX_TOTAL_COMPRESSED_IMAGE_BYTES) {
+      compressed.forEach((image) => URL.revokeObjectURL(image.previewUrl));
+      throw new Error("total too large");
+    }
+
+    replaceSelectedImages(compressed);
+    setCompressionStatus("");
+  }
+
+  async function checkImages(event: ChangeEvent<HTMLInputElement>) {
     const pickedFiles = Array.from(event.target.files ?? []);
     setImageError("");
     setImageNotice("");
@@ -118,42 +171,42 @@ export function ArticlePostForm({
       return;
     }
 
-    if (pickedFiles.length > 1) {
-      setImageError("写真は1枚だけ選択できます。");
+    const remainingSlots = MAX_ARTICLE_IMAGE_COUNT - selectedImages.length;
+
+    if (remainingSlots <= 0) {
+      setImageNotice("写真は4枚まで選択できます。");
       event.target.value = "";
       return;
     }
 
-    const file = pickedFiles[0];
+    const filesToAdd = pickedFiles.slice(0, remainingSlots);
 
-    if (!isAllowedSnapSourceImageFile(file)) {
-      setImageError("この写真形式は利用できません。JPEG、PNG、WebPまたはスクリーンショットをお試しください。");
-      event.target.value = "";
-      return;
+    if (pickedFiles.length > remainingSlots) {
+      setImageNotice("写真は4枚まで選択できます。");
     }
 
-    if (file.size > MAX_SOURCE_IMAGE_SIZE) {
-      setImageError("画像を圧縮できませんでした。別の写真をお試しください。");
-      event.target.value = "";
-      return;
+    for (const file of filesToAdd) {
+      if (!isAllowedSnapSourceImageFile(file)) {
+        setImageError("この写真形式は利用できません。JPEG、PNG、WebPまたはスクリーンショットをお試しください。");
+        event.target.value = "";
+        return;
+      }
+
+      if (file.size > MAX_SOURCE_IMAGE_SIZE) {
+        setImageError("画像を圧縮できませんでした。別の写真をお試しください。");
+        event.target.value = "";
+        return;
+      }
     }
+
+    const nextSourceFiles = [...selectedImages.map((image) => image.sourceFile), ...filesToAdd].slice(0, MAX_ARTICLE_IMAGE_COUNT);
 
     try {
       setIsCompressing(true);
-      setCompressionStatus("画像を圧縮しています...");
-      await waitForPaint();
-      const compressed = await compressClientImage(file, {
-        index: 0,
-        totalCount: 1,
-        fileNamePrefix: "article",
-        targetBytes: TARGET_IMAGE_BYTES,
-        hardBytes: MAX_COMPRESSED_IMAGE_BYTES,
-      });
-      replaceSelectedImage(compressed);
-      setCompressionStatus("");
+      await compressAndSetImages(nextSourceFiles);
     } catch {
       setImageError(
-        isHeicLikeImage(file)
+        filesToAdd.some(isHeicLikeImage)
           ? "HEIC / HEIFはブラウザで変換できる場合のみ投稿できます。JPEGまたはPNGに変換して再選択してください。"
           : "画像を圧縮できませんでした。別の写真をお試しください。"
       );
@@ -164,19 +217,49 @@ export function ArticlePostForm({
     }
   }
 
+  function insertImageMarker(index: number) {
+    const textarea = bodyRef.current;
+    const marker = articleImageMarker(index);
+
+    if (textarea == null) {
+      setBody((current) => `${current.trimEnd()}\n\n${marker}\n\n`.trimStart());
+      return;
+    }
+
+    const start = textarea.selectionStart ?? body.length;
+    const end = textarea.selectionEnd ?? start;
+    const before = body.slice(0, start);
+    const after = body.slice(end);
+    const prefix = before.length === 0 || before.endsWith("\n") ? "" : "\n\n";
+    const suffix = after.length === 0 || after.startsWith("\n") ? "" : "\n\n";
+    const insertion = `${prefix}${marker}${suffix}`;
+    const nextBody = `${before}${insertion}${after}`;
+    const nextCursor = before.length + prefix.length + marker.length;
+
+    setBody(nextBody);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(nextCursor, nextCursor);
+    });
+  }
+
   const validationMessage = useMemo(() => {
+    if (bodyRequired) return "本文を入力してください。";
     if (imageError) return imageError;
     return "";
-  }, [imageError]);
+  }, [bodyRequired, imageError]);
   const busyLabel = isCompressing ? "圧縮中..." : "投稿中...";
+  const compressedTotalBytes = selectedImages.reduce((sum, image) => sum + image.byteSize, 0);
+  const articleSafetyItems = youtubeEnabled ? [...baseArticleSafetyItems, youtubeSafetyItem] : baseArticleSafetyItems;
 
   async function submitArticle(formData: FormData) {
-    if (imageError || isCompressing || isSubmitting || !safetyReady) return;
+    if (bodyRequired || imageError || isCompressing || isSubmitting || !safetyReady) return;
 
     formData.delete("image");
-    if (selectedImage) {
-      formData.append("image", selectedImage.file, selectedImage.file.name);
-    }
+    formData.delete("images");
+    selectedImages.forEach((image) => {
+      formData.append("images", image.file, image.file.name);
+    });
 
     setIsSubmitting(true);
 
@@ -209,21 +292,45 @@ export function ArticlePostForm({
 
       <label className="grid gap-2">
         <span className="text-sm font-black text-ink">カテゴリー</span>
-        <select name="category" defaultValue={defaultCategory} className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none focus:border-blush">
-          {ARTICLE_CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {category}
+        <select
+          name="category"
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+          className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none focus:border-blush"
+        >
+          {ARTICLE_CATEGORIES.map((categoryOption) => (
+            <option key={categoryOption} value={categoryOption}>
+              {categoryOption}
             </option>
           ))}
         </select>
       </label>
 
+      {youtubeEnabled ? (
+        <label className="grid gap-2">
+          <span className="text-sm font-black text-ink">YouTube動画URL（任意）</span>
+          <input
+            name="youtubeUrl"
+            type="url"
+            maxLength={300}
+            className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush"
+            placeholder="https://www.youtube.com/watch?v=..."
+          />
+          <span className="text-[0.68rem] font-semibold leading-relaxed text-mute">
+            通常公開または限定公開のURLを設定できます。
+          </span>
+        </label>
+      ) : null}
+
       <label className="grid gap-2">
         <span className="text-sm font-black text-ink">本文</span>
         <textarea
+          ref={bodyRef}
           name="body"
           rows={9}
           required
+          value={body}
+          onChange={(event) => setBody(event.target.value)}
           className="resize-none rounded-[8px] border border-line bg-white px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
           placeholder="背景、試したこと、結果、学びを書いてください。"
         />
@@ -232,43 +339,72 @@ export function ArticlePostForm({
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm font-black text-ink">写真</span>
-          <span className="text-xs font-black text-mute">最大1枚</span>
+          <span className="text-xs font-black text-mute">写真 {selectedImages.length} / {MAX_ARTICLE_IMAGE_COUNT}</span>
         </div>
         <input
           ref={fileInputRef}
           id={imageInputId}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          multiple
           className="sr-only"
-          onChange={checkImage}
-          disabled={isCompressing || isSubmitting || selectedImage != null}
+          onChange={checkImages}
+          disabled={isCompressing || isSubmitting || selectedImages.length >= MAX_ARTICLE_IMAGE_COUNT}
         />
 
-        {selectedImage ? (
+        {selectedImages.length > 0 ? (
           <div className="overflow-hidden rounded-[10px] border border-line bg-white p-3 shadow-sm">
-            <img
-              src={selectedImage.previewUrl}
-              alt="選択した記事写真"
-              className="aspect-[16/10] w-full rounded-[8px] object-cover"
-              loading="lazy"
-              decoding="async"
-            />
-            <div className="mt-2 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="line-clamp-1 break-all text-[0.68rem] font-black text-ink">{selectedImage.sourceFile.name}</p>
-                <p className="mt-1 text-[0.64rem] font-semibold text-mute">
-                  {selectedImage.mimeType.replace("image/", "").toUpperCase()} / {fileSizeLabel(selectedImage.byteSize)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={removeSelectedImage}
-                className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-[8px] border border-line bg-white px-3 text-[0.68rem] font-black text-mute"
-              >
-                <Trash2 aria-hidden="true" size={14} />
-                削除
-              </button>
+            <div className="grid grid-cols-2 gap-2">
+              {selectedImages.map((image, index) => (
+                <div key={image.id} className="overflow-hidden rounded-[8px] border border-line bg-neutral-50">
+                  <img
+                    src={image.previewUrl}
+                    alt={`選択した記事写真 ${index + 1}`}
+                    className="aspect-[4/5] w-full object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <div className="p-2">
+                    <p className="line-clamp-1 break-all text-[0.68rem] font-black text-ink">
+                      {index + 1}. {image.sourceFile.name}
+                    </p>
+                    <p className="mt-1 text-[0.64rem] font-semibold text-mute">
+                      {image.mimeType.replace("image/", "").toUpperCase()} / {fileSizeLabel(image.byteSize)}
+                    </p>
+                    <div className="mt-2 grid gap-2">
+                      <button
+                        type="button"
+                        onClick={() => insertImageMarker(index)}
+                        className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-[8px] border border-blush/25 bg-blushSoft text-[0.68rem] font-black text-blush"
+                      >
+                        <ImageIcon aria-hidden="true" size={14} />
+                        本文に挿入
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeSelectedImage(image.id)}
+                        className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-[8px] border border-line bg-white text-[0.68rem] font-black text-mute"
+                      >
+                        <Trash2 aria-hidden="true" size={14} />
+                        削除
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
+            {compressedTotalBytes > 0 ? (
+              <p className="mt-3 text-xs font-bold text-mute">圧縮後 合計 {fileSizeLabel(compressedTotalBytes)}</p>
+            ) : null}
+            {selectedImages.length < MAX_ARTICLE_IMAGE_COUNT ? (
+              <label
+                htmlFor={imageInputId}
+                className="mt-3 inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border border-line bg-white text-xs font-black text-ink"
+              >
+                <ImagePlus aria-hidden="true" size={15} />
+                写真を追加する
+              </label>
+            ) : null}
           </div>
         ) : (
           <label
@@ -277,7 +413,7 @@ export function ArticlePostForm({
           >
             <ImagePlus aria-hidden="true" size={24} />
             写真を追加
-            <span className="text-[0.68rem] font-semibold text-mute">画像なしでも投稿できます</span>
+            <span className="text-[0.68rem] font-semibold text-mute">画像なしでも投稿できます / 最大4枚</span>
           </label>
         )}
         {compressionStatus ? (
@@ -334,7 +470,7 @@ export function ArticlePostForm({
 
       {!safetyReady ? <p className="text-[0.68rem] font-bold text-mute">確認欄にチェックすると送信できます。</p> : null}
       <SubmitButton
-        disabledByValidation={Boolean(imageError) || isCompressing || !safetyReady}
+        disabledByValidation={bodyRequired || Boolean(imageError) || isCompressing || !safetyReady}
         busy={isCompressing || isSubmitting}
         busyLabel={busyLabel}
       />
