@@ -1,5 +1,6 @@
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { pathWithParams } from "@/lib/auth/redirects";
 
 export type SignupStatus = "check-email" | "maybe-registered";
 
@@ -7,7 +8,7 @@ export function normalizeSignupStatus(value: string | null | undefined): SignupS
   return value === "maybe-registered" ? "maybe-registered" : "check-email";
 }
 
-export function SignupStatusCard({ status = "check-email" }: { status?: SignupStatus }) {
+export function SignupStatusCard({ status = "check-email", next = "/" }: { status?: SignupStatus; next?: string }) {
   const isMaybeRegistered = status === "maybe-registered";
 
   return (
@@ -16,7 +17,7 @@ export function SignupStatusCard({ status = "check-email" }: { status?: SignupSt
         {isMaybeRegistered ? <AlertCircle aria-hidden="true" size={22} /> : <CheckCircle2 aria-hidden="true" size={22} />}
       </div>
       <h2 className="mt-4 text-xl font-black leading-tight text-ink">
-        {isMaybeRegistered ? "すでに登録済みの可能性があります。" : "会員登録を受け付けました。"}
+        {isMaybeRegistered ? "すでに登録済みの可能性があります。" : "確認メールを送信しました。"}
       </h2>
       {isMaybeRegistered ? (
         <div className="mt-3 grid gap-2 text-sm font-medium leading-relaxed text-mute">
@@ -26,14 +27,16 @@ export function SignupStatusCard({ status = "check-email" }: { status?: SignupSt
         </div>
       ) : (
         <div className="mt-3 grid gap-2 text-sm font-medium leading-relaxed text-mute">
-          <p>確認メールを送信しました。</p>
-          <p>メール内のリンクを押してからログインしてください。</p>
+          <p>メール内のリンクを開くと確認が完了します。</p>
+          <p>確認完了画面のボタンからBARBER HUBを開いてください。</p>
           <p>メールが届かない場合は、迷惑メールフォルダをご確認ください。</p>
         </div>
       )}
-      <Link href="/login" className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
-        ログインページへ進む
-      </Link>
+      {isMaybeRegistered ? (
+        <Link href={pathWithParams("/login", { next })} className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
+          ログインページへ進む
+        </Link>
+      ) : null}
       {isMaybeRegistered ? (
         <Link href="/signup" className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-[8px] border border-line bg-white text-sm font-black text-ink">
           別のメールアドレスで登録する
