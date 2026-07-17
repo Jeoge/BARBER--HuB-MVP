@@ -272,14 +272,6 @@ export const editorPicks: EditorPick[] = [
     accent: "tool",
   },
   {
-    type: "Q&A",
-    title: "フェードのぼかしがつながらない時の確認ポイント",
-    note: "みんなで解決中",
-    thanks: 61,
-    author: "Q&A編集部",
-    accent: "haircut",
-  },
-  {
     type: "講習会",
     title: "福岡フェードセミナー：行けなかった人向け要点まとめ",
     note: "講習会アーカイブ",
@@ -394,20 +386,7 @@ export const recruitmentItems: RailItem[] = [
   },
 ];
 
-export const questions = [
-  {
-    title: "白髪ぼかしの説明、料金アップをどう伝えていますか？",
-    meta: "経営・技術 / 18件の解決アイデア",
-  },
-  {
-    title: "新卒スタッフがSNS投稿を続けやすい仕組みを知りたいです。",
-    meta: "求人・集客 / 12件の解決アイデア",
-  },
-  {
-    title: "キャンセルが続くお客様への連絡文、角が立たない書き方は？",
-    meta: "接客・予約 / 21件の解決アイデア",
-  },
-];
+export const questions: { title: string; meta: string }[] = [];
 
 export const archives = seminarItems.map((item) => ({
   tag: item.tag,

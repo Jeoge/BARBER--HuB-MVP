@@ -2,7 +2,7 @@ import {
   editorPickTagForArticleCategory,
   imageVariantForArticleCategory,
 } from "@/lib/articleCategories";
-import { articles, posts, qaItems } from "@/lib/mockData";
+import { articles, posts } from "@/lib/mockData";
 import { articleAuthorName, type ArticleWithAuthor } from "@/lib/supabase/articles";
 
 export type HomeEditorPickItem = {
@@ -19,20 +19,18 @@ export type HomeEditorPickItem = {
 
 type FallbackPickSource =
   | { type: "article"; tag: string; item: (typeof articles)[number]; title: string }
-  | { type: "post"; tag: string; item: (typeof posts)[number]; title: string }
-  | { type: "qa"; tag: string; item: (typeof qaItems)[number]; title: string };
+  | { type: "post"; tag: string; item: (typeof posts)[number]; title: string };
 
 const fallbackPickSources: FallbackPickSource[] = [
   { type: "article", tag: "FEATURE", item: articles[0], title: "仕上げ前の一言で、次回予約が変わる" },
   { type: "post", tag: "SNAP", item: posts[0], title: "今日のフェード投稿" },
   { type: "article", tag: "TOOLS", item: articles.find((article) => article.id === "silent-clipper") ?? articles[0], title: "静音バリカンを朝イチ施術で試す" },
-  { type: "qa", tag: "Q&A", item: qaItems[0], title: "フェードのぼかしがつながらない" },
+  { type: "article", tag: "MANAGEMENT", item: articles.find((article) => article.id === "freee-api-cost") ?? articles[0], title: "固定費を見直して、営業に集中する" },
   { type: "article", tag: "SEMINAR", item: articles.find((article) => article.id === "fukuoka-seminar") ?? articles[0], title: "講習会に行けない人の全国レポート" },
 ];
 
 function hrefForFallbackPick(pick: FallbackPickSource) {
   if (pick.type === "post") return `/posts/${pick.item.id}`;
-  if (pick.type === "qa") return `/qa/${pick.item.id}`;
   return `/articles/${pick.item.id}`;
 }
 
