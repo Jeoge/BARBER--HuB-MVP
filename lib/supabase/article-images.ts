@@ -2,7 +2,7 @@ import "server-only";
 
 import { safeDisplayImageSrc } from "@/lib/imageValidation";
 import { createSupabaseAdminClient, getSupabaseAdminConfigStatus } from "@/lib/supabase/admin";
-import type { ArticleWithAuthor } from "@/lib/supabase/articles";
+import type { ArticleDisplayImage, ArticleWithAuthor } from "@/lib/supabase/articles";
 
 const ARTICLE_IMAGE_BUCKET = "article-images";
 const ARTICLE_IMAGE_SIGNED_URL_EXPIRES_IN_SECONDS = 30 * 60;
@@ -11,37 +11,79 @@ function isPublicArticle(article: ArticleWithAuthor) {
   return article.is_published === true && article.is_deleted === false;
 }
 
-function normalizedStoragePath(article: ArticleWithAuthor) {
-  const path = article.image_path?.trim();
-  return path && path.length > 0 ? path : null;
+function normalizedStoragePath(path: string | null | undefined) {
+  const value = path?.trim();
+  return value && value.length > 0 ? value : null;
 }
 
-function legacyImageUrl(article: ArticleWithAuthor) {
-  if (normalizedStoragePath(article) != null) return null;
-  return safeDisplayImageSrc(article.image_url);
+function fallbackArticleImages(article: ArticleWithAuthor): ArticleDisplayImage[] {
+  const storagePath = normalizedStoragePath(article.image_path);
+  const legacyUrl = storagePath == null ? safeDisplayImageSrc(article.image_url) : null;
+
+  if (storagePath == null && legacyUrl == null) return [];
+
+  return [
+    {
+      id: `${article.id}:legacy-image`,
+      url: legacyUrl,
+      storage_path: storagePath,
+      display_order: 0,
+      width: null,
+      height: null,
+      byte_size: null,
+      mime_type: null,
+    },
+  ];
 }
 
-function articleWithImageUrl<T extends ArticleWithAuthor>(article: T, imageUrl: string | null): T {
+function normalizedArticleImages(article: ArticleWithAuthor) {
+  return article.images.length > 0 ? article.images : fallbackArticleImages(article);
+}
+
+function storagePathsForSigning(article: ArticleWithAuthor) {
+  if (!isPublicArticle(article)) return [];
+
+  return normalizedArticleImages(article)
+    .map((image) => normalizedStoragePath(image.storage_path))
+    .filter((path): path is string => path != null);
+}
+
+function resolveImage(article: ArticleWithAuthor, image: ArticleDisplayImage, signedUrlByPath: Map<string, string>): ArticleDisplayImage {
+  const storagePath = normalizedStoragePath(image.storage_path);
+
+  if (storagePath == null) {
+    return {
+      ...image,
+      url: safeDisplayImageSrc(image.url),
+      storage_path: null,
+    };
+  }
+
+  return {
+    ...image,
+    url: isPublicArticle(article) ? signedUrlByPath.get(storagePath) ?? null : null,
+    storage_path: storagePath,
+  };
+}
+
+function articleWithResolvedImages<T extends ArticleWithAuthor>(article: T, signedUrlByPath: Map<string, string>): T {
+  const images = normalizedArticleImages(article).map((image) => resolveImage(article, image, signedUrlByPath));
+
   return {
     ...article,
-    image_url: imageUrl,
+    images,
+    image_url: images[0]?.url ?? null,
   };
 }
 
 export async function resolveArticleImageUrls<T extends ArticleWithAuthor>(articles: T[]): Promise<T[]> {
   if (articles.length === 0) return articles;
 
-  const signedCandidates = articles
-    .map((article) => ({
-      id: article.id,
-      path: normalizedStoragePath(article),
-      canSign: isPublicArticle(article),
-    }))
-    .filter((item): item is { id: string; path: string; canSign: true } => item.path != null && item.canSign);
-  const uniquePaths = Array.from(new Set(signedCandidates.map((item) => item.path)));
+  const uniquePaths = Array.from(new Set(articles.flatMap(storagePathsForSigning)));
 
   if (uniquePaths.length === 0) {
-    return articles.map((article) => articleWithImageUrl(article, legacyImageUrl(article)));
+    const emptySignedUrls = new Map<string, string>();
+    return articles.map((article) => articleWithResolvedImages(article, emptySignedUrls));
   }
 
   const adminStatus = getSupabaseAdminConfigStatus();
@@ -53,7 +95,8 @@ export async function resolveArticleImageUrls<T extends ArticleWithAuthor>(artic
       missingCount: adminStatus.missing.length,
     });
 
-    return articles.map((article) => articleWithImageUrl(article, legacyImageUrl(article)));
+    const emptySignedUrls = new Map<string, string>();
+    return articles.map((article) => articleWithResolvedImages(article, emptySignedUrls));
   }
 
   const signedUrlByPath = new Map<string, string>();
@@ -88,19 +131,7 @@ export async function resolveArticleImageUrls<T extends ArticleWithAuthor>(artic
     });
   }
 
-  return articles.map((article) => {
-    const path = normalizedStoragePath(article);
-
-    if (path == null) {
-      return articleWithImageUrl(article, legacyImageUrl(article));
-    }
-
-    if (!isPublicArticle(article)) {
-      return articleWithImageUrl(article, null);
-    }
-
-    return articleWithImageUrl(article, signedUrlByPath.get(path) ?? null);
-  });
+  return articles.map((article) => articleWithResolvedImages(article, signedUrlByPath));
 }
 
 export async function resolveArticleImageUrl<T extends ArticleWithAuthor>(article: T | null): Promise<T | null> {

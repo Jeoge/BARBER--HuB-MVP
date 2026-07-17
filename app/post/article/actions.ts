@@ -3,7 +3,13 @@
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { topicSlugsForArticleCategory } from "@/lib/articleCategories";
+import {
+  MAX_ARTICLE_IMAGE_COUNT,
+  normalizeArticleImageMarkers,
+  normalizeYoutubeUrl,
+  shouldRequireArticleVideoRightsConfirmation,
+} from "@/lib/articleMedia";
+import { supportsArticleYoutubeUrl, topicSlugsForArticleCategory } from "@/lib/articleCategories";
 import { pathWithParams } from "@/lib/auth/redirects";
 import {
   allowedCompressedUploadContentType,
@@ -18,8 +24,10 @@ import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
 const ARTICLE_SAFETY_FIELDS = ["articleExperienceConfirmed", "articleNoHarmConfirmed", "articlePrDisclosureChecked"];
+const ARTICLE_VIDEO_SAFETY_FIELD = "articleVideoRightsConfirmed";
 const ARTICLE_IMAGE_BUCKET = "article-images";
 const MAX_ARTICLE_IMAGE_SIZE = 2 * 1024 * 1024;
+const MAX_TOTAL_ARTICLE_IMAGE_SIZE = 4 * 1024 * 1024;
 
 type PreparedArticleImage = {
   file: File;
@@ -31,6 +39,7 @@ type PreparedArticleImage = {
 
 type UploadedArticleImage = PreparedArticleImage & {
   storagePath: string;
+  displayOrder: number;
 };
 
 function cleanText(value: FormDataEntryValue | null) {
@@ -174,6 +183,28 @@ async function prepareArticleImage(image: File): Promise<PreparedArticleImage> {
   };
 }
 
+async function prepareArticleImages(images: File[]): Promise<PreparedArticleImage[]> {
+  if (images.length > MAX_ARTICLE_IMAGE_COUNT) {
+    throw new Error("too_many_images");
+  }
+
+  const prepared: PreparedArticleImage[] = [];
+  let totalByteSize = 0;
+
+  for (const image of images) {
+    const preparedImage = await prepareArticleImage(image);
+    totalByteSize += preparedImage.byteSize;
+
+    if (totalByteSize > MAX_TOTAL_ARTICLE_IMAGE_SIZE) {
+      throw new Error("total_images_too_large");
+    }
+
+    prepared.push(preparedImage);
+  }
+
+  return prepared;
+}
+
 function isMissingEditorPickColumn(error: unknown) {
   const message = errorMessage(error).toLowerCase();
   return (
@@ -206,6 +237,10 @@ function articleSaveErrorMessage(error: unknown) {
     return "EDITOR'S PICK設定はまだ利用できません。migration適用後に再度お試しください。";
   }
 
+  if (message.includes("youtube_url") || message.includes("article_images")) {
+    return "記事メディア機能はmigration適用後に利用できます。時間をおいて再度お試しください。";
+  }
+
   return "記事を保存できませんでした。入力内容を確認して、もう一度お試しください。";
 }
 
@@ -223,22 +258,23 @@ function imageUploadErrorMessage(error: unknown) {
   return "画像アップロードに失敗しました。画像形式または容量を確認してください。";
 }
 
-async function removeUploadedArticleImage(
+async function removeUploadedArticleImages(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-  path: string | null,
+  paths: Array<string | null | undefined>,
   reason: string
 ) {
-  if (!path) return;
+  const uniquePaths = Array.from(new Set(paths.map((path) => path?.trim()).filter((path): path is string => Boolean(path))));
+  if (uniquePaths.length === 0) return;
 
   try {
-    const { error } = await supabase.storage.from(ARTICLE_IMAGE_BUCKET).remove([path]);
+    const { error } = await supabase.storage.from(ARTICLE_IMAGE_BUCKET).remove(uniquePaths);
 
     if (error) {
       console.error("Article image cleanup failed", {
         userId,
         reason,
-        count: 1,
+        count: uniquePaths.length,
         message: error.message,
       });
     }
@@ -246,7 +282,38 @@ async function removeUploadedArticleImage(
     console.error("Article image cleanup threw", {
       userId,
       reason,
-      count: 1,
+      count: uniquePaths.length,
+      message: errorMessage(error),
+    });
+  }
+}
+
+async function markArticleDeletedAfterMediaFailure(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  articleId: string,
+  reason: string
+) {
+  try {
+    const { error } = await supabase
+      .from("articles")
+      .update({ is_deleted: true, updated_at: new Date().toISOString() })
+      .eq("id", articleId)
+      .eq("author_id", userId);
+
+    if (error) {
+      console.error("Article cleanup soft delete failed", {
+        userId,
+        articleId,
+        reason,
+        message: error.message,
+      });
+    }
+  } catch (error) {
+    console.error("Article cleanup soft delete threw", {
+      userId,
+      articleId,
+      reason,
       message: errorMessage(error),
     });
   }
@@ -294,9 +361,12 @@ export async function createArticleAction(formData: FormData) {
   const title = cleanText(formData.get("title"));
   const body = cleanText(formData.get("body"));
   const takeaway = cleanText(formData.get("takeaway"));
+  const youtubeInput = cleanText(formData.get("youtubeUrl"));
   const submittedImages = formData
-    .getAll("image")
+    .getAll("images")
+    .concat(formData.getAll("image"))
     .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+  const youtubeSupported = supportsArticleYoutubeUrl(category);
   const canSetEditorPick = isNewsReviewAdminUserId(user.id);
   const editorPickRequested = cleanText(formData.get("editorPick")) === "1";
 
@@ -316,8 +386,28 @@ export async function createArticleAction(formData: FormData) {
     redirectToArticlePost({ error: SAFETY_CONFIRMATION_ERROR });
   }
 
-  if (submittedImages.length > 1) {
-    redirectToArticlePost({ error: "写真は1枚だけ選択できます。" });
+  if (submittedImages.length > MAX_ARTICLE_IMAGE_COUNT) {
+    redirectToArticlePost({ error: "写真は4枚まで選択できます。" });
+  }
+
+  if (!youtubeSupported && youtubeInput) {
+    redirectToArticlePost({ error: "YouTube URLは講習会・コンクールの記事だけに設定できます。" });
+  }
+
+  const normalizedYoutube = youtubeSupported ? normalizeYoutubeUrl(youtubeInput) : { url: null, error: null };
+
+  if (normalizedYoutube.error) {
+    redirectToArticlePost({ error: normalizedYoutube.error });
+  }
+
+  const videoConfirmationRequired = shouldRequireArticleVideoRightsConfirmation({
+    youtubeSupported,
+    youtubeInput,
+    normalizedYoutubeUrl: normalizedYoutube.url,
+  });
+
+  if (videoConfirmationRequired && !hasSafetyConfirmations(formData, [ARTICLE_VIDEO_SAFETY_FIELD])) {
+    redirectToArticlePost({ error: SAFETY_CONFIRMATION_ERROR });
   }
 
   if (editorPickRequested && !canSetEditorPick) {
@@ -326,11 +416,11 @@ export async function createArticleAction(formData: FormData) {
     });
   }
 
-  let preparedImage: PreparedArticleImage | null = null;
+  let preparedImages: PreparedArticleImage[] = [];
 
-  if (submittedImages.length === 1) {
+  if (submittedImages.length > 0) {
     try {
-      preparedImage = await prepareArticleImage(submittedImages[0]);
+      preparedImages = await prepareArticleImages(submittedImages);
     } catch (error) {
       console.error("Article compressed image validation failed", {
         userId: user.id,
@@ -342,12 +432,14 @@ export async function createArticleAction(formData: FormData) {
 
   const articleId = randomUUID();
   const now = new Date().toISOString();
-  const articleBody = takeaway ? `${body}\n\nこの記事で伝えたいこと\n${takeaway}` : body;
-  let uploadedImage: UploadedArticleImage | null = null;
+  const rawArticleBody = takeaway ? `${body}\n\nこの記事で伝えたいこと\n${takeaway}` : body;
+  const articleBody = normalizeArticleImageMarkers(rawArticleBody, preparedImages.length);
+  const uploadedImages: UploadedArticleImage[] = [];
 
-  if (preparedImage) {
+  for (let index = 0; index < preparedImages.length; index += 1) {
+    const preparedImage = preparedImages[index];
     const extension = compressedUploadFileExtension(preparedImage.contentType);
-    const uploadPath = `${user.id}/${articleId}/${Date.now()}-${randomUUID()}.${extension}`;
+    const uploadPath = `${user.id}/${articleId}/${Date.now()}-${index}-${randomUUID()}.${extension}`;
     let uploadResult: Awaited<ReturnType<ReturnType<typeof supabase.storage.from>["upload"]>>;
 
     try {
@@ -362,9 +454,10 @@ export async function createArticleAction(formData: FormData) {
       console.error("Article image upload threw", {
         userId: user.id,
         articleId,
+        imageIndex: index,
         message: errorMessage(error),
       });
-      await removeUploadedArticleImage(supabase, user.id, uploadPath, "upload throw");
+      await removeUploadedArticleImages(supabase, user.id, [...uploadedImages.map((image) => image.storagePath), uploadPath], "upload throw");
       redirectToArticlePost({ error: "画像アップロードに失敗しました。画像形式または容量を確認してください。" });
     }
 
@@ -372,16 +465,18 @@ export async function createArticleAction(formData: FormData) {
       console.error("Article image upload failed", {
         userId: user.id,
         articleId,
+        imageIndex: index,
         message: uploadResult.error.message,
       });
-      await removeUploadedArticleImage(supabase, user.id, uploadPath, "upload error");
+      await removeUploadedArticleImages(supabase, user.id, [...uploadedImages.map((image) => image.storagePath), uploadPath], "upload error");
       redirectToArticlePost({ error: imageUploadErrorMessage(uploadResult.error) });
     }
 
-    uploadedImage = {
+    uploadedImages.push({
       ...preparedImage,
       storagePath: uploadPath,
-    };
+      displayOrder: index,
+    });
   }
 
   const { data, error } = await supabase
@@ -392,8 +487,9 @@ export async function createArticleAction(formData: FormData) {
       title,
       category,
       body: articleBody,
+      youtube_url: normalizedYoutube.url,
       image_url: null,
-      image_path: uploadedImage?.storagePath ?? null,
+      image_path: uploadedImages[0]?.storagePath ?? null,
       is_published: true,
       is_deleted: false,
       safety_confirmed_at: now,
@@ -411,7 +507,7 @@ export async function createArticleAction(formData: FormData) {
       userId: user.id,
       message: error.message,
     });
-    await removeUploadedArticleImage(supabase, user.id, uploadedImage?.storagePath ?? null, "article insert error");
+    await removeUploadedArticleImages(supabase, user.id, uploadedImages.map((image) => image.storagePath), "article insert error");
     redirectToArticlePost({ error: articleSaveErrorMessage(error) });
   }
 
@@ -421,8 +517,34 @@ export async function createArticleAction(formData: FormData) {
       articleId,
       savedId: data?.id ?? null,
     });
-    await removeUploadedArticleImage(supabase, user.id, uploadedImage?.storagePath ?? null, "article insert verification failed");
+    await removeUploadedArticleImages(supabase, user.id, uploadedImages.map((image) => image.storagePath), "article insert verification failed");
     redirectToArticlePost({ error: "記事を保存できませんでした。もう一度お試しください。" });
+  }
+
+  if (uploadedImages.length > 0) {
+    const { error: imageRowsError } = await supabase.from("article_images").insert(
+      uploadedImages.map((image) => ({
+        article_id: articleId,
+        storage_path: image.storagePath,
+        display_order: image.displayOrder,
+        width: image.width,
+        height: image.height,
+        byte_size: image.byteSize,
+        mime_type: image.contentType,
+      }))
+    );
+
+    if (imageRowsError) {
+      console.error("Article image rows insert failed", {
+        userId: user.id,
+        articleId,
+        imageCount: uploadedImages.length,
+        message: imageRowsError.message,
+      });
+      await removeUploadedArticleImages(supabase, user.id, uploadedImages.map((image) => image.storagePath), "article image rows insert error");
+      await markArticleDeletedAfterMediaFailure(supabase, user.id, articleId, "article image rows insert error");
+      redirectToArticlePost({ error: "記事画像を保存できませんでした。もう一度お試しください。" });
+    }
   }
 
   let editorPickStatus: "1" | "failed" | "unavailable" | undefined;

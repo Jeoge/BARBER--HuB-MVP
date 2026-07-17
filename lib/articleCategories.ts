@@ -82,3 +82,8 @@ export function editorPickTagForArticleCategory(category: string | null | undefi
 export function imageVariantForArticleCategory(category: string | null | undefined) {
   return IMAGE_VARIANTS[category?.trim() || ""] ?? "news";
 }
+
+export function supportsArticleYoutubeUrl(category: string | null | undefined) {
+  const value = category?.trim();
+  return value === "講習会" || value === "講習会レポート" || value === "コンクールレポート";
+}

@@ -1,5 +1,6 @@
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { type ReactNode } from "react";
 import { ArticleEngagementPanel } from "@/components/ArticleEngagementPanel";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
@@ -7,10 +8,12 @@ import { ProductSection } from "@/components/ProductSection";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { SponsorSection } from "@/components/SponsorSection";
 import { ToolActionLinks } from "@/components/ToolActionLinks";
+import { ARTICLE_IMAGE_MARKER_PATTERN, normalizeArticleImageMarkers, validArticleImageMarkerIndexes } from "@/lib/articleMedia";
 import { articles, findArticle, getRelatedProducts } from "@/lib/mockData";
 import { sponsorsForPlacement } from "@/lib/sponsors";
 import { resolveArticleImageUrl } from "@/lib/supabase/article-images";
 import {
+  type ArticleDisplayImage,
   articleAuthorMeta,
   articleAuthorName,
   articleDateLabel,
@@ -43,6 +46,97 @@ function articleParagraphs(body: string) {
     .filter(Boolean);
 }
 
+function ArticleImageFigure({ image, title, index, className = "my-2" }: { image: ArticleDisplayImage; title: string; index: number; className?: string }) {
+  if (image.url == null) return null;
+
+  return (
+    <figure className={className}>
+      <MagazineImage
+        src={image.url}
+        alt={`${title} 写真${index + 1}`}
+        variant="news"
+        className="aspect-[16/10]"
+        imageClassName="object-contain bg-neutral-50"
+      />
+    </figure>
+  );
+}
+
+function ArticleImageStack({ images, title, excludeIndexes = new Set<number>() }: { images: ArticleDisplayImage[]; title: string; excludeIndexes?: Set<number> }) {
+  if (!images.some((image, index) => image.url != null && !excludeIndexes.has(index))) return null;
+
+  return (
+    <div className="mt-4 grid gap-2.5">
+      {images.map((image, index) =>
+        image.url == null || excludeIndexes.has(index) ? null : (
+          <ArticleImageFigure key={image.id} image={image} title={title} index={index} className="m-0" />
+        )
+      )}
+    </div>
+  );
+}
+
+function YoutubeArticleLink({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-5 flex items-center justify-between gap-3 rounded-[8px] border border-line bg-white p-3 text-sm font-black text-ink shadow-sm"
+    >
+      <span className="min-w-0">
+        <span className="block">YouTube動画を見る</span>
+        <span className="mt-0.5 block truncate text-[0.72rem] font-bold text-mute">{url}</span>
+      </span>
+      <ExternalLink aria-hidden="true" size={17} className="shrink-0 text-blush" />
+    </a>
+  );
+}
+
+function renderArticleBodyBlocks(body: string, images: ArticleDisplayImage[], title: string) {
+  const blocks: ReactNode[] = [];
+
+  articleParagraphs(body).forEach((paragraph, paragraphIndex) => {
+    const markerPattern = new RegExp(ARTICLE_IMAGE_MARKER_PATTERN.source, "g");
+    let lastIndex = 0;
+    let textChunk = "";
+
+    const flushText = () => {
+      const text = textChunk.trim();
+      if (text.length > 0) {
+        blocks.push(
+          <p key={`paragraph-${paragraphIndex}-${blocks.length}`} className="whitespace-pre-wrap">
+            {text}
+          </p>,
+        );
+      }
+      textChunk = "";
+    };
+
+    for (const match of paragraph.matchAll(markerPattern)) {
+      const markerStart = match.index ?? 0;
+      const markerEnd = markerStart + match[0].length;
+      textChunk += paragraph.slice(lastIndex, markerStart);
+      flushText();
+
+      const imageIndex = Number(match[1]) - 1;
+      const image = images[imageIndex];
+      if (image?.url != null) {
+        blocks.push(
+          <ArticleImageFigure key={`image-${paragraphIndex}-${imageIndex}-${blocks.length}`} image={image} title={title} index={imageIndex} />,
+        );
+      }
+
+      lastIndex = markerEnd;
+    }
+
+    textChunk += paragraph.slice(lastIndex);
+    flushText();
+  });
+
+  return blocks;
+}
+
 export default async function ArticleDetailPage({ params, searchParams }: ArticleDetailPageProps) {
   const { id } = await params;
   const query = await searchParams;
@@ -60,6 +154,9 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
     const authorName = articleAuthorName(resolvedDbArticle);
     const authorMeta = articleAuthorMeta(resolvedDbArticle);
     const { comments } = await listArticleComments(supabase, id, 30);
+    const articleBody = normalizeArticleImageMarkers(resolvedDbArticle.body, resolvedDbArticle.images.length);
+    const inlineImageIndexes = validArticleImageMarkerIndexes(articleBody, resolvedDbArticle.images.length);
+    const renderedInlineImageIndexes = new Set(Array.from(inlineImageIndexes).filter((imageIndex) => resolvedDbArticle.images[imageIndex]?.url != null));
 
     return (
       <PageChrome>
@@ -98,9 +195,7 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
             </span>
           </div>
 
-          {resolvedDbArticle.image_url ? (
-            <MagazineImage src={resolvedDbArticle.image_url} alt={resolvedDbArticle.title} variant="news" className="mt-4 aspect-[16/10]" />
-          ) : null}
+          <ArticleImageStack images={resolvedDbArticle.images} title={resolvedDbArticle.title} excludeIndexes={renderedInlineImageIndexes} />
 
           <ArticleEngagementPanel
             articleId={resolvedDbArticle.id}
@@ -114,12 +209,10 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
           />
 
           <div className="mt-5 space-y-4 text-[0.92rem] font-medium leading-relaxed text-ink">
-            {articleParagraphs(resolvedDbArticle.body).map((paragraph) => (
-              <p key={paragraph} className="whitespace-pre-wrap">
-                {paragraph}
-              </p>
-            ))}
+            {renderArticleBodyBlocks(articleBody, resolvedDbArticle.images, resolvedDbArticle.title)}
           </div>
+
+          {resolvedDbArticle.youtube_url ? <YoutubeArticleLink url={resolvedDbArticle.youtube_url} /> : null}
         </article>
       </PageChrome>
     );
