@@ -15,7 +15,7 @@ export async function openBarberHubAfterConfirmation(formData: FormData) {
     redirect(
       pathWithParams("/login", {
         next,
-        message: "メール確認は完了しています。このブラウザでログイン状態を確認できなかったため、ログインしてください。",
+        message: "ログイン状態を確認できませんでした。メール確認済みの場合はログインしてBARBER HUBを開いてください。",
       })
     );
   }

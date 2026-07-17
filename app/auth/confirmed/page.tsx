@@ -4,6 +4,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { pathWithParams, safeNextPath } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/server";
 import { openBarberHubAfterConfirmation } from "./actions";
+import { OpenBarberHubSubmitButton } from "./OpenBarberHubSubmitButton";
 
 type AuthConfirmedPageProps = {
   searchParams?: Promise<{ next?: string; status?: string }>;
@@ -17,8 +18,9 @@ export default async function AuthConfirmedPage({ searchParams }: AuthConfirmedP
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const sessionMissing = !callbackFailed && !user;
-  const isSuccess = !callbackFailed && !sessionMissing;
+  const hasUser = Boolean(user);
+  const callbackFailedWithoutSession = callbackFailed && !hasUser;
+  const isSuccess = hasUser;
 
   return (
     <main className="mx-auto min-h-screen max-w-[430px] bg-white px-4 pb-12 pt-6 shadow-[0_0_80px_rgba(17,17,17,0.08)]">
@@ -36,7 +38,7 @@ export default async function AuthConfirmedPage({ searchParams }: AuthConfirmedP
           </div>
 
           <h2 className="mt-4 text-xl font-black leading-tight text-ink">
-            {isSuccess ? "メール確認が完了しました。" : callbackFailed ? "メール確認を完了できませんでした。" : "ログイン状態を確認できませんでした。"}
+            {isSuccess ? "メール確認が完了しました。" : callbackFailedWithoutSession ? "メール確認を完了できませんでした。" : "ログイン状態を確認できませんでした。"}
           </h2>
 
           {isSuccess ? (
@@ -44,36 +46,40 @@ export default async function AuthConfirmedPage({ searchParams }: AuthConfirmedP
               <p>このままBARBER HUBを開けます。</p>
               <p>メールアプリ内ブラウザで開いた場合も、このボタンから進んでください。</p>
             </div>
-          ) : callbackFailed ? (
+          ) : callbackFailedWithoutSession ? (
             <div className="mt-3 grid gap-2 text-sm font-medium leading-relaxed text-mute">
               <p>確認リンクは期限切れ、使用済み、またはすでに開かれている可能性があります。</p>
-              <p>すでに確認が完了している場合があります。まずBARBER HUBを開いて状態を確認してください。</p>
+              <p>メール確認済みの場合はログインしてください。</p>
             </div>
           ) : (
             <div className="mt-3 grid gap-2 text-sm font-medium leading-relaxed text-mute">
-              <p>メール確認は完了している可能性があります。</p>
-              <p>別のブラウザで開いた場合は、ログイン状態が引き継がれないことがあります。</p>
+              <p>ログイン状態を確認できませんでした。</p>
+              <p>メール確認済みの場合はログインしてBARBER HUBを開いてください。</p>
             </div>
           )}
 
           {isSuccess ? (
             <form action={openBarberHubAfterConfirmation} className="mt-5">
               <input type="hidden" name="next" value={next} />
-              <button type="submit" className="inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
-                BARBER HUBを開く
-              </button>
+              <OpenBarberHubSubmitButton />
             </form>
-          ) : callbackFailed ? (
-            <Link href="/" className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
-              BARBER HUBを開く
+          ) : callbackFailedWithoutSession ? (
+            <Link
+              href={pathWithParams("/login", {
+                next,
+                message: "確認リンクは使用済み、または期限切れの可能性があります。メール確認済みの場合はログインしてください。",
+              })}
+              className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white transition active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blush"
+            >
+              ログインして開く
             </Link>
           ) : (
             <Link
               href={pathWithParams("/login", {
                 next,
-                message: "メール確認は完了しています。このブラウザでログイン状態を確認できなかったため、ログインしてください。",
+                message: "ログイン状態を確認できませんでした。メール確認済みの場合はログインしてBARBER HUBを開いてください。",
               })}
-              className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white"
+              className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white transition active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blush"
             >
               ログインして開く
             </Link>
