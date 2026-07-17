@@ -69,5 +69,9 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  if (await hasVerifiedUser(supabase)) {
+    return redirectToConfirmed(requestUrl, next);
+  }
+
   return redirectToConfirmationError(requestUrl, next);
 }

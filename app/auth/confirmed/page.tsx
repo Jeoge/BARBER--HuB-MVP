@@ -46,8 +46,8 @@ export default async function AuthConfirmedPage({ searchParams }: AuthConfirmedP
             </div>
           ) : callbackFailed ? (
             <div className="mt-3 grid gap-2 text-sm font-medium leading-relaxed text-mute">
-              <p>確認リンクの期限切れ、またはすでに使用済みの可能性があります。</p>
-              <p>もう一度登録画面から確認してください。</p>
+              <p>確認リンクは期限切れ、使用済み、またはすでに開かれている可能性があります。</p>
+              <p>すでに確認が完了している場合があります。まずBARBER HUBを開いて状態を確認してください。</p>
             </div>
           ) : (
             <div className="mt-3 grid gap-2 text-sm font-medium leading-relaxed text-mute">
@@ -64,8 +64,8 @@ export default async function AuthConfirmedPage({ searchParams }: AuthConfirmedP
               </button>
             </form>
           ) : callbackFailed ? (
-            <Link href={pathWithParams("/signup", { next })} className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
-              会員登録画面へ戻る
+            <Link href="/" className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white">
+              BARBER HUBを開く
             </Link>
           ) : (
             <Link
