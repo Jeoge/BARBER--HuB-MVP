@@ -2,7 +2,13 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BARBER_SHOP_CSV_HEADERS, missingCsvHeaders, parseBarberShopCsv } from "./csv";
-import { cleanImportPhone, cleanImportText, normalizeImportPhone, normalizeImportText } from "./normalization";
+import {
+  cleanImportPhone,
+  cleanImportText,
+  normalizeCsvImportVerificationStatus,
+  normalizeImportPhone,
+  normalizeImportText,
+} from "./normalization";
 import { normalizeShopSearchText, type BarberShopVerificationStatus } from "@/lib/supabase/barber-shops";
 
 export type BarberShopImportBatch = {
@@ -103,32 +109,6 @@ function duplicateKeyForExisting(shop: ExistingShopForDuplicate) {
   ].join("\u001F");
 }
 
-function normalizeVerificationStatus(value: string): { status: BarberShopVerificationStatus; error: string | null } {
-  const text = cleanImportText(value, 40).toLowerCase();
-
-  if (!text || text === "未認証" || text === "未認証店舗" || text === "unverified" || text === "unclaimed") {
-    return { status: "unverified", error: null };
-  }
-
-  if (text === "申請中" || text === "認証申請中" || text === "pending") {
-    return { status: "pending", error: null };
-  }
-
-  if (text === "認証済み" || text === "verified") {
-    return { status: "verified", error: null };
-  }
-
-  if (text === "却下" || text === "rejected") {
-    return { status: "rejected", error: null };
-  }
-
-  if (text === "停止中" || text === "suspended") {
-    return { status: "suspended", error: null };
-  }
-
-  return { status: "unverified", error: "認証状態は 未認証 / 認証申請中 / 認証済み のいずれかで入力してください。" };
-}
-
 function deriveMunicipality(rawMunicipality: string, address: string, source: string) {
   if (rawMunicipality) return rawMunicipality;
 
@@ -202,7 +182,7 @@ function prepareRows(headers: string[], rows: string[][]) {
     const phone = cleanImportPhone(rowValue(csvRow, index, "電話番号"));
     const source = cleanImportText(rowValue(csvRow, index, "掲載元"), 240);
     const municipality = deriveMunicipality(cleanImportText(rowValue(csvRow, index, "市区町村"), 80), address, source);
-    const statusResult = normalizeVerificationStatus(rowValue(csvRow, index, "認証状態"));
+    const statusResult = normalizeCsvImportVerificationStatus(rowValue(csvRow, index, "認証状態"));
     const normalizedName = normalizeShopSearchText(name);
     const validationErrors: string[] = [];
 
