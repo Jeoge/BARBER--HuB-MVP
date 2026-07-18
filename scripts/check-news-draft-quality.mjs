@@ -75,42 +75,29 @@ function parseFixtureFeed(xml, baseUrl) {
     .filter((item) => item.title && item.url);
 }
 
-function publicNewsSortRank(item) {
-  return [item.risk_level === "high" ? 0 : 1, -Date.parse(item.reviewed_at), -Date.parse(item.updated_at), -Date.parse(item.created_at)];
-}
-
-function comparePublicNewsItems(a, b) {
-  const left = publicNewsSortRank(a);
-  const right = publicNewsSortRank(b);
-
-  for (let index = 0; index < left.length; index += 1) {
-    if (left[index] !== right[index]) return left[index] - right[index];
-  }
-
-  return 0;
+function comparePublicNewsItemsByPublicationOrder(a, b) {
+  return (
+    Date.parse(b.reviewed_at) - Date.parse(a.reviewed_at) ||
+    Date.parse(b.updated_at) - Date.parse(a.updated_at) ||
+    Date.parse(b.created_at) - Date.parse(a.created_at) ||
+    String(b.id).localeCompare(String(a.id))
+  );
 }
 
 function composePublicNewsLikeRpc(items, limit = 4) {
   const publishable = items.filter((item) => publication.getNewsPublicationBlocker(item, { requireReviewedAt: true }) === null);
-  const latest = [...publishable].sort((a, b) => Date.parse(b.reviewed_at) - Date.parse(a.reviewed_at) || Date.parse(b.updated_at) - Date.parse(a.updated_at) || Date.parse(b.created_at) - Date.parse(a.created_at))[0];
-  const selected = new Map();
+  return [...publishable].sort(comparePublicNewsItemsByPublicationOrder).slice(0, Math.max(1, Math.min(Math.trunc(limit || 4), 20)));
+}
 
-  for (const pillar of ["work", "style", "talk"]) {
-    const pillarItems = publishable.filter((item) => item.content_pillar === pillar).sort(comparePublicNewsItems);
-    const pillarLimit = pillar === "work" ? 2 : pillar === "style" ? 2 : 1;
-
-    pillarItems.forEach((item, index) => {
-      const pillarRank = index + 1;
-      const include =
-        (pillar === "work" && (pillarRank <= pillarLimit || (item.risk_level === "high" && pillarRank <= 3))) ||
-        (pillar !== "work" && pillarRank <= pillarLimit);
-
-      if (include) selected.set(item.id, item);
-    });
-  }
-
-  if (latest) selected.set(latest.id, latest);
-  return [...selected.values()].sort(comparePublicNewsItems).slice(0, limit);
+function approveDraftForPublication(draft, nowIso) {
+  const approved = {
+    ...draft,
+    status: "approved",
+    reviewed_at: draft.status === "approved" ? (draft.reviewed_at ?? nowIso) : nowIso,
+  };
+  const blocker = publication.getNewsPublicationBlocker(approved, { requireReviewedAt: true });
+  assert(blocker === null, `Approved draft should be publishable: ${blocker ?? ""}`);
+  return approved;
 }
 
 const quality = loadTsModule("lib/news-drafts/quality.ts");
@@ -204,6 +191,18 @@ const publishableDraft = {
   source_url: "https://example.jp/news",
 };
 
+function publicNewsCandidate(overrides = {}) {
+  return {
+    ...publishableDraft,
+    id: "00000000-0000-4000-8000-000000000001",
+    risk_level: "low",
+    content_pillar: "work",
+    updated_at: publishableDraft.reviewed_at,
+    created_at: publishableDraft.reviewed_at,
+    ...overrides,
+  };
+}
+
 assert(publication.getNewsPublicationBlocker(publishableDraft, { requireReviewedAt: true }) === null, "Complete approved news should be publishable");
 assert(
   publication.getNewsPublicationBlocker({ ...publishableDraft, morning_tip: "" }, { requireReviewedAt: true }) === "朝礼のヒントが空のため公開できません。",
@@ -231,59 +230,139 @@ assert(
   "Public news rows should require reviewed_at"
 );
 
-const publicNewsCandidates = [
-  {
-    ...publishableDraft,
-    id: "latest-style",
-    content_pillar: "style",
-    risk_level: "low",
+const fivePublishedNews = [
+  publicNewsCandidate({
+    id: "00000000-0000-4000-8000-00000000000a",
+    reviewed_at: "2026-07-15T10:00:00Z",
+    updated_at: "2026-07-15T10:00:00Z",
+    created_at: "2026-07-15T09:59:00Z",
+  }),
+  publicNewsCandidate({
+    id: "00000000-0000-4000-8000-00000000000b",
+    reviewed_at: "2026-07-15T11:00:00Z",
+    updated_at: "2026-07-15T11:00:00Z",
+    created_at: "2026-07-15T10:59:00Z",
+  }),
+  publicNewsCandidate({
+    id: "00000000-0000-4000-8000-00000000000c",
     reviewed_at: "2026-07-15T12:00:00Z",
     updated_at: "2026-07-15T12:00:00Z",
     created_at: "2026-07-15T11:59:00Z",
-  },
-  {
-    ...publishableDraft,
-    id: "high-risk-work",
-    content_pillar: "work",
-    risk_level: "high",
-    reviewed_at: "2026-07-15T11:55:00Z",
-    updated_at: "2026-07-15T11:55:00Z",
-    created_at: "2026-07-15T11:54:00Z",
-  },
-  {
-    ...publishableDraft,
-    id: "normal-work",
-    content_pillar: "work",
-    risk_level: "low",
-    reviewed_at: "2026-07-15T11:40:00Z",
-    updated_at: "2026-07-15T11:40:00Z",
-    created_at: "2026-07-15T11:39:00Z",
-  },
-  {
-    ...publishableDraft,
-    id: "talk",
-    content_pillar: "talk",
-    risk_level: "low",
-    reviewed_at: "2026-07-15T11:30:00Z",
-    updated_at: "2026-07-15T11:30:00Z",
-    created_at: "2026-07-15T11:29:00Z",
-  },
-  {
-    ...publishableDraft,
-    id: "older-style",
-    content_pillar: "style",
-    risk_level: "low",
-    reviewed_at: "2026-07-15T11:20:00Z",
-    updated_at: "2026-07-15T11:20:00Z",
-    created_at: "2026-07-15T11:19:00Z",
-  },
+  }),
+  publicNewsCandidate({
+    id: "00000000-0000-4000-8000-00000000000d",
+    reviewed_at: "2026-07-15T13:00:00Z",
+    updated_at: "2026-07-15T13:00:00Z",
+    created_at: "2026-07-15T12:59:00Z",
+  }),
+  publicNewsCandidate({
+    id: "00000000-0000-4000-8000-00000000000e",
+    reviewed_at: "2026-07-15T14:00:00Z",
+    updated_at: "2026-07-15T14:00:00Z",
+    created_at: "2026-07-15T13:59:00Z",
+  }),
 ];
-const selectedPublicNews = composePublicNewsLikeRpc(publicNewsCandidates, 4);
-const selectedPublicNewsIds = selectedPublicNews.map((item) => item.id);
-assert(selectedPublicNews.length <= 4, "Public news selection should not exceed the top limit");
-assert(selectedPublicNewsIds.includes("latest-style"), "Latest published news should remain a candidate");
-assert(selectedPublicNewsIds.includes("high-risk-work"), "High-risk work news should remain a candidate");
-assert(selectedPublicNewsIds.indexOf("high-risk-work") < selectedPublicNewsIds.indexOf("latest-style"), "High-risk news should sort before newer low-risk news");
+assert(
+  composePublicNewsLikeRpc(fivePublishedNews, 4).map((item) => item.id).join(",") ===
+    "00000000-0000-4000-8000-00000000000e,00000000-0000-4000-8000-00000000000d,00000000-0000-4000-8000-00000000000c,00000000-0000-4000-8000-00000000000b",
+  "Latest four public news items should be ordered by reviewed_at desc"
+);
+
+assert(
+  composePublicNewsLikeRpc([
+    publicNewsCandidate({
+      id: "00000000-0000-4000-8000-0000000000a1",
+      risk_level: "high",
+      reviewed_at: "2026-07-15T10:00:00Z",
+      updated_at: "2026-07-15T10:00:00Z",
+      created_at: "2026-07-15T09:59:00Z",
+    }),
+    publicNewsCandidate({
+      id: "00000000-0000-4000-8000-0000000000b1",
+      risk_level: "low",
+      reviewed_at: "2026-07-15T11:00:00Z",
+      updated_at: "2026-07-15T11:00:00Z",
+      created_at: "2026-07-15T10:59:00Z",
+    }),
+  ], 4)
+    .map((item) => item.id)
+    .join(",") === "00000000-0000-4000-8000-0000000000b1,00000000-0000-4000-8000-0000000000a1",
+  "Newer low-risk news should sort before older high-risk news"
+);
+
+assert(
+  composePublicNewsLikeRpc([
+    publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000101", content_pillar: "work", reviewed_at: "2026-07-15T10:00:00Z", updated_at: "2026-07-15T10:00:00Z", created_at: "2026-07-15T09:59:00Z" }),
+    publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000102", content_pillar: "work", reviewed_at: "2026-07-15T11:00:00Z", updated_at: "2026-07-15T11:00:00Z", created_at: "2026-07-15T10:59:00Z" }),
+    publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000103", content_pillar: "work", reviewed_at: "2026-07-15T12:00:00Z", updated_at: "2026-07-15T12:00:00Z", created_at: "2026-07-15T11:59:00Z" }),
+    publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000104", content_pillar: "work", reviewed_at: "2026-07-15T13:00:00Z", updated_at: "2026-07-15T13:00:00Z", created_at: "2026-07-15T12:59:00Z" }),
+    publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000105", content_pillar: "style", reviewed_at: "2026-07-15T09:00:00Z", updated_at: "2026-07-15T09:00:00Z", created_at: "2026-07-15T08:59:00Z" }),
+  ], 4).every((item) => item.content_pillar === "work"),
+  "Top four should not apply WORK/STYLE/TALK caps when the latest four are all WORK"
+);
+
+const newlyApprovedNews = approveDraftForPublication(
+  publicNewsCandidate({
+    id: "00000000-0000-4000-8000-000000000201",
+    status: "pending",
+    reviewed_at: null,
+    updated_at: "2026-07-15T15:00:00Z",
+    created_at: "2026-07-15T14:55:00Z",
+  }),
+  "2026-07-15T15:00:00Z"
+);
+assert(
+  newlyApprovedNews.reviewed_at === "2026-07-15T15:00:00Z" &&
+    composePublicNewsLikeRpc([...fivePublishedNews, newlyApprovedNews], 4)[0].id === newlyApprovedNews.id,
+  "A pending draft approved for publication should receive the publish time and become the top item"
+);
+
+const unpublishableNews = [
+  publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000301" }),
+  publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000302", status: "pending" }),
+  publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000303", reviewed_at: null }),
+  publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000304", generation_error: "failed" }),
+  publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000305", duplicate_of: "00000000-0000-4000-8000-000000000001" }),
+  publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000306", draft_title: "" }),
+  publicNewsCandidate({ id: "00000000-0000-4000-8000-000000000307", source_url: "javascript:alert(1)" }),
+];
+assert(
+  composePublicNewsLikeRpc(unpublishableNews, 7).map((item) => item.id).join(",") === "00000000-0000-4000-8000-000000000301",
+  "Only publishable approved news should appear in the public list"
+);
+
+assert(
+  composePublicNewsLikeRpc([
+    publicNewsCandidate({
+      id: "00000000-0000-4000-8000-000000000401",
+      reviewed_at: "2026-07-15T10:00:00Z",
+      updated_at: "2026-07-15T10:05:00Z",
+      created_at: "2026-07-15T10:00:00Z",
+    }),
+    publicNewsCandidate({
+      id: "00000000-0000-4000-8000-000000000402",
+      reviewed_at: "2026-07-15T10:00:00Z",
+      updated_at: "2026-07-15T10:04:00Z",
+      created_at: "2026-07-15T10:03:00Z",
+    }),
+    publicNewsCandidate({
+      id: "00000000-0000-4000-8000-000000000404",
+      reviewed_at: "2026-07-15T10:00:00Z",
+      updated_at: "2026-07-15T10:04:00Z",
+      created_at: "2026-07-15T10:02:00Z",
+    }),
+    publicNewsCandidate({
+      id: "00000000-0000-4000-8000-000000000403",
+      reviewed_at: "2026-07-15T10:00:00Z",
+      updated_at: "2026-07-15T10:04:00Z",
+      created_at: "2026-07-15T10:02:00Z",
+    }),
+  ], 4)
+    .map((item) => item.id)
+    .join(",") ===
+    "00000000-0000-4000-8000-000000000401,00000000-0000-4000-8000-000000000402,00000000-0000-4000-8000-000000000404,00000000-0000-4000-8000-000000000403",
+  "Public news order should be stable with updated_at, created_at, and id tie-breakers"
+);
 
 const mockSources = [
   Promise.resolve(["ok"]),
