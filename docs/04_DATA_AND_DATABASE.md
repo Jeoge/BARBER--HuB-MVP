@@ -140,7 +140,7 @@
 - `barber_shop_import_batches`, `barber_shop_import_rows`: RLSを有効化し、anon / authenticated向けpolicyは作らない。CSV取込は管理者allowlist確認後、サーバー側service role clientと専用RPCで実行する。
 - CSV取込RPCは `barber_shops.verification_status` へ常に `unverified` を書き込む。`source_type = 'imported'`, `verification_status = 'verified'`, `owner_user_id is null` の組み合わせはDB制約で禁止する。
 - 店舗管理申請の審査RPC `review_barber_shop_claim` はservice_roleだけにEXECUTEを許可し、一般ユーザーは直接呼べない。Server Action側でも `BARBER_HUB_ADMIN_USER_IDS` または互換allowlistで管理者判定する。
-- 店舗管理申請の承認では、対象claimがpendingであること、対象店舗が別ユーザーのverified店舗でないことをDB側で再確認してから `owner_user_id` と `verification_status` を更新する。
+- 店舗管理申請の承認では、対象claimがpendingであること、対象店舗が別ユーザーのverified店舗でないことをDB側で再確認してから `owner_user_id` と `verification_status` を更新する。同じ `shop_id` のほかのpending申請は、同一ユーザーの重複分も含め、同一RPC内で `rejected` へ自動却下する。
 - 店舗管理申請の却下では、対象claimだけをrejectedにし、対象店舗は削除しない。ほかにpending申請がなければ店舗の `verification_status` を `unverified` へ戻す。
 - 管理者審査はクライアントから直接行わない。
 
