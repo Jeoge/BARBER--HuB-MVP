@@ -72,9 +72,28 @@ type PreparedImportRow = Omit<BarberShopImportRow, "id" | "batch_id" | "created_
 
 export type BarberShopImportPreview = {
   batch: BarberShopImportBatch;
+  summary: BarberShopImportSummary;
   sampleRows: BarberShopImportRow[];
   issueRows: BarberShopImportRow[];
   resultRows: BarberShopImportRow[];
+};
+
+export type BarberShopImportCount = {
+  label: string;
+  count: number;
+};
+
+export type BarberShopImportBlankCount = BarberShopImportCount & {
+  field: "店名" | "都道府県" | "市区町村" | "住所" | "電話番号" | "掲載元";
+};
+
+export type BarberShopImportSummary = {
+  prefectureCounts: BarberShopImportCount[];
+  municipalityCounts: BarberShopImportCount[];
+  blankCounts: BarberShopImportBlankCount[];
+  invalidPhoneCount: number;
+  nonFukuokaCount: number;
+  sameNameAddressCandidateCount: number;
 };
 
 export type CreateImportPreviewResult = {
@@ -166,6 +185,52 @@ function sourceSummary(rows: PreparedImportRow[]) {
     .join(" / ");
 }
 
+function countByLabel(rows: BarberShopImportRow[], getLabel: (row: BarberShopImportRow) => string) {
+  const counts = new Map<string, number>();
+
+  for (const row of rows) {
+    const label = getLabel(row);
+    if (!label) continue;
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "ja"));
+}
+
+function createPreviewSummary(rows: BarberShopImportRow[]): BarberShopImportSummary {
+  const sameNameAddressKeys = new Map<string, number>();
+
+  for (const row of rows) {
+    if (!row.normalized_name || !row.normalized_address) continue;
+    const key = [row.normalized_name, row.prefecture, row.municipality, row.normalized_address].join("\u001F");
+    sameNameAddressKeys.set(key, (sameNameAddressKeys.get(key) ?? 0) + 1);
+  }
+
+  const sameNameAddressCandidateCount = rows.filter((row) => {
+    if (!row.normalized_name || !row.normalized_address) return false;
+    const key = [row.normalized_name, row.prefecture, row.municipality, row.normalized_address].join("\u001F");
+    return (sameNameAddressKeys.get(key) ?? 0) > 1;
+  }).length;
+
+  return {
+    prefectureCounts: countByLabel(rows, (row) => row.prefecture),
+    municipalityCounts: countByLabel(rows, (row) => row.municipality),
+    blankCounts: [
+      { field: "店名", label: "店名", count: rows.filter((row) => !row.name).length },
+      { field: "都道府県", label: "都道府県", count: rows.filter((row) => !row.prefecture).length },
+      { field: "市区町村", label: "市区町村", count: rows.filter((row) => !row.municipality).length },
+      { field: "住所", label: "住所", count: rows.filter((row) => !row.address).length },
+      { field: "電話番号", label: "電話番号", count: rows.filter((row) => !row.phone).length },
+      { field: "掲載元", label: "掲載元", count: rows.filter((row) => !row.source).length },
+    ],
+    invalidPhoneCount: rows.filter((row) => row.validation_errors.some((error) => error.includes("電話番号形式"))).length,
+    nonFukuokaCount: rows.filter((row) => row.validation_errors.some((error) => error.includes("福岡県以外"))).length,
+    sameNameAddressCandidateCount,
+  };
+}
+
 function rowValue(row: string[], index: Map<string, number>, header: string) {
   const position = index.get(header);
   if (position == null) return "";
@@ -184,13 +249,16 @@ function prepareRows(headers: string[], rows: string[][]) {
     const municipality = deriveMunicipality(cleanImportText(rowValue(csvRow, index, "市区町村"), 80), address, source);
     const statusResult = normalizeCsvImportVerificationStatus(rowValue(csvRow, index, "認証状態"));
     const normalizedName = normalizeShopSearchText(name);
+    const normalizedPhone = normalizeImportPhone(phone);
     const validationErrors: string[] = [];
 
     if (!name) validationErrors.push("店名が空です。");
     if (!prefecture) validationErrors.push("都道府県が空です。");
+    if (prefecture && prefecture !== "福岡県") validationErrors.push("福岡県以外の行です。今回の取込対象外です。");
     if (!municipality) validationErrors.push("市区町村が空です。");
     if (!source) validationErrors.push("掲載元が空です。");
     if (!normalizedName) validationErrors.push("店名を検索用に正規化できませんでした。");
+    if (phone && !/^0\d{9,10}$/.test(normalizedPhone)) validationErrors.push("電話番号形式が不正です。");
     if (statusResult.error) validationErrors.push(statusResult.error);
 
     const prepared = {
@@ -204,7 +272,7 @@ function prepareRows(headers: string[], rows: string[][]) {
       verification_status: statusResult.status,
       normalized_name: normalizedName,
       normalized_address: normalizeImportText(address),
-      normalized_phone: normalizeImportPhone(phone),
+      normalized_phone: normalizedPhone,
       validation_errors: validationErrors,
       duplicate_type: "none" as const,
       duplicate_shop_ids: [],
@@ -298,6 +366,29 @@ async function insertImportRows(supabase: SupabaseClient, batchId: string, rows:
   }
 }
 
+async function fetchAllImportRowsForBatch(supabase: SupabaseClient, batchId: string) {
+  const rows: BarberShopImportRow[] = [];
+
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("barber_shop_import_rows")
+      .select("*")
+      .eq("batch_id", batchId)
+      .order("row_number", { ascending: true })
+      .range(from, from + 999)
+      .returns<BarberShopImportRow[]>();
+
+    if (error) {
+      throw new Error("CSVプレビュー集計の取得に失敗しました。");
+    }
+
+    rows.push(...(data ?? []));
+    if ((data ?? []).length < 1000) break;
+  }
+
+  return rows;
+}
+
 export async function createBarberShopImportPreview(
   supabase: SupabaseClient,
   file: File,
@@ -365,7 +456,7 @@ export async function getBarberShopImportPreview(supabase: SupabaseClient, batch
 
   if (batchError || !batch) return null;
 
-  const [{ data: sampleRows }, { data: duplicateRows }, { data: validationRows }, { data: resultRows }] = await Promise.all([
+  const [{ data: sampleRows }, { data: duplicateRows }, { data: validationRows }, { data: resultRows }, allRows] = await Promise.all([
     supabase
       .from("barber_shop_import_rows")
       .select("*")
@@ -397,6 +488,7 @@ export async function getBarberShopImportPreview(supabase: SupabaseClient, batch
       .order("row_number", { ascending: true })
       .limit(80)
       .returns<BarberShopImportRow[]>(),
+    fetchAllImportRowsForBatch(supabase, batchId),
   ]);
 
   const issueRowMap = new Map<string, BarberShopImportRow>();
@@ -406,6 +498,7 @@ export async function getBarberShopImportPreview(supabase: SupabaseClient, batch
 
   return {
     batch,
+    summary: createPreviewSummary(allRows),
     sampleRows: sampleRows ?? [],
     issueRows: Array.from(issueRowMap.values()).sort((a, b) => a.row_number - b.row_number).slice(0, 80),
     resultRows: resultRows ?? [],

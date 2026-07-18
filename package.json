@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "barber-shops:verify": "node scripts/verify-barber-shop-import.mjs",
     "news-drafts:check": "node scripts/check-news-draft-quality.mjs",
     "news-drafts:sources:check": "node scripts/check-news-draft-sources.mjs",
     "supabase:migrations:check": "node scripts/check-supabase-migrations.mjs",

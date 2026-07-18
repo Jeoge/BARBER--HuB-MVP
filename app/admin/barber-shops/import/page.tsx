@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Database, FileSpreadsheet, ShieldCheck, Upload } from "lucide-react";
+import { AlertTriangle, BarChart3, CheckCircle2, Database, FileSpreadsheet, ShieldCheck, Upload } from "lucide-react";
 import Link from "next/link";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { requireBarberHubAdmin } from "@/lib/admin/permissions";
@@ -6,6 +6,8 @@ import {
   expectedHeaderLabel,
   getBarberShopImportPreview,
   type BarberShopImportBatch,
+  type BarberShopImportCount,
+  type BarberShopImportSummary,
   type BarberShopImportRow,
 } from "@/lib/barber-import/importer";
 import { createSupabaseAdminClient, getSupabaseAdminConfigStatus } from "@/lib/supabase/admin";
@@ -66,6 +68,51 @@ function StatCard({ label, value }: { label: string; value: number }) {
       <p className="text-[0.66rem] font-black uppercase tracking-[0.12em] text-mute">{label}</p>
       <p className="mt-1 text-xl font-black text-ink">{value.toLocaleString("ja-JP")}</p>
     </div>
+  );
+}
+
+function CountList({ title, rows, empty, limit = 60 }: { title: string; rows: BarberShopImportCount[]; empty: string; limit?: number }) {
+  const visibleRows = rows.slice(0, limit);
+  const hiddenCount = Math.max(rows.length - visibleRows.length, 0);
+
+  return (
+    <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
+      <h3 className="text-xs font-black text-ink">{title}</h3>
+      {visibleRows.length === 0 ? (
+        <p className="mt-2 text-xs font-semibold text-mute">{empty}</p>
+      ) : (
+        <div className="mt-2 grid max-h-64 gap-1.5 overflow-y-auto pr-1">
+          {visibleRows.map((row) => (
+            <p key={row.label} className="flex items-center justify-between gap-3 rounded-[8px] bg-white px-2.5 py-1.5 text-xs">
+              <span className="min-w-0 truncate font-semibold text-ink">{row.label}</span>
+              <span className="shrink-0 font-black text-ink">{row.count.toLocaleString("ja-JP")}件</span>
+            </p>
+          ))}
+          {hiddenCount > 0 ? <p className="px-1 text-xs font-semibold text-mute">ほか {hiddenCount.toLocaleString("ja-JP")}件</p> : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ImportSummaryPanel({ summary }: { summary: BarberShopImportSummary }) {
+  return (
+    <section className="grid gap-3">
+      <div className="flex items-center gap-2 text-sm font-black text-ink">
+        <BarChart3 aria-hidden="true" size={17} className="text-blush" />
+        取込前確認
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <StatCard label="福岡県以外" value={summary.nonFukuokaCount} />
+        <StatCard label="電話番号形式不正" value={summary.invalidPhoneCount} />
+        <StatCard label="同一店名・同一住所" value={summary.sameNameAddressCandidateCount} />
+      </div>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <CountList title="都道府県別件数" rows={summary.prefectureCounts} empty="都道府県を確認できる行はありません。" />
+        <CountList title="市区町村別件数" rows={summary.municipalityCounts} empty="市区町村を確認できる行はありません。" />
+        <CountList title="空欄件数" rows={summary.blankCounts} empty="空欄はありません。" />
+      </div>
+    </section>
   );
 }
 
@@ -224,15 +271,17 @@ function PreviewPanel({ preview }: { preview: NonNullable<Awaited<ReturnType<typ
         ) : null}
       </section>
 
-      <section className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <section className="grid gap-2 sm:grid-cols-3 lg:grid-cols-7">
         <StatCard label="CSV行数" value={batch.row_count} />
-        <StatCard label="登録対象" value={batch.valid_row_count} />
+        <StatCard label="正常件数" value={batch.valid_row_count} />
+        <StatCard label="エラー" value={batch.error_count} />
         <StatCard label="完全一致" value={batch.duplicate_exact_count} />
         <StatCard label="重複候補" value={batch.duplicate_candidate_count} />
         <StatCard label="登録済み" value={batch.inserted_count} />
         <StatCard label="スキップ" value={batch.skipped_count} />
       </section>
 
+      <ImportSummaryPanel summary={preview.summary} />
       <ExecutePanel batch={batch} />
       <RowTable title="必須項目・重複確認" rows={preview.issueRows} empty="エラー行や重複候補はありません。" />
       <RowTable title="内容プレビュー" rows={preview.sampleRows} empty="プレビューできる行がありません。" />

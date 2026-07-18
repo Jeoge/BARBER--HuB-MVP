@@ -23,6 +23,7 @@
 | [07_SECURITY_AND_DEPLOYMENT.md](07_SECURITY_AND_DEPLOYMENT.md) | セキュリティ、Secrets、Vercel、GitHub Actions | 開発/運用担当 | deploy、Secrets、migration運用を変えるとき |
 | [08_ROADMAP.md](08_ROADMAP.md) | 優先順位、将来構想、保留事項 | 全員 | 優先順位や構想を見直すとき |
 | [09_DECISION_LOG.md](09_DECISION_LOG.md) | 重要判断の記録 | 全員 | 重要な決定、保留、廃止が発生したとき |
+| [BARBER_SHOP_IMPORT_RUNBOOK.md](BARBER_SHOP_IMPORT_RUNBOOK.md) | Barber Directory CSV取込手順 | 運営/管理者 | CSV投入手順や確認項目を変えるとき |
 | [templates/DECISION_RECORD_TEMPLATE.md](templates/DECISION_RECORD_TEMPLATE.md) | decision log追記用テンプレート | 全員 | テンプレート変更時 |
 | [SUPABASE_DEPLOYMENT.md](SUPABASE_DEPLOYMENT.md) | 本番Supabase migration承認フローの詳細 | DB/運用担当 | workflow、Secrets、承認手順を変えるとき |
 
