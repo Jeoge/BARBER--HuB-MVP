@@ -75,7 +75,46 @@ function parseFixtureFeed(xml, baseUrl) {
     .filter((item) => item.title && item.url);
 }
 
+function publicNewsSortRank(item) {
+  return [item.risk_level === "high" ? 0 : 1, -Date.parse(item.reviewed_at), -Date.parse(item.updated_at), -Date.parse(item.created_at)];
+}
+
+function comparePublicNewsItems(a, b) {
+  const left = publicNewsSortRank(a);
+  const right = publicNewsSortRank(b);
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return left[index] - right[index];
+  }
+
+  return 0;
+}
+
+function composePublicNewsLikeRpc(items, limit = 4) {
+  const publishable = items.filter((item) => publication.getNewsPublicationBlocker(item, { requireReviewedAt: true }) === null);
+  const latest = [...publishable].sort((a, b) => Date.parse(b.reviewed_at) - Date.parse(a.reviewed_at) || Date.parse(b.updated_at) - Date.parse(a.updated_at) || Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+  const selected = new Map();
+
+  for (const pillar of ["work", "style", "talk"]) {
+    const pillarItems = publishable.filter((item) => item.content_pillar === pillar).sort(comparePublicNewsItems);
+    const pillarLimit = pillar === "work" ? 2 : pillar === "style" ? 2 : 1;
+
+    pillarItems.forEach((item, index) => {
+      const pillarRank = index + 1;
+      const include =
+        (pillar === "work" && (pillarRank <= pillarLimit || (item.risk_level === "high" && pillarRank <= 3))) ||
+        (pillar !== "work" && pillarRank <= pillarLimit);
+
+      if (include) selected.set(item.id, item);
+    });
+  }
+
+  if (latest) selected.set(latest.id, latest);
+  return [...selected.values()].sort(comparePublicNewsItems).slice(0, limit);
+}
+
 const quality = loadTsModule("lib/news-drafts/quality.ts");
+const publication = loadTsModule("lib/news-drafts/publication.ts");
 
 const rdfFixture = `<?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF>
@@ -148,6 +187,103 @@ assert(similar?.id === "recent-1", "Similar recent news should be detected");
 const now = new Date("2026-07-15T12:00:00Z");
 assert(quality.isPublishedWithinHours("2026-07-15T01:00:00Z", now, 12), "NEW should be true inside 12 hours");
 assert(!quality.isPublishedWithinHours("2026-07-14T23:30:00Z", now, 12), "NEW should be false after 12 hours");
+
+const publishableDraft = {
+  status: "approved",
+  reviewed_at: "2026-07-15T12:00:00Z",
+  generation_error: null,
+  duplicate_of: null,
+  content_pillar: "work",
+  draft_title: "サロンが朝確認したい制度変更",
+  draft_summary: "制度変更の要点を短く整理します。",
+  draft_body: "何が起きたか、サロンへの影響、会話での使い方を確認します。",
+  morning_tip: "朝礼で共有し、必要な確認事項を決めます。",
+  conversation_tip: "お客様には、必要に応じて確認していると自然に伝えられます。",
+  category: "店舗経営",
+  source_name: "公的機関",
+  source_url: "https://example.jp/news",
+};
+
+assert(publication.getNewsPublicationBlocker(publishableDraft, { requireReviewedAt: true }) === null, "Complete approved news should be publishable");
+assert(
+  publication.getNewsPublicationBlocker({ ...publishableDraft, morning_tip: "" }, { requireReviewedAt: true }) === "朝礼のヒントが空のため公開できません。",
+  "Missing morning tip should block publication with a concrete message"
+);
+assert(
+  publication.getNewsPublicationBlocker({ ...publishableDraft, conversation_tip: "" }, { requireReviewedAt: true }) === "会話のヒントが空のため公開できません。",
+  "Missing conversation tip should block publication with a concrete message"
+);
+assert(
+  publication.getNewsPublicationBlocker({ ...publishableDraft, generation_error: "AI error" }, { requireReviewedAt: true }) === "生成エラーが残っているため公開できません。",
+  "Generation errors should block publication"
+);
+assert(
+  publication.getNewsPublicationBlocker({ ...publishableDraft, duplicate_of: "recent-id" }, { requireReviewedAt: true }) === "重複候補の記事は公開できません。",
+  "Duplicate drafts should block publication"
+);
+assert(
+  publication.getNewsPublicationBlocker({ ...publishableDraft, content_pillar: "personal" }, { requireReviewedAt: true }) ===
+    "分類（WORK / STYLE / TALK）が未設定のため公開できません。",
+  "Invalid content pillars should block publication"
+);
+assert(
+  publication.getPublicNewsFieldBlocker({ ...publishableDraft, reviewed_at: null }, { requireReviewedAt: true }) === "公開日時が保存されていないため公開できません。",
+  "Public news rows should require reviewed_at"
+);
+
+const publicNewsCandidates = [
+  {
+    ...publishableDraft,
+    id: "latest-style",
+    content_pillar: "style",
+    risk_level: "low",
+    reviewed_at: "2026-07-15T12:00:00Z",
+    updated_at: "2026-07-15T12:00:00Z",
+    created_at: "2026-07-15T11:59:00Z",
+  },
+  {
+    ...publishableDraft,
+    id: "high-risk-work",
+    content_pillar: "work",
+    risk_level: "high",
+    reviewed_at: "2026-07-15T11:55:00Z",
+    updated_at: "2026-07-15T11:55:00Z",
+    created_at: "2026-07-15T11:54:00Z",
+  },
+  {
+    ...publishableDraft,
+    id: "normal-work",
+    content_pillar: "work",
+    risk_level: "low",
+    reviewed_at: "2026-07-15T11:40:00Z",
+    updated_at: "2026-07-15T11:40:00Z",
+    created_at: "2026-07-15T11:39:00Z",
+  },
+  {
+    ...publishableDraft,
+    id: "talk",
+    content_pillar: "talk",
+    risk_level: "low",
+    reviewed_at: "2026-07-15T11:30:00Z",
+    updated_at: "2026-07-15T11:30:00Z",
+    created_at: "2026-07-15T11:29:00Z",
+  },
+  {
+    ...publishableDraft,
+    id: "older-style",
+    content_pillar: "style",
+    risk_level: "low",
+    reviewed_at: "2026-07-15T11:20:00Z",
+    updated_at: "2026-07-15T11:20:00Z",
+    created_at: "2026-07-15T11:19:00Z",
+  },
+];
+const selectedPublicNews = composePublicNewsLikeRpc(publicNewsCandidates, 4);
+const selectedPublicNewsIds = selectedPublicNews.map((item) => item.id);
+assert(selectedPublicNews.length <= 4, "Public news selection should not exceed the top limit");
+assert(selectedPublicNewsIds.includes("latest-style"), "Latest published news should remain a candidate");
+assert(selectedPublicNewsIds.includes("high-risk-work"), "High-risk work news should remain a candidate");
+assert(selectedPublicNewsIds.indexOf("high-risk-work") < selectedPublicNewsIds.indexOf("latest-style"), "High-risk news should sort before newer low-risk news");
 
 const mockSources = [
   Promise.resolve(["ok"]),

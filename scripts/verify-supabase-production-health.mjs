@@ -58,6 +58,23 @@ checks.push(`barber_shops select responded with ${Array.isArray(shops) ? shops.l
 const claims = await requestJson("barber_shop_claims select", "/rest/v1/barber_shop_claims?select=id,status&limit=1");
 checks.push(`barber_shop_claims select responded with ${Array.isArray(claims) ? claims.length : 0} row(s).`);
 
+const publicNews = await requestJson("list_public_news", "/rest/v1/rpc/list_public_news", {
+  method: "POST",
+  body: JSON.stringify({ news_limit: 4 }),
+});
+checks.push(`list_public_news responded with ${Array.isArray(publicNews) ? publicNews.length : 0} row(s).`);
+
+const firstNewsId = Array.isArray(publicNews) ? publicNews[0]?.id : null;
+if (firstNewsId) {
+  const newsDetail = await requestJson("get_public_news_by_id", "/rest/v1/rpc/get_public_news_by_id", {
+    method: "POST",
+    body: JSON.stringify({ news_id: firstNewsId }),
+  });
+  checks.push(`get_public_news_by_id responded with ${Array.isArray(newsDetail) ? newsDetail.length : 0} row(s).`);
+} else {
+  checks.push("get_public_news_by_id skipped because list_public_news returned no public news.");
+}
+
 for (const check of checks) {
   console.log(check);
 }

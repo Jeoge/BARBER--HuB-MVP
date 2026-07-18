@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { news, type NewsItem } from "@/lib/mockData";
+import { getPublicNewsFieldBlocker, getSafePublicSourceUrl, isSafePublicSourceUrl } from "./publication";
 
 export type PublicNewsRow = {
   id: string;
@@ -49,22 +50,7 @@ export function isUuid(value: string) {
   return UUID_PATTERN.test(value);
 }
 
-export function getSafePublicSourceUrl(value: string | null | undefined) {
-  const sourceUrl = cleanText(value);
-  if (!sourceUrl) return null;
-
-  try {
-    const url = new URL(sourceUrl);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
-export function isSafePublicSourceUrl(value: string | null | undefined) {
-  return getSafePublicSourceUrl(value) != null;
-}
+export { getSafePublicSourceUrl, isSafePublicSourceUrl };
 
 function toPublicNewsItem(row: PublicNewsRow): PublicNewsItem | null {
   const id = cleanText(row.id);
@@ -77,7 +63,18 @@ function toPublicNewsItem(row: PublicNewsRow): PublicNewsItem | null {
   const sourceName = cleanText(row.source_name);
   const sourceUrl = getSafePublicSourceUrl(row.source_url);
 
-  if (!isUuid(id) || !title || !summary || !body || !morningTip || !conversationTip || !category || !sourceName || !sourceUrl) {
+  if (
+    !isUuid(id) ||
+    getPublicNewsFieldBlocker(row, { requireReviewedAt: true }) ||
+    !title ||
+    !summary ||
+    !body ||
+    !morningTip ||
+    !conversationTip ||
+    !category ||
+    !sourceName ||
+    !sourceUrl
+  ) {
     return null;
   }
 

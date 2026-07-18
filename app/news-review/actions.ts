@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { runNewsDraftPipeline } from "@/lib/news-drafts/ingest";
-import { isSafePublicSourceUrl } from "@/lib/news-drafts/public-news";
+import { getNewsPublicationBlocker } from "@/lib/news-drafts/publication";
 import { requireNewsReviewAdmin } from "@/lib/news-drafts/review";
 import { createSupabaseAdminClient, getSupabaseAdminConfigStatus } from "@/lib/supabase/admin";
 
@@ -24,6 +24,7 @@ type CurrentNewsDraft = {
   source_url: string | null;
   generation_error: string | null;
   duplicate_of: string | null;
+  content_pillar: string | null;
   risk_level: "low" | "medium" | "high" | null;
   reviewed_at: string | null;
 };
@@ -65,7 +66,7 @@ export async function saveNewsDraftAction(formData: FormData) {
   const supabase = createSupabaseAdminClient();
   const { data: currentDraft, error: currentDraftError } = await supabase
     .from("news_drafts")
-    .select("status, source_name, source_url, generation_error, duplicate_of, risk_level, reviewed_at")
+    .select("status, source_name, source_url, generation_error, duplicate_of, content_pillar, risk_level, reviewed_at")
     .eq("id", id)
     .maybeSingle<CurrentNewsDraft>();
 
@@ -74,31 +75,23 @@ export async function saveNewsDraftAction(formData: FormData) {
   }
 
   if (status === "approved") {
-    const missing: string[] = [];
-    const sourceUrl = cleanText(currentDraft.source_url, 1000);
-    if (!payload.draft_title) missing.push("タイトル");
-    if (!payload.draft_summary) missing.push("要約");
-    if (!payload.draft_body) missing.push("本文");
-    if (!payload.morning_tip) missing.push("朝礼で使う文章");
-    if (!payload.conversation_tip) missing.push("お客様との会話用の文章");
-    if (!category) missing.push("カテゴリー");
-    if (!sourceUrl) missing.push("元記事URL");
-    if (!cleanText(currentDraft.source_name, 200)) missing.push("情報元名");
+    const blocker = getNewsPublicationBlocker(
+      {
+        ...payload,
+        status,
+        reviewed_at: now,
+        category,
+        source_name: currentDraft.source_name,
+        source_url: currentDraft.source_url,
+        generation_error: currentDraft.generation_error,
+        duplicate_of: currentDraft.duplicate_of,
+        content_pillar: currentDraft.content_pillar,
+      },
+      { requireReviewedAt: true }
+    );
 
-    if (missing.length > 0) {
-      redirect(`/news-review?id=${encodeURIComponent(id)}&error=${encodeURIComponent(`公開に必要な項目が不足しています: ${missing.join("、")}`)}`);
-    }
-
-    if (!isSafePublicSourceUrl(sourceUrl)) {
-      redirect(`/news-review?id=${encodeURIComponent(id)}&error=${encodeURIComponent("元記事URLが安全なhttpまたはhttps形式ではありません。")}`);
-    }
-
-    if (currentDraft.generation_error) {
-      redirect(`/news-review?id=${encodeURIComponent(id)}&error=${encodeURIComponent("生成エラーが残っているため公開できません。")}`);
-    }
-
-    if (currentDraft.duplicate_of) {
-      redirect(`/news-review?id=${encodeURIComponent(id)}&error=${encodeURIComponent("重複候補の記事は公開できません。")}`);
+    if (blocker) {
+      redirect(`/news-review?id=${encodeURIComponent(id)}&error=${encodeURIComponent(blocker)}`);
     }
 
     if (currentDraft.risk_level === "high" && !payload.fact_check_notes) {
