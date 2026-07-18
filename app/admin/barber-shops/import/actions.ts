@@ -40,6 +40,7 @@ export async function uploadBarberShopCsvAction(formData: FormData) {
   }
 
   const csvFile = file as File;
+  const expectedPrefecture = cleanText(formData.get("expectedPrefecture"), 20);
   let result: Awaited<ReturnType<typeof createBarberShopImportPreview>>;
 
   try {
@@ -56,7 +57,7 @@ export async function uploadBarberShopCsvAction(formData: FormData) {
   }
 
   revalidatePath("/admin/barber-shops/import");
-  redirectWithParams({ batch: result.batchId, uploaded: "1", encoding: result.encoding });
+  redirectWithParams({ batch: result.batchId, uploaded: "1", encoding: result.encoding, expectedPrefecture });
 }
 
 export async function executeBarberShopCsvImportAction(formData: FormData) {
@@ -68,6 +69,7 @@ export async function executeBarberShopCsvImportAction(formData: FormData) {
   }
 
   const batchId = cleanText(formData.get("batchId"), 80);
+  const expectedPrefecture = cleanText(formData.get("expectedPrefecture"), 20);
   const includeCandidates = cleanText(formData.get("includeCandidates"), 10) === "yes";
 
   if (!batchId) {
@@ -86,13 +88,18 @@ export async function executeBarberShopCsvImportAction(formData: FormData) {
       batchId,
       message: error?.message ?? "missing result",
     });
-    redirectWithParams({ batch: batchId, error: "CSV取込を実行できませんでした。重複状態とmigration適用状況を確認してください。" });
+    redirectWithParams({
+      batch: batchId,
+      expectedPrefecture,
+      error: "CSV取込を実行できませんでした。重複状態とmigration適用状況を確認してください。",
+    });
   }
 
   revalidatePath("/");
   revalidatePath("/admin/barber-shops/import");
   redirectWithParams({
     batch: batchId,
+    expectedPrefecture,
     imported: "1",
     inserted: result.inserted_count,
     skipped: result.skipped_count,

@@ -92,7 +92,6 @@ export type BarberShopImportSummary = {
   municipalityCounts: BarberShopImportCount[];
   blankCounts: BarberShopImportBlankCount[];
   invalidPhoneCount: number;
-  nonFukuokaCount: number;
   sameNameAddressCandidateCount: number;
 };
 
@@ -226,7 +225,6 @@ function createPreviewSummary(rows: BarberShopImportRow[]): BarberShopImportSumm
       { field: "掲載元", label: "掲載元", count: rows.filter((row) => !row.source).length },
     ],
     invalidPhoneCount: rows.filter((row) => row.validation_errors.some((error) => error.includes("電話番号形式"))).length,
-    nonFukuokaCount: rows.filter((row) => row.validation_errors.some((error) => error.includes("福岡県以外"))).length,
     sameNameAddressCandidateCount,
   };
 }
@@ -254,7 +252,6 @@ function prepareRows(headers: string[], rows: string[][]) {
 
     if (!name) validationErrors.push("店名が空です。");
     if (!prefecture) validationErrors.push("都道府県が空です。");
-    if (prefecture && prefecture !== "福岡県") validationErrors.push("福岡県以外の行です。今回の取込対象外です。");
     if (!municipality) validationErrors.push("市区町村が空です。");
     if (!source) validationErrors.push("掲載元が空です。");
     if (!normalizedName) validationErrors.push("店名を検索用に正規化できませんでした。");
