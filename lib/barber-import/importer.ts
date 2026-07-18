@@ -127,8 +127,35 @@ function duplicateKeyForExisting(shop: ExistingShopForDuplicate) {
   ].join("\u001F");
 }
 
-function deriveMunicipality(rawMunicipality: string, address: string, source: string) {
-  if (rawMunicipality) return rawMunicipality;
+function canUseExactDuplicateKey(
+  row: Pick<PreparedImportRow, "normalized_address" | "normalized_phone">
+) {
+  return row.normalized_address.length > 0 || row.normalized_phone.length > 0;
+}
+
+function hasUnexpectedPhoneFormat(phone: string | null | undefined, normalizedPhone: string) {
+  return Boolean(phone) && !/^0\d{9,10}$/.test(normalizedPhone);
+}
+
+const TOKYO_MUNICIPALITY_ALIASES = new Map([
+  ["東村", "東村山市"],
+  ["羽村", "羽村市"],
+  ["武蔵村", "武蔵村山市"],
+  ["西多摩郡瑞穂町", "瑞穂町"],
+  ["西多摩郡日の出町", "日の出町"],
+  ["西多摩郡奥多摩町", "奥多摩町"],
+  ["西多摩郡檜原村", "檜原村"],
+  ["八丈島八丈町", "八丈町"],
+  ["三宅島三宅村", "三宅村"],
+]);
+
+function normalizeMunicipalityForPrefecture(prefecture: string, municipality: string) {
+  if (prefecture !== "東京都") return municipality;
+  return TOKYO_MUNICIPALITY_ALIASES.get(municipality) ?? municipality;
+}
+
+function deriveMunicipality(rawMunicipality: string, prefecture: string, address: string, source: string) {
+  if (rawMunicipality) return normalizeMunicipalityForPrefecture(prefecture, rawMunicipality);
 
   const normalizedAddress = cleanImportText(address, 120);
   const normalizedSource = cleanImportText(source, 120);
@@ -153,7 +180,7 @@ function deriveMunicipality(rawMunicipality: string, address: string, source: st
     }
   }
 
-  return "";
+  return normalizeMunicipalityForPrefecture(prefecture, "");
 }
 
 function isDuplicateCandidate(row: PreparedImportRow, shop: ExistingShopForDuplicate) {
@@ -224,7 +251,7 @@ function createPreviewSummary(rows: BarberShopImportRow[]): BarberShopImportSumm
       { field: "電話番号", label: "電話番号", count: rows.filter((row) => !row.phone).length },
       { field: "掲載元", label: "掲載元", count: rows.filter((row) => !row.source).length },
     ],
-    invalidPhoneCount: rows.filter((row) => row.validation_errors.some((error) => error.includes("電話番号形式"))).length,
+    invalidPhoneCount: rows.filter((row) => hasUnexpectedPhoneFormat(row.phone, row.normalized_phone)).length,
     sameNameAddressCandidateCount,
   };
 }
@@ -244,7 +271,7 @@ function prepareRows(headers: string[], rows: string[][]) {
     const address = cleanImportText(rowValue(csvRow, index, "住所"), 240);
     const phone = cleanImportPhone(rowValue(csvRow, index, "電話番号"));
     const source = cleanImportText(rowValue(csvRow, index, "掲載元"), 240);
-    const municipality = deriveMunicipality(cleanImportText(rowValue(csvRow, index, "市区町村"), 80), address, source);
+    const municipality = deriveMunicipality(cleanImportText(rowValue(csvRow, index, "市区町村"), 80), prefecture, address, source);
     const statusResult = normalizeCsvImportVerificationStatus(rowValue(csvRow, index, "認証状態"));
     const normalizedName = normalizeShopSearchText(name);
     const normalizedPhone = normalizeImportPhone(phone);
@@ -255,7 +282,6 @@ function prepareRows(headers: string[], rows: string[][]) {
     if (!municipality) validationErrors.push("市区町村が空です。");
     if (!source) validationErrors.push("掲載元が空です。");
     if (!normalizedName) validationErrors.push("店名を検索用に正規化できませんでした。");
-    if (phone && !/^0\d{9,10}$/.test(normalizedPhone)) validationErrors.push("電話番号形式が不正です。");
     if (statusResult.error) validationErrors.push(statusResult.error);
 
     const prepared = {
@@ -324,19 +350,23 @@ function classifyDuplicates(rows: PreparedImportRow[], existingShops: ExistingSh
   for (const row of rows) {
     if (row.validation_errors.length > 0) continue;
 
-    const firstSeen = seenInFile.get(row.duplicateKey);
-    if (firstSeen) {
-      row.duplicate_type = "file_exact";
-      continue;
-    }
+    const canUseExactKey = canUseExactDuplicateKey(row);
 
-    seenInFile.set(row.duplicateKey, row);
+    if (canUseExactKey) {
+      const firstSeen = seenInFile.get(row.duplicateKey);
+      if (firstSeen) {
+        row.duplicate_type = "file_exact";
+        continue;
+      }
 
-    const exactIds = exactExisting.get(row.duplicateKey);
-    if (exactIds && exactIds.length > 0) {
-      row.duplicate_type = "exact";
-      row.duplicate_shop_ids = exactIds.slice(0, 5);
-      continue;
+      seenInFile.set(row.duplicateKey, row);
+
+      const exactIds = exactExisting.get(row.duplicateKey);
+      if (exactIds && exactIds.length > 0) {
+        row.duplicate_type = "exact";
+        row.duplicate_shop_ids = exactIds.slice(0, 5);
+        continue;
+      }
     }
 
     const candidates = existingShops.filter((shop) => isDuplicateCandidate(row, shop));

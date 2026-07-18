@@ -26,6 +26,10 @@ function cleanLikeInput(value) {
   return value.replace(/[%_,()]/g, "");
 }
 
+function normalizeShopPhoneSearchText(value) {
+  return value.normalize("NFKC").replace(/[^0-9]/g, "");
+}
+
 function publicShopQuery(supabase) {
   return supabase
     .from("barber_shops")
@@ -58,12 +62,19 @@ async function search(supabase, rawTerm) {
   const term = rawTerm.trim();
   const normalizedQuery = cleanLikeInput(normalizeShopSearchText(term));
   const queryText = cleanLikeInput(term);
+  const normalizedPhoneQuery = cleanLikeInput(normalizeShopPhoneSearchText(term));
+  const filters = [
+    normalizedQuery ? `normalized_name.ilike.%${normalizedQuery}%` : null,
+    queryText ? `prefecture.ilike.%${queryText}%` : null,
+    queryText ? `municipality.ilike.%${queryText}%` : null,
+    queryText ? `address.ilike.%${queryText}%` : null,
+    normalizedPhoneQuery ? `normalized_phone.ilike.%${normalizedPhoneQuery}%` : null,
+  ].filter(Boolean);
+
+  if (filters.length === 0) return [];
+
   const { data, error } = await publicShopRows(supabase)
-    .or([
-      `normalized_name.ilike.%${normalizedQuery}%`,
-      `municipality.ilike.%${queryText}%`,
-      `address.ilike.%${queryText}%`,
-    ].join(","))
+    .or(filters.join(","))
     .order("created_at", { ascending: false })
     .limit(5);
 
@@ -88,12 +99,17 @@ const supabase = createClient(supabaseUrl, publishableKey, {
   },
 });
 
+const verifyPrefecture = process.env.BARBER_SHOP_VERIFY_PREFECTURE?.trim() || "福岡県";
+const defaultSearchTerms = verifyPrefecture === "東京都"
+  ? ["荒川区", "板橋区", "江戸川区", "羽村市", "府中市", "瑞穂町", "八丈町", "東京都"]
+  : ["姪浜", "福岡市", "久留米市", " 姪浜 "];
+const searchTerms = process.env.BARBER_SHOP_VERIFY_QUERIES
+  ? process.env.BARBER_SHOP_VERIFY_QUERIES.split(",").map((term) => term.trim()).filter(Boolean)
+  : defaultSearchTerms;
+
 const counts = Object.fromEntries(await Promise.all([
   count("public_total", publicShopQuery(supabase)),
-  count("fukuoka_total", publicShopQuery(supabase).eq("prefecture", "福岡県")),
-  count("fukuoka_city_like", publicShopQuery(supabase).eq("prefecture", "福岡県").ilike("municipality", "%福岡市%")),
-  count("kitakyushu_city_like", publicShopQuery(supabase).eq("prefecture", "福岡県").ilike("municipality", "%北九州市%")),
-  count("kurume_city_like", publicShopQuery(supabase).eq("prefecture", "福岡県").ilike("municipality", "%久留米市%")),
+  count("target_prefecture_total", publicShopQuery(supabase).eq("prefecture", verifyPrefecture)),
   count("unverified_total", publicShopQuery(supabase).eq("verification_status", "unverified")),
   count("owner_null_total", publicShopQuery(supabase).is("owner_user_id", null)),
   count("imported_verified_total", publicShopQuery(supabase).eq("source_type", "imported").eq("verification_status", "verified")),
@@ -106,19 +122,22 @@ for (const [label, value] of Object.entries(counts)) {
 }
 
 const { data: municipalities, error: municipalitiesError } = await supabase.rpc("list_barber_shop_municipalities", {
-  shop_prefecture: "福岡県",
+  shop_prefecture: verifyPrefecture,
 });
 
 if (municipalitiesError) throw new Error(`municipalities: ${municipalitiesError.message}`);
 
 const municipalityRows = Array.isArray(municipalities) ? municipalities : [];
-console.log(`- fukuoka_municipality_options: ${municipalityRows.length.toLocaleString("ja-JP")}`);
-for (const city of ["福岡市", "北九州市", "久留米市"]) {
+console.log(`- target_prefecture: ${verifyPrefecture}`);
+console.log(`- municipality_options: ${municipalityRows.length.toLocaleString("ja-JP")}`);
+const expectedMunicipalities = verifyPrefecture === "東京都"
+  ? ["荒川区", "板橋区", "江戸川区", "羽村市", "府中市", "瑞穂町", "八丈町"]
+  : ["福岡市", "北九州市", "久留米市"];
+for (const city of expectedMunicipalities) {
   const found = municipalityRows.some((row) => row.municipality === city || row.municipality.startsWith(city));
   console.log(`- municipality_has_${city}: ${found ? "yes" : "no"}`);
 }
 
-const searchTerms = ["姪浜", "福岡市", "久留米市", " 姪浜 "];
 const extraQuery = process.env.BARBER_SHOP_VERIFY_EXTRA_QUERY?.trim();
 if (extraQuery) searchTerms.push(extraQuery);
 
@@ -133,10 +152,10 @@ for (const term of searchTerms) {
 }
 
 const errors = [];
-if (counts.fukuoka_total <= 0) errors.push("福岡県の公開店舗が0件です。");
+if (counts.target_prefecture_total <= 0) errors.push(`${verifyPrefecture}の公開店舗が0件です。`);
 if (counts.imported_verified_total !== 0) errors.push("importedかつverifiedの店舗があります。");
 if (counts.imported_owner_total !== 0) errors.push("importedかつowner_user_idありの店舗があります。");
-if (municipalityRows.length === 0) errors.push("福岡県の市区町村候補が0件です。");
+if (municipalityRows.length === 0) errors.push(`${verifyPrefecture}の市区町村候補が0件です。`);
 if (failedSearches.length > 0) errors.push(`検索結果0件: ${failedSearches.join(", ")}`);
 
 if (errors.length > 0) {

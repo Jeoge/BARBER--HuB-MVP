@@ -27,6 +27,7 @@ import {
   BARBER_SHOP_PAGE_SIZE,
   barberShopSelect,
   listBarberShopMunicipalities,
+  normalizeShopPhoneSearchText,
   normalizeShopSearchText,
   shopAddressLabel,
   shopAreaLabel,
@@ -57,6 +58,21 @@ function useStoreDirectory() {
 
 function cleanLikeInput(value: string) {
   return value.replace(/[%_,()]/g, "");
+}
+
+function storeSearchFiltersForQuery(value: string) {
+  const normalizedName = normalizeShopSearchText(value);
+  const queryText = cleanLikeInput(value.trim());
+  const normalizedQuery = cleanLikeInput(normalizedName);
+  const normalizedPhoneQuery = cleanLikeInput(normalizeShopPhoneSearchText(value));
+
+  return [
+    normalizedQuery ? `normalized_name.ilike.%${normalizedQuery}%` : null,
+    queryText ? `prefecture.ilike.%${queryText}%` : null,
+    queryText ? `municipality.ilike.%${queryText}%` : null,
+    queryText ? `address.ilike.%${queryText}%` : null,
+    normalizedPhoneQuery ? `normalized_phone.ilike.%${normalizedPhoneQuery}%` : null,
+  ].filter((filter): filter is string => Boolean(filter));
 }
 
 function loginHref(next: string, message: string) {
@@ -297,10 +313,9 @@ function StoreDirectorySheet({
   }, [areaPrefecture, open, supabase, view]);
 
   async function fetchResults(offset = 0, append = false) {
-    const normalizedName = normalizeShopSearchText(nameQuery);
-    const queryText = cleanLikeInput(nameQuery.trim());
+    const searchFilters = storeSearchFiltersForQuery(nameQuery);
 
-    if (view === "name" && normalizedName.length === 0) {
+    if (view === "name" && searchFilters.length === 0) {
       setResults([]);
       setError(null);
       setHasMore(false);
@@ -329,14 +344,7 @@ function StoreDirectorySheet({
       .range(offset, offset + BARBER_SHOP_PAGE_SIZE - 1);
 
     if (view === "name") {
-      const normalizedQuery = cleanLikeInput(normalizedName);
-      request = request.or(
-        [
-          `normalized_name.ilike.%${normalizedQuery}%`,
-          `municipality.ilike.%${queryText}%`,
-          `address.ilike.%${queryText}%`,
-        ].join(",")
-      );
+      request = request.or(searchFilters.join(","));
       if (namePrefecture) request = request.eq("prefecture", namePrefecture);
       if (nameMunicipality.trim()) request = request.ilike("municipality", `%${cleanLikeInput(nameMunicipality.trim())}%`);
     }
@@ -403,6 +411,7 @@ function StoreDirectorySheet({
 
   const title = view === "name" ? "店舗を検索" : view === "area" ? "地域から探す" : view === "verified" ? "認証済み店舗" : "店舗を検索";
   const showBack = view !== "menu";
+  const nameSearchFilters = storeSearchFiltersForQuery(nameQuery);
 
   return (
     <div className="fixed inset-0 z-[80]" role="presentation" onClick={onClose}>
@@ -453,7 +462,7 @@ function StoreDirectorySheet({
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-black text-ink">店名・住所から探す</span>
-                    <span className="mt-0.5 block text-xs font-semibold text-mute">店名、市区町村、住所で検索</span>
+                    <span className="mt-0.5 block text-xs font-semibold text-mute">店名、市区町村、住所、電話番号で検索</span>
                   </span>
                   <ChevronRight aria-hidden="true" size={18} className="ml-auto shrink-0 text-mute" />
                 </button>
@@ -493,12 +502,12 @@ function StoreDirectorySheet({
             {view === "name" ? (
               <div className="grid gap-4">
                 <label className="grid gap-2">
-                  <span className="text-sm font-black text-ink">店名・市区町村・住所</span>
+                  <span className="text-sm font-black text-ink">店名・市区町村・住所・電話番号</span>
                   <input
                     value={nameQuery}
                     onChange={(event) => setNameQuery(event.target.value)}
                     className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush"
-                    placeholder="例：姪浜 / 久留米市 / 理容キモト"
+                    placeholder="例：新宿 / 羽村市 / 03"
                     autoFocus
                   />
                 </label>
@@ -524,13 +533,13 @@ function StoreDirectorySheet({
                       value={nameMunicipality}
                       onChange={(event) => setNameMunicipality(event.target.value)}
                       className="h-11 rounded-[8px] border border-line bg-white px-2 text-xs font-semibold text-ink outline-none focus:border-blush"
-                      placeholder="例：福岡市"
+                      placeholder="例：府中市"
                     />
                   </label>
                 </div>
-                {normalizeShopSearchText(nameQuery).length === 0 ? (
+                {nameSearchFilters.length === 0 ? (
                   <p className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-                    店名、市区町村、住所を入力すると候補を表示します。空文字で全店舗は取得しません。
+                    店名、都道府県、市区町村、住所、電話番号を入力すると候補を表示します。空文字で全店舗は取得しません。
                   </p>
                 ) : (
                   <ResultList
