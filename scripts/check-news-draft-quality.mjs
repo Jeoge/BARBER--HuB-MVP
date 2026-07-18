@@ -76,6 +76,7 @@ function parseFixtureFeed(xml, baseUrl) {
 }
 
 const quality = loadTsModule("lib/news-drafts/quality.ts");
+const publication = loadTsModule("lib/news-drafts/publication.ts");
 
 const rdfFixture = `<?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF>
@@ -148,6 +149,49 @@ assert(similar?.id === "recent-1", "Similar recent news should be detected");
 const now = new Date("2026-07-15T12:00:00Z");
 assert(quality.isPublishedWithinHours("2026-07-15T01:00:00Z", now, 12), "NEW should be true inside 12 hours");
 assert(!quality.isPublishedWithinHours("2026-07-14T23:30:00Z", now, 12), "NEW should be false after 12 hours");
+
+const publishableDraft = {
+  status: "approved",
+  reviewed_at: "2026-07-15T12:00:00Z",
+  generation_error: null,
+  duplicate_of: null,
+  content_pillar: "work",
+  draft_title: "サロンが朝確認したい制度変更",
+  draft_summary: "制度変更の要点を短く整理します。",
+  draft_body: "何が起きたか、サロンへの影響、会話での使い方を確認します。",
+  morning_tip: "朝礼で共有し、必要な確認事項を決めます。",
+  conversation_tip: "お客様には、必要に応じて確認していると自然に伝えられます。",
+  category: "店舗経営",
+  source_name: "公的機関",
+  source_url: "https://example.jp/news",
+};
+
+assert(publication.getNewsPublicationBlocker(publishableDraft, { requireReviewedAt: true }) === null, "Complete approved news should be publishable");
+assert(
+  publication.getNewsPublicationBlocker({ ...publishableDraft, morning_tip: "" }, { requireReviewedAt: true }) === "朝礼のヒントが空のため公開できません。",
+  "Missing morning tip should block publication with a concrete message"
+);
+assert(
+  publication.getNewsPublicationBlocker({ ...publishableDraft, conversation_tip: "" }, { requireReviewedAt: true }) === "会話のヒントが空のため公開できません。",
+  "Missing conversation tip should block publication with a concrete message"
+);
+assert(
+  publication.getNewsPublicationBlocker({ ...publishableDraft, generation_error: "AI error" }, { requireReviewedAt: true }) === "生成エラーが残っているため公開できません。",
+  "Generation errors should block publication"
+);
+assert(
+  publication.getNewsPublicationBlocker({ ...publishableDraft, duplicate_of: "recent-id" }, { requireReviewedAt: true }) === "重複候補の記事は公開できません。",
+  "Duplicate drafts should block publication"
+);
+assert(
+  publication.getNewsPublicationBlocker({ ...publishableDraft, content_pillar: "personal" }, { requireReviewedAt: true }) ===
+    "分類（WORK / STYLE / TALK）が未設定のため公開できません。",
+  "Invalid content pillars should block publication"
+);
+assert(
+  publication.getPublicNewsFieldBlocker({ ...publishableDraft, reviewed_at: null }, { requireReviewedAt: true }) === "公開日時が保存されていないため公開できません。",
+  "Public news rows should require reviewed_at"
+);
 
 const mockSources = [
   Promise.resolve(["ok"]),
