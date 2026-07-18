@@ -111,7 +111,7 @@ export default async function Home() {
         <ContentAdCard ad={homeAd} />
         <BackyardSection />
         <StoreDirectoryStatsCard count={storeCount} />
-        <HorizontalRail title="新着記事" items={dbArticleRailItems} />
+        <HorizontalRail title="新着記事" items={dbArticleRailItems} sectionId="latest-articles" />
         <ContributionSection />
         <QASection questions={qaQuestionResult.questions} />
         <HorizontalRail title="メーカー新商品" items={manufacturerArticleRailItems} />

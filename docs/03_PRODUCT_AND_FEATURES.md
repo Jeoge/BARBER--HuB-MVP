@@ -220,6 +220,7 @@ EDITOR'S PICK:
 - 対象メニューは `all`, `management`, `marketing`, `ai`, `technique`, `tools` を使う。
 - 掲載場所は `home`, `category_management`, `category_marketing`, `category_ai`, `category_technique`, `category_tools`, `article_bottom`, `backroom` を初期値として扱う。
 - PR、広告、Sponsoredのいずれかを必ず明示し、外部リンクは `rel="sponsored noopener noreferrer"` を付ける。
+- `image_path` がある広告画像はprivate `content-ad-images` bucketからサーバー側で短時間のsigned URLを発行して表示する。`image_path` がない既存広告だけ `image_url` を互換表示に使う。
 - 広告がない場合は空枠、ダミー広告、広告募集中カードを一般画面へ常設しない。
 
 ## アプリ内通知
@@ -292,7 +293,7 @@ EDITOR'S PICK:
 - 元記事本文全体を保存・転載しない。
 - HTML本文の無断スクレイピングをしない。
 - 情報源にない数値、人物発言、断定をAIに作らせない。
-- 既存の3MIN NEWS固定表示と `mockData.ts` は削除せず、フォールバックとして残す。
+- 既存の3MIN NEWS固定表示と `mockData.ts` は削除せず、フォールバックとして残す。これは記事ダミー撤去の対象外であり、記事回遊用の固定記事・関連記事・広告fallbackと混同しない。
 - トップページの3MIN NEWSは、管理者が承認して公開した日時である `reviewed_at` の降順で最大4件表示する。重要度、`risk_level`、WORK / STYLE / TALK分類、カテゴリー別件数制限はトップ4件の選定と並び順に使用しない。
 
 2026年7月時点の拡張方針:

@@ -15,7 +15,7 @@ export function ContentAdCard({ ad }: ContentAdCardProps) {
         href={ad.destination_url}
         target="_blank"
         rel="sponsored noopener noreferrer"
-        className="block rounded-[8px] border border-blush/20 bg-white p-3 shadow-[0_8px_22px_rgba(17,17,17,0.035)]"
+        className="pressable block rounded-[8px] border border-blush/20 bg-white p-3 shadow-[0_8px_22px_rgba(17,17,17,0.035)]"
       >
         <div className="flex items-start gap-3">
           {ad.image_url ? (

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ArticleTopicSlug } from "@/lib/articleCategories";
+import { resolveContentAdImageUrl } from "@/lib/supabase/content-ad-images";
 
 export type ContentAdPlacement =
   | "home"
@@ -18,7 +19,6 @@ export type ContentAd = {
   advertiser_name: string;
   title: string;
   short_text: string;
-  image_path: string | null;
   image_url: string | null;
   destination_url: string;
   cta_label: string;
@@ -31,6 +31,10 @@ export type ContentAd = {
   priority: number;
   created_at: string;
   updated_at: string;
+};
+
+export type ContentAdRecord = ContentAd & {
+  image_path: string | null;
 };
 
 export const CATEGORY_AD_PLACEMENT_BY_TOPIC: Record<ArticleTopicSlug, ContentAdPlacement> = {
@@ -81,7 +85,7 @@ function isWithinSchedule(ad: Pick<ContentAd, "starts_at" | "ends_at">, now = ne
   return true;
 }
 
-function normalizeAd(row: ContentAd): ContentAd | null {
+function normalizeAd(row: ContentAdRecord): ContentAdRecord | null {
   const ad = {
     ...row,
     advertiser_name: row.advertiser_name?.trim(),
@@ -119,7 +123,7 @@ export async function getActiveContentAd(
       .order("priority", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(6)
-      .returns<ContentAd[]>();
+      .returns<ContentAdRecord[]>();
 
     if (error) {
       if (!isMissingContentAdsTableError(error)) {
@@ -132,7 +136,8 @@ export async function getActiveContentAd(
       return null;
     }
 
-    return (data ?? []).map(normalizeAd).find((ad): ad is ContentAd => ad != null) ?? null;
+    const activeAd = (data ?? []).map(normalizeAd).find((ad): ad is ContentAdRecord => ad != null) ?? null;
+    return resolveContentAdImageUrl(activeAd);
   } catch (error) {
     if (!isMissingContentAdsTableError(error)) {
       console.error("Content ad lookup threw", {

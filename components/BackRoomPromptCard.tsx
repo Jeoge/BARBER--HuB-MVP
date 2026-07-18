@@ -43,7 +43,7 @@ export function BackRoomPromptCard({ topicSlug, state }: BackRoomPromptCardProps
     <section className="px-4 pt-6">
       <Link
         href={hrefForState(state)}
-        className="flex items-center justify-between gap-3 rounded-[8px] border border-blush/20 bg-blushSoft px-3 py-3 shadow-sm"
+        className="pressable flex items-center justify-between gap-3 rounded-[8px] border border-blush/20 bg-blushSoft px-3 py-3 shadow-sm"
       >
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-blush">
           <MessageCircle aria-hidden="true" size={17} />

@@ -54,11 +54,11 @@ function EmptyTopicState({ isLoggedIn }: { isLoggedIn: boolean }) {
       <div className="rounded-[8px] border border-line bg-white px-3 py-3 shadow-sm">
         <p className="text-sm font-black text-ink">まだ記事がありません</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Link href="/" className="inline-flex h-9 items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
+          <Link href="/#latest-articles" className="pressable inline-flex h-9 items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
             新着記事へ
           </Link>
           {isLoggedIn ? (
-            <Link href="/post/article" className="inline-flex h-9 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
+            <Link href="/post/article" className="pressable inline-flex h-9 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
               記事を書く
             </Link>
           ) : null}

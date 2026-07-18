@@ -21,15 +21,16 @@ type HorizontalRailProps = {
   title: string;
   items: RailItem[];
   hrefPrefix?: string;
+  sectionId?: string;
 };
 
-export function HorizontalRail({ title, items, hrefPrefix = "/articles" }: HorizontalRailProps) {
+export function HorizontalRail({ title, items, hrefPrefix = "/articles", sectionId }: HorizontalRailProps) {
   if (items.length === 0) return null;
 
   const actionHref = hrefPrefix === "/jobs" || hrefPrefix === "/seminars" ? hrefPrefix : undefined;
 
   return (
-    <section className="pt-9">
+    <section id={sectionId} className="pt-9">
       <SectionTitle title={title} action={actionHref ? "すべて見る" : undefined} actionHref={actionHref} />
       <div className="no-scrollbar flex gap-3.5 overflow-x-auto px-4 pb-1">
         {items.map((item) => {
@@ -41,7 +42,7 @@ export function HorizontalRail({ title, items, hrefPrefix = "/articles" }: Horiz
               key={`${title}-${item.id}`}
               className="w-[70%] shrink-0 rounded-[8px] border border-line/80 bg-white p-2.5 shadow-[0_8px_20px_rgba(17,17,17,0.035)]"
             >
-              <Link href={href} className="block">
+              <Link href={href} className="pressable block">
                 <MagazineImage src={item.imageUrl} alt={item.title} variant={item.accent} className="aspect-[16/9]" />
                 <div className="mt-3 flex items-start justify-between gap-2">
                   <div>

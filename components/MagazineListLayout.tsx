@@ -71,7 +71,7 @@ export function MagazineFeaturedCard({ item, eyebrow = "EDITOR'S PICK", portrait
     <section className="px-4 pt-6">
       <p className="editorial-label text-[0.68rem] uppercase text-blush">{eyebrow}</p>
       <article className="mt-3 rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_14px_34px_rgba(17,17,17,0.045)]">
-        <Link href={item.href} className="block">
+        <Link href={item.href} className="pressable block">
           <MagazineImage
             src={item.imageUrl}
             alt={item.title}
@@ -114,7 +114,7 @@ export function MagazineRail({ title, eyebrow, items, portrait = false }: { titl
       <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
         {items.map((item) => (
           <article key={`${item.href}-${item.title}`} className="w-[72%] shrink-0 rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
-            <Link href={item.href} className="block">
+            <Link href={item.href} className="pressable block">
               <MagazineImage
                 src={item.imageUrl}
                 alt={item.title}
@@ -153,7 +153,7 @@ export function MagazineCompactList({ title, eyebrow, items, actionHref }: { tit
       <div className="grid gap-2.5">
         {items.map((item) => (
           <article key={`${item.href}-${item.title}`} className="rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_8px_22px_rgba(17,17,17,0.03)]">
-            <Link href={item.href} className="block">
+            <Link href={item.href} className="pressable block">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-blush">{item.label}</p>

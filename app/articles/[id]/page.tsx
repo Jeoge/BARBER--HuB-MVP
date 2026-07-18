@@ -83,7 +83,7 @@ function YoutubeArticleLink({ url }: { url: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-5 flex items-center justify-between gap-3 rounded-[8px] border border-line bg-white p-3 text-sm font-black text-ink shadow-sm"
+      className="pressable mt-5 flex items-center justify-between gap-3 rounded-[8px] border border-line bg-white p-3 text-sm font-black text-ink shadow-sm"
     >
       <span className="min-w-0">
         <span className="block">YouTube動画を見る</span>
@@ -102,7 +102,7 @@ function RelatedArticlesSection({ title, articles }: { title: "関連記事" | "
       <h2 className="text-base font-black text-ink">{title}</h2>
       <div className="mt-3 grid gap-2.5">
         {articles.map((article) => (
-          <Link key={article.id} href={`/articles/${article.id}`} className="flex gap-3 rounded-[8px] border border-line bg-white p-3 shadow-sm">
+          <Link key={article.id} href={`/articles/${article.id}`} className="pressable flex gap-3 rounded-[8px] border border-line bg-white p-3 shadow-sm">
             <div className="w-24 shrink-0">
               <MagazineImage
                 src={article.image_url ?? undefined}
@@ -269,7 +269,7 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
     <PageChrome>
       <section className="px-4 pt-8">
         <h1 className="text-2xl font-black text-ink">記事が見つかりません</h1>
-        <Link href="/" className="mt-5 inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
+        <Link href="/" className="pressable mt-5 inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
           ホームへ戻る
         </Link>
       </section>

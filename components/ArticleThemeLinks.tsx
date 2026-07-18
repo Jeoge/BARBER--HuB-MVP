@@ -19,7 +19,7 @@ export function ArticleThemeLinks({ currentSlug, title = "ほかのテーマ" }:
             (active ? "bg-blush text-white" : "border border-line bg-white text-ink");
 
           return (
-            <Link key={topic.slug} href={topic.href} className={className} aria-current={active ? "page" : undefined}>
+            <Link key={topic.slug} href={topic.href} className={`pressable ${className}`} aria-current={active ? "page" : undefined}>
               {topic.label}
               {!active ? <ChevronRight aria-hidden="true" size={13} className="text-mute" /> : null}
             </Link>

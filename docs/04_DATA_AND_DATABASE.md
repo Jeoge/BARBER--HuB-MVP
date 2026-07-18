@@ -38,6 +38,7 @@
 - `snap-images`
 - `profile-images`
 - `article-images`
+- `content-ad-images`
 
 方針:
 
@@ -48,6 +49,7 @@
 - public URLやNext/Imageで `undefined` や外部URL起因のクラッシュが起きないようにする。
 - Snapの新規アップロードは圧縮後の `image/webp` または `image/jpeg` に限定する。
 - 記事の新規アップロードも圧縮後の `image/webp` または `image/jpeg` に限定する。
+- `content-ad-images` は広告管理用のprivate bucketとし、一般ユーザー向けのStorage policyを作らない。表示時だけサーバー側のservice roleで短時間のsigned URLを発行する。
 
 ## 広告枠
 
@@ -73,6 +75,12 @@
 - `created_at`
 - `updated_at`
 
+画像:
+
+- `image_path` はprivate `content-ad-images` bucket内のobject pathを保存する。
+- `image_path` がある広告はサーバー側で30分程度のshort-lived signed URLを発行して表示する。
+- `image_path` がない既存広告だけ、検証済みの `image_url` を互換表示に使う。
+
 掲載条件:
 
 - `is_active = true`
@@ -88,6 +96,7 @@ RLS:
 - anon / authenticatedは、有効・期間内・必須項目あり・安全URL・PR表記ありの広告だけSELECTできる。
 - anon / authenticatedへINSERT / UPDATE / DELETE policyは作らない。
 - 広告管理は管理者用サーバー処理またはservice role専用処理で行い、`service_role` keyをクライアントへ出さない。
+- `content-ad-images` はprivateで、anon / authenticatedにStorage objectのSELECT / INSERT / UPDATE / DELETE policyを作らない。
 - 広告がない場合、UIは空枠やダミー広告へ戻らない。
 
 ## Snap画像
