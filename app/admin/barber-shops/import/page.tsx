@@ -16,7 +16,7 @@ import { executeBarberShopCsvImportAction, uploadBarberShopCsvAction } from "./a
 
 export const dynamic = "force-dynamic";
 
-const DEFAULT_EXPECTED_PREFECTURE_FOR_REVIEW = "福岡県";
+const DEFAULT_EXPECTED_PREFECTURE_FOR_REVIEW = "";
 const NO_EXPECTED_PREFECTURE = "__none";
 
 type ImportPageProps = {
@@ -358,7 +358,7 @@ export default async function BarberShopCsvImportPage({ searchParams }: ImportPa
           </div>
           <h1 className="mt-3 text-2xl font-black leading-tight">店舗CSV取込</h1>
           <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
-            店舗CSVをプレビューしてから登録します。CSV取込機能は全国共通です。福岡県CSVは都道府県別件数で混入を確認します。
+            店舗CSVをプレビューしてから登録します。CSV取込機能は全国共通です。想定都道府県を指定した場合は都道府県別件数で混入を確認します。
           </p>
         </div>
         <Link href="/" className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">

@@ -127,6 +127,12 @@ function duplicateKeyForExisting(shop: ExistingShopForDuplicate) {
   ].join("\u001F");
 }
 
+function canUseExactDuplicateKey(
+  row: Pick<PreparedImportRow, "normalized_address" | "normalized_phone">
+) {
+  return row.normalized_address.length > 0 || row.normalized_phone.length > 0;
+}
+
 function deriveMunicipality(rawMunicipality: string, address: string, source: string) {
   if (rawMunicipality) return rawMunicipality;
 
@@ -324,19 +330,23 @@ function classifyDuplicates(rows: PreparedImportRow[], existingShops: ExistingSh
   for (const row of rows) {
     if (row.validation_errors.length > 0) continue;
 
-    const firstSeen = seenInFile.get(row.duplicateKey);
-    if (firstSeen) {
-      row.duplicate_type = "file_exact";
-      continue;
-    }
+    const canUseExactKey = canUseExactDuplicateKey(row);
 
-    seenInFile.set(row.duplicateKey, row);
+    if (canUseExactKey) {
+      const firstSeen = seenInFile.get(row.duplicateKey);
+      if (firstSeen) {
+        row.duplicate_type = "file_exact";
+        continue;
+      }
 
-    const exactIds = exactExisting.get(row.duplicateKey);
-    if (exactIds && exactIds.length > 0) {
-      row.duplicate_type = "exact";
-      row.duplicate_shop_ids = exactIds.slice(0, 5);
-      continue;
+      seenInFile.set(row.duplicateKey, row);
+
+      const exactIds = exactExisting.get(row.duplicateKey);
+      if (exactIds && exactIds.length > 0) {
+        row.duplicate_type = "exact";
+        row.duplicate_shop_ids = exactIds.slice(0, 5);
+        continue;
+      }
     }
 
     const candidates = existingShops.filter((shop) => isDuplicateCandidate(row, shop));
