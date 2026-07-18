@@ -57,10 +57,15 @@ as $$
       nd.reviewed_at,
       nd.updated_at,
       nd.created_at,
+      nd.risk_level,
       nd.content_pillar,
       row_number() over (
         partition by nd.content_pillar
-        order by nd.reviewed_at desc, nd.updated_at desc, nd.created_at desc
+        order by
+          case when nd.risk_level = 'high' then 0 else 1 end,
+          nd.reviewed_at desc,
+          nd.updated_at desc,
+          nd.created_at desc
       ) as pillar_rank,
       row_number() over (
         order by nd.reviewed_at desc, nd.updated_at desc, nd.created_at desc
@@ -77,7 +82,7 @@ as $$
     select *
     from publishable_news
     where
-      (content_pillar = 'work' and pillar_rank <= 2)
+      (content_pillar = 'work' and (pillar_rank <= 2 or (risk_level = 'high' and pillar_rank <= 3)))
       or (content_pillar = 'style' and pillar_rank <= 2)
       or (content_pillar = 'talk' and pillar_rank <= 1)
   ),
@@ -98,7 +103,11 @@ as $$
     selected_news.source_url,
     selected_news.reviewed_at
   from selected_news
-  order by selected_news.reviewed_at desc, selected_news.updated_at desc, selected_news.created_at desc
+  order by
+    case when selected_news.risk_level = 'high' then 0 else 1 end,
+    selected_news.reviewed_at desc,
+    selected_news.updated_at desc,
+    selected_news.created_at desc
   limit least(greatest(coalesce(news_limit, 4), 1), 20)
 $$;
 
@@ -144,7 +153,7 @@ grant execute on function public.list_public_news(integer) to anon, authenticate
 grant execute on function public.get_public_news_by_id(uuid) to anon, authenticated;
 
 comment on function public.list_public_news(integer) is
-  'Read-only public 3MIN NEWS RPC. Returns approved, complete news fields only, keeps the latest publish visible, and fills the rest with WORK/STYLE/TALK-balanced items.';
+  'Read-only public 3MIN NEWS RPC. Returns approved, complete news fields only, keeps the latest publish visible, prioritizes high-risk items, and fills the rest with WORK/STYLE/TALK-balanced items.';
 
 comment on function public.get_public_news_by_id(uuid) is
   'Read-only public 3MIN NEWS detail RPC. Uses the same publication gate as list_public_news.';
