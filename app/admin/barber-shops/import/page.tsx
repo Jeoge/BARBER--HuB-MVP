@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Database, FileSpreadsheet, ShieldCheck, Upload } from "lucide-react";
+import { AlertTriangle, BarChart3, CheckCircle2, Database, FileSpreadsheet, ShieldCheck, Upload } from "lucide-react";
 import Link from "next/link";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { requireBarberHubAdmin } from "@/lib/admin/permissions";
@@ -6,12 +6,18 @@ import {
   expectedHeaderLabel,
   getBarberShopImportPreview,
   type BarberShopImportBatch,
+  type BarberShopImportCount,
+  type BarberShopImportSummary,
   type BarberShopImportRow,
 } from "@/lib/barber-import/importer";
+import { PREFECTURES } from "@/lib/japanAreas";
 import { createSupabaseAdminClient, getSupabaseAdminConfigStatus } from "@/lib/supabase/admin";
 import { executeBarberShopCsvImportAction, uploadBarberShopCsvAction } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+const DEFAULT_EXPECTED_PREFECTURE_FOR_REVIEW = "福岡県";
+const NO_EXPECTED_PREFECTURE = "__none";
 
 type ImportPageProps = {
   searchParams: Promise<{
@@ -23,6 +29,7 @@ type ImportPageProps = {
     inserted?: string;
     skipped?: string;
     failed?: string;
+    expectedPrefecture?: string;
   }>;
 };
 
@@ -66,6 +73,76 @@ function StatCard({ label, value }: { label: string; value: number }) {
       <p className="text-[0.66rem] font-black uppercase tracking-[0.12em] text-mute">{label}</p>
       <p className="mt-1 text-xl font-black text-ink">{value.toLocaleString("ja-JP")}</p>
     </div>
+  );
+}
+
+function resolveExpectedPrefecture(value: string | undefined) {
+  if (value === NO_EXPECTED_PREFECTURE) return "";
+  if (value && PREFECTURES.includes(value)) return value;
+  return DEFAULT_EXPECTED_PREFECTURE_FOR_REVIEW;
+}
+
+function expectedPrefectureFormValue(expectedPrefecture: string) {
+  return expectedPrefecture || NO_EXPECTED_PREFECTURE;
+}
+
+function CountList({ title, rows, empty, limit = 60 }: { title: string; rows: BarberShopImportCount[]; empty: string; limit?: number }) {
+  const visibleRows = rows.slice(0, limit);
+  const hiddenCount = Math.max(rows.length - visibleRows.length, 0);
+
+  return (
+    <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
+      <h3 className="text-xs font-black text-ink">{title}</h3>
+      {visibleRows.length === 0 ? (
+        <p className="mt-2 text-xs font-semibold text-mute">{empty}</p>
+      ) : (
+        <div className="mt-2 grid max-h-64 gap-1.5 overflow-y-auto pr-1">
+          {visibleRows.map((row) => (
+            <p key={row.label} className="flex items-center justify-between gap-3 rounded-[8px] bg-white px-2.5 py-1.5 text-xs">
+              <span className="min-w-0 truncate font-semibold text-ink">{row.label}</span>
+              <span className="shrink-0 font-black text-ink">{row.count.toLocaleString("ja-JP")}件</span>
+            </p>
+          ))}
+          {hiddenCount > 0 ? <p className="px-1 text-xs font-semibold text-mute">ほか {hiddenCount.toLocaleString("ja-JP")}件</p> : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ImportSummaryPanel({ summary, expectedPrefecture }: { summary: BarberShopImportSummary; expectedPrefecture: string }) {
+  const otherPrefectureCount = expectedPrefecture
+    ? summary.prefectureCounts
+      .filter((row) => row.label !== expectedPrefecture)
+      .reduce((total, row) => total + row.count, 0)
+    : 0;
+
+  return (
+    <section className="grid gap-3">
+      <div className="flex items-center gap-2 text-sm font-black text-ink">
+        <BarChart3 aria-hidden="true" size={17} className="text-blush" />
+        取込前確認
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <StatCard label="想定外都道府県" value={otherPrefectureCount} />
+        <StatCard label="電話番号形式不正" value={summary.invalidPhoneCount} />
+        <StatCard label="同一店名・同一住所" value={summary.sameNameAddressCandidateCount} />
+      </div>
+      {expectedPrefecture && otherPrefectureCount > 0 ? (
+        <p className="flex items-start gap-2 rounded-[8px] border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-relaxed text-amber-800">
+          <AlertTriangle aria-hidden="true" size={15} className="mt-0.5 shrink-0" />
+          <span>
+            今回の想定都道府県: {expectedPrefecture} / 想定外: {otherPrefectureCount.toLocaleString("ja-JP")}件。
+            都道府県別件数を確認してください。登録は強制停止しません。
+          </span>
+        </p>
+      ) : null}
+      <div className="grid gap-3 lg:grid-cols-3">
+        <CountList title="都道府県別件数" rows={summary.prefectureCounts} empty="都道府県を確認できる行はありません。" />
+        <CountList title="市区町村別件数" rows={summary.municipalityCounts} empty="市区町村を確認できる行はありません。" />
+        <CountList title="空欄件数" rows={summary.blankCounts} empty="空欄はありません。" />
+      </div>
+    </section>
   );
 }
 
@@ -137,7 +214,7 @@ function RowTable({ title, rows, empty }: { title: string; rows: BarberShopImpor
   );
 }
 
-function UploadPanel() {
+function UploadPanel({ expectedPrefecture }: { expectedPrefecture: string }) {
   return (
     <section className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
       <div className="flex items-center gap-2 text-sm font-black text-ink">
@@ -148,6 +225,21 @@ function UploadPanel() {
         必須列: {expectedHeaderLabel()}
       </p>
       <form action={uploadBarberShopCsvAction} className="mt-4 grid gap-3">
+        <label className="grid gap-2">
+          <span className="text-xs font-black text-ink">想定都道府県（確認用・任意）</span>
+          <select
+            name="expectedPrefecture"
+            defaultValue={expectedPrefectureFormValue(expectedPrefecture)}
+            className="h-11 rounded-[8px] border border-line bg-white px-2 text-xs font-semibold text-ink outline-none focus:border-blush"
+          >
+            <option value={NO_EXPECTED_PREFECTURE}>指定なし</option>
+            {PREFECTURES.map((prefecture) => (
+              <option key={prefecture} value={prefecture}>
+                {prefecture}
+              </option>
+            ))}
+          </select>
+        </label>
         <input
           name="csv"
           type="file"
@@ -164,7 +256,7 @@ function UploadPanel() {
   );
 }
 
-function ExecutePanel({ batch }: { batch: BarberShopImportBatch }) {
+function ExecutePanel({ batch, expectedPrefecture }: { batch: BarberShopImportBatch; expectedPrefecture: string }) {
   if (batch.status !== "previewed") {
     return (
       <section className="rounded-[8px] border border-emerald-200 bg-emerald-50 p-4 text-sm font-black text-emerald-700">
@@ -184,6 +276,7 @@ function ExecutePanel({ batch }: { batch: BarberShopImportBatch }) {
       </p>
       <form action={executeBarberShopCsvImportAction} className="mt-4 grid gap-3">
         <input type="hidden" name="batchId" value={batch.id} />
+        <input type="hidden" name="expectedPrefecture" value={expectedPrefectureFormValue(expectedPrefecture)} />
         {batch.duplicate_candidate_count > 0 ? (
           <label className="flex items-start gap-2 rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-ink">
             <input name="includeCandidates" value="yes" type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-ink" />
@@ -201,7 +294,7 @@ function ExecutePanel({ batch }: { batch: BarberShopImportBatch }) {
   );
 }
 
-function PreviewPanel({ preview }: { preview: NonNullable<Awaited<ReturnType<typeof getBarberShopImportPreview>>> }) {
+function PreviewPanel({ preview, expectedPrefecture }: { preview: NonNullable<Awaited<ReturnType<typeof getBarberShopImportPreview>>>; expectedPrefecture: string }) {
   const { batch } = preview;
 
   return (
@@ -224,16 +317,18 @@ function PreviewPanel({ preview }: { preview: NonNullable<Awaited<ReturnType<typ
         ) : null}
       </section>
 
-      <section className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <section className="grid gap-2 sm:grid-cols-3 lg:grid-cols-7">
         <StatCard label="CSV行数" value={batch.row_count} />
-        <StatCard label="登録対象" value={batch.valid_row_count} />
+        <StatCard label="正常件数" value={batch.valid_row_count} />
+        <StatCard label="エラー" value={batch.error_count} />
         <StatCard label="完全一致" value={batch.duplicate_exact_count} />
         <StatCard label="重複候補" value={batch.duplicate_candidate_count} />
         <StatCard label="登録済み" value={batch.inserted_count} />
         <StatCard label="スキップ" value={batch.skipped_count} />
       </section>
 
-      <ExecutePanel batch={batch} />
+      <ImportSummaryPanel summary={preview.summary} expectedPrefecture={expectedPrefecture} />
+      <ExecutePanel batch={batch} expectedPrefecture={expectedPrefecture} />
       <RowTable title="必須項目・重複確認" rows={preview.issueRows} empty="エラー行や重複候補はありません。" />
       <RowTable title="内容プレビュー" rows={preview.sampleRows} empty="プレビューできる行がありません。" />
       {batch.status === "imported" ? <RowTable title="登録結果" rows={preview.resultRows} empty="登録結果行はありません。" /> : null}
@@ -245,6 +340,7 @@ export default async function BarberShopCsvImportPage({ searchParams }: ImportPa
   await requireBarberHubAdmin();
   const params = await searchParams;
   const config = getSupabaseAdminConfigStatus();
+  const expectedPrefecture = resolveExpectedPrefecture(params.expectedPrefecture);
 
   if (!config.ready) {
     return <ConfigPanel missing={config.missing} />;
@@ -262,7 +358,7 @@ export default async function BarberShopCsvImportPage({ searchParams }: ImportPa
           </div>
           <h1 className="mt-3 text-2xl font-black leading-tight">店舗CSV取込</h1>
           <p className="mt-2 text-sm font-medium leading-relaxed text-mute">
-            福岡県内理容所CSVをプレビューしてから登録します。久留米支部名簿は行政データによる全件保証ではありません。
+            店舗CSVをプレビューしてから登録します。CSV取込機能は全国共通です。福岡県CSVは都道府県別件数で混入を確認します。
           </p>
         </div>
         <Link href="/" className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
@@ -283,8 +379,12 @@ export default async function BarberShopCsvImportPage({ searchParams }: ImportPa
       </section>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[320px_1fr]">
-        <UploadPanel />
-        {preview ? <PreviewPanel preview={preview} /> : <Banner type="info" message="CSVを選択するとプレビュー、必須項目、重複候補を確認できます。" />}
+        <UploadPanel expectedPrefecture={expectedPrefecture} />
+        {preview ? (
+          <PreviewPanel preview={preview} expectedPrefecture={expectedPrefecture} />
+        ) : (
+          <Banner type="info" message="CSVを選択するとプレビュー、必須項目、重複候補を確認できます。" />
+        )}
       </div>
     </main>
   );

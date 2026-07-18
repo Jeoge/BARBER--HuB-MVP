@@ -5,3 +5,7 @@ dist
 .env*
 !.env.example
 *.log
+
+# Private operator CSVs for manual data imports. Keep production import files out of git.
+imports/**/*.csv
+data/imports/**/*.csv
