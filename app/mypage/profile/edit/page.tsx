@@ -152,7 +152,7 @@ export default async function ProfileEditPage({ searchParams }: ProfileEditPageP
             ))}
           </select>
           <span className="text-[0.72rem] font-medium leading-relaxed text-mute">
-            理容師・学生・サロン関係者は通常投稿できます。学校・メーカー・ディーラー・組合・企業などの告知は広告掲載・協賛の問い合わせから運営確認後に扱います。
+            登録区分はプロフィール表示用です。店舗管理や求人掲載には、別途店舗機能の追加が必要です。学校・メーカー・ディーラー・組合・企業などの告知は広告掲載・協賛の問い合わせから運営確認後に扱います。
           </span>
         </label>
         <Field name="salon_name" label="サロン名" defaultValue={profile?.salon_name} placeholder="例：BARBER HUB SALON" />

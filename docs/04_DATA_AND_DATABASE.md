@@ -101,6 +101,7 @@
 - `list_barber_shop_municipalities`
 - `request_barber_shop_claim`
 - `create_barber_shop_with_claim`
+- `review_barber_shop_claim`
 - `normalize_barber_shop_name`
 
 主な設計:
@@ -110,6 +111,7 @@
 - 重複候補は `is_duplicate` / `duplicate_of` で扱う。
 - `verification_status` は `unverified`, `unclaimed`, `pending`, `verified`, `rejected`, `suspended` を使う。CSV取込店舗はCSVの値にかかわらず必ず `unverified` として保存し、CSVから `verified` や `pending` などにはできない。既存の `unclaimed` は互換値として残す。
 - CSV取込で必要な電話番号と掲載元は `barber_shops.phone`, `barber_shops.source` に保存する。市区町村は既存の `municipality` を使い、CSV列「市区町村」をここへ対応させる。
+- 店舗管理申請の審査メモは `barber_shop_claims.review_note` に保存する。`reviewed_at`, `reviewed_by` と合わせて管理者確認履歴として扱う。
 - 重複確認用に `normalized_name`, `normalized_address`, `normalized_phone` を使う。電話番号はtextとして保存し、先頭0を落とさない。
 - 一般ユーザーの申請は即時verifiedにならない。
 - 認証済みオーナーだけが自店舗の編集対象になる。
@@ -137,6 +139,9 @@
 - `barber_shop_claims`: 申請者本人が自分の申請を確認・作成できる。
 - `barber_shop_import_batches`, `barber_shop_import_rows`: RLSを有効化し、anon / authenticated向けpolicyは作らない。CSV取込は管理者allowlist確認後、サーバー側service role clientと専用RPCで実行する。
 - CSV取込RPCは `barber_shops.verification_status` へ常に `unverified` を書き込む。`source_type = 'imported'`, `verification_status = 'verified'`, `owner_user_id is null` の組み合わせはDB制約で禁止する。
+- 店舗管理申請の審査RPC `review_barber_shop_claim` はservice_roleだけにEXECUTEを許可し、一般ユーザーは直接呼べない。Server Action側でも `BARBER_HUB_ADMIN_USER_IDS` または互換allowlistで管理者判定する。
+- 店舗管理申請の承認では、対象claimがpendingであること、対象店舗が別ユーザーのverified店舗でないことをDB側で再確認してから `owner_user_id` と `verification_status` を更新する。同じ `shop_id` のほかのpending申請は、同一ユーザーの重複分も含め、同一RPC内で `rejected` へ自動却下する。
+- 店舗管理申請の却下では、対象claimだけをrejectedにし、対象店舗は削除しない。ほかにpending申請がなければ店舗の `verification_status` を `unverified` へ戻す。
 - 管理者審査はクライアントから直接行わない。
 
 ## migration運用

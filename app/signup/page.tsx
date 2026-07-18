@@ -38,7 +38,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
         <p className="text-[0.72rem] font-black uppercase tracking-[0.14em] text-blush">SIGN UP</p>
         <h1 className="mt-2 text-[2rem] font-black leading-tight text-ink">会員登録</h1>
         <p className="mt-3 text-sm font-medium leading-relaxed text-mute">
-          まずはメールアドレスとパスワードでアカウントを作成します。登録後に届くメールから確認を完了できます。
+          まずは個人アカウントで気軽に参加できます。Snap、記事、Back Room、Q&Aの利用に店舗登録は必要ありません。求人や店舗管理などを利用する場合は、登録後にマイページから店舗機能を追加できます。
         </p>
       </section>
 

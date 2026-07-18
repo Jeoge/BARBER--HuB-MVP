@@ -19,11 +19,9 @@ import { useEffect, useState } from "react";
 import {
   canCreateArticle,
   canCreateBackroom,
-  canCreateJob,
   canCreateQa,
   canCreateReport,
   canCreateSnap,
-  canCreateSuccession,
   classifyAccountType,
   type AccountProfileLike,
 } from "@/lib/accountTypes";
@@ -54,14 +52,13 @@ const postItems: PostItem[] = [
   { label: "開業・承継を掲載", icon: Building2, href: "/post/succession", capability: "succession", kind: "succession", signupNextHref: "/post/succession" },
 ];
 
-function canUseCapability(profile: MenuProfile | null, capability: PostCapability) {
+function canUseCapability(profile: MenuProfile | null, capability: PostCapability, hasVerifiedStore: boolean) {
   if (capability === "snap") return canCreateSnap(profile);
   if (capability === "article") return canCreateArticle(profile);
   if (capability === "report") return canCreateReport(profile);
   if (capability === "qa") return canCreateQa(profile);
   if (capability === "backroom") return canCreateBackroom(profile);
-  if (capability === "job") return canCreateJob(profile);
-  return canCreateSuccession(profile);
+  return hasVerifiedStore;
 }
 
 type FloatingPostButtonProps = {
@@ -74,19 +71,31 @@ export function FloatingPostButton({ variant = "default" }: FloatingPostButtonPr
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profile, setProfile] = useState<MenuProfile | null>(null);
   const [profileError, setProfileError] = useState(false);
+  const [hasVerifiedStore, setHasVerifiedStore] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
     let active = true;
 
-    async function loadProfile(userId: string) {
-      const primary = await supabase
-        .from("profiles")
-        .select("job_type, salon_name, shop_address")
-        .eq("id", userId)
-        .maybeSingle<MenuProfile>();
+    async function loadAccountState(userId: string) {
+      const [primary, verifiedStore] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("job_type, salon_name, shop_address")
+          .eq("id", userId)
+          .maybeSingle<MenuProfile>(),
+        supabase
+          .from("barber_shops")
+          .select("id")
+          .eq("owner_user_id", userId)
+          .eq("verification_status", "verified")
+          .eq("is_deleted", false)
+          .eq("is_duplicate", false)
+          .limit(1),
+      ]);
 
       if (!active) return;
+      setHasVerifiedStore(Boolean(verifiedStore.data?.length));
 
       if (primary.error) {
         const fallback = await supabase
@@ -123,11 +132,12 @@ export function FloatingPostButton({ variant = "default" }: FloatingPostButtonPr
 
       if (user == null) {
         setProfile(null);
+        setHasVerifiedStore(false);
         setReady(true);
         return;
       }
 
-      void loadProfile(user.id);
+      void loadAccountState(user.id);
     });
 
     const {
@@ -141,12 +151,13 @@ export function FloatingPostButton({ variant = "default" }: FloatingPostButtonPr
 
       if (user == null) {
         setProfile(null);
+        setHasVerifiedStore(false);
         setProfileError(false);
         setReady(true);
         return;
       }
 
-      void loadProfile(user.id);
+      void loadAccountState(user.id);
     });
 
     return () => {
@@ -156,7 +167,7 @@ export function FloatingPostButton({ variant = "default" }: FloatingPostButtonPr
   }, []);
 
   const accountClassification = classifyAccountType(profile);
-  const allowedItems = postItems.filter((item) => canUseCapability(profile, item.capability));
+  const allowedItems = postItems.filter((item) => canUseCapability(profile, item.capability, hasVerifiedStore));
   const isBackroom = variant === "backroom";
   const accentClass = isBackroom ? backRoomTheme.accentText : "text-blush";
 

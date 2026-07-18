@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
-import { getPostPermissionRedirect } from "@/lib/permissions";
+import { listOwnedVerifiedBarberShops, shopAreaLabel } from "@/lib/supabase/barber-shops";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { SuccessionPostForm } from "./SuccessionPostForm";
@@ -73,7 +72,10 @@ export default async function SuccessionPostPage({ searchParams }: SuccessionPos
     );
   }
 
-  const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+  const [{ profile, error: profileError }, { shops: verifiedShops, error: verifiedShopsError }] = await Promise.all([
+    getAccountProfile(supabase, user.id),
+    listOwnedVerifiedBarberShops(supabase, user.id, 1),
+  ]);
 
   if (profileError) {
     return (
@@ -89,9 +91,42 @@ export default async function SuccessionPostPage({ searchParams }: SuccessionPos
     );
   }
 
-  const permissionRedirect = getPostPermissionRedirect(profile, "succession", "/post/succession");
-  if (permissionRedirect) {
-    redirect(permissionRedirect);
+  if (verifiedShopsError) {
+    return (
+      <PageChrome>
+        <PageHeaderBlock
+          eyebrow="SUCCESSION POST"
+          title="開業・承継情報を掲載する"
+          body="掲載に必要な店舗機能を確認できませんでした。"
+        />
+        <AccessCard
+          title="サロン機能を確認できませんでした"
+          body="時間をおいて再読み込みしてください。"
+          primaryHref="/mypage"
+          primaryLabel="マイページへ"
+        />
+      </PageChrome>
+    );
+  }
+
+  if (verifiedShops.length === 0) {
+    return (
+      <PageChrome>
+        <PageHeaderBlock
+          eyebrow="SUCCESSION POST"
+          title="開業・承継情報を掲載する"
+          body="掲載には、認証済み店舗に紐づいたサロン機能が必要です。"
+        />
+        <AccessCard
+          title="サロン機能を追加してください"
+          body="プロフィールでサロンオーナーを選ぶだけでは掲載できません。マイページから店舗を追加し、確認完了後に利用できます。"
+          primaryHref="/?storeDirectory=1"
+          primaryLabel="サロン機能を追加する"
+          secondaryHref="/succession"
+          secondaryLabel="一覧を見る"
+        />
+      </PageChrome>
+    );
   }
 
   if (profile == null) {
@@ -114,6 +149,12 @@ export default async function SuccessionPostPage({ searchParams }: SuccessionPos
     );
   }
 
+  const defaultShop = verifiedShops[0];
+  const formProfile = {
+    ...profile,
+    region: profile.region ?? shopAreaLabel(defaultShop),
+  };
+
   return (
     <PageChrome>
       <PageHeaderBlock
@@ -121,7 +162,7 @@ export default async function SuccessionPostPage({ searchParams }: SuccessionPos
         title="開業・承継情報を掲載する"
         body="公開情報と非公開情報を分け、個人や店舗が特定されない形で掲載します。"
       />
-      <SuccessionPostForm profile={profile} error={params?.error} />
+      <SuccessionPostForm profile={formProfile} error={params?.error} />
     </PageChrome>
   );
 }

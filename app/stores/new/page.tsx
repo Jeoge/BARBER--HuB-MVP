@@ -46,7 +46,7 @@ export default async function StoreNewPage({ searchParams }: StoreNewPageProps) 
   } = await supabase.auth.getUser();
 
   if (user == null) {
-    redirect(pathWithParams("/login", { next: "/stores/new", message: "店舗登録にはログインしてください。" }));
+    redirect(pathWithParams("/login", { next: "/stores/new", message: "新しい店舗を登録するにはログインしてください。" }));
   }
 
   return (
@@ -60,8 +60,8 @@ export default async function StoreNewPage({ searchParams }: StoreNewPageProps) 
 
       <PageHeaderBlock
         eyebrow="BARBER DIRECTORY"
-        title="店舗登録申請"
-        body="店舗ディレクトリに見つからない理容店舗を登録申請できます。登録後すぐに認証済みにはならず、確認待ちとして保存されます。"
+        title="新しい店舗を登録する"
+        body="店舗を新規登録し、管理申請を送信できます。登録後すぐに認証済みにはならず、確認待ちとして保存されます。"
       />
 
       <form action={createBarberShopAction} className="grid gap-5 px-4 pt-5">
@@ -109,24 +109,13 @@ export default async function StoreNewPage({ searchParams }: StoreNewPageProps) 
             <CheckCircle2 aria-hidden="true" size={17} className="text-blush" />
             申請者情報
           </div>
-          <label className="grid gap-2">
-            <span className="text-sm font-black text-ink">登録者との関係</span>
-            <select
-              name="relation"
-              required
-              className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush"
-              defaultValue=""
-            >
-              <option value="" disabled>選択してください</option>
-              <option value="owner">オーナー</option>
-              <option value="representative">代表者</option>
-              <option value="manager">店長・管理者</option>
-              <option value="staff">スタッフ</option>
-              <option value="related">その他関係者</option>
-            </select>
+          <label className="flex items-start gap-2 rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-ink">
+            <input name="relation" type="checkbox" value="authorized_manager" required className="mt-0.5 h-4 w-4 shrink-0 accent-blush" />
+            私は、この店舗のオーナー、代表者、または店舗情報を管理する正当な権限を持っています。
           </label>
+          <p className="text-[0.68rem] font-semibold leading-relaxed text-mute">虚偽の申請や、権限のない店舗への申請は禁止されています。</p>
           <label className="grid gap-2">
-            <span className="text-sm font-black text-ink">補足（任意）</span>
+            <span className="text-sm font-black text-ink">確認事項・補足（任意）</span>
             <textarea
               name="message"
               rows={4}
@@ -142,7 +131,7 @@ export default async function StoreNewPage({ searchParams }: StoreNewPageProps) 
 
         <LoadingSubmitButton pendingText="申請中..." className="inline-flex h-12 items-center justify-center gap-2 rounded-[8px] bg-ink text-sm font-black text-white">
           <CheckCircle2 aria-hidden="true" size={17} />
-          店舗登録を申請する
+          新しい店舗を登録する
         </LoadingSubmitButton>
       </form>
     </PageChrome>

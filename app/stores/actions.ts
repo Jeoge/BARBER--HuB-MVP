@@ -59,7 +59,7 @@ async function requireUser(nextPath: string, message: string) {
 
 export async function createBarberShopAction(formData: FormData) {
   const redirectPath = "/stores/new";
-  const { supabase } = await requireUser(redirectPath, "店舗登録にはログインしてください。");
+  const { supabase } = await requireUser(redirectPath, "新しい店舗を登録するにはログインしてください。");
   const name = cleanText(formData.get("name"));
   const prefecture = cleanText(formData.get("prefecture"));
   const municipality = cleanText(formData.get("municipality"));
@@ -70,8 +70,12 @@ export async function createBarberShopAction(formData: FormData) {
   const confirmed = cleanText(formData.get("confirmed")) === "yes";
   const normalizedName = normalizeShopSearchText(name);
 
-  if (!name || !prefecture || !municipality || !address || !relation || !normalizedName) {
-    redirect(pathWithParams(redirectPath, { error: "店舗名、都道府県、市区町村、住所、登録者との関係を入力してください。" }));
+  if (!name || !prefecture || !municipality || !address || !normalizedName) {
+    redirect(pathWithParams(redirectPath, { error: "店舗名、都道府県、市区町村、住所を入力してください。" }));
+  }
+
+  if (relation !== "authorized_manager") {
+    redirect(pathWithParams(redirectPath, { error: "店舗管理権限の確認にチェックしてください。" }));
   }
 
   if (!confirmed) {
@@ -112,13 +116,13 @@ export async function requestBarberShopClaimAction(formData: FormData) {
 
   const { supabase } = await requireUser(
     pathWithParams(redirectPath, { claim: "1" }),
-    "店舗のオーナー認証申請にはログインしてください。"
+    "店舗管理申請にはログインしてください。"
   );
   const relation = cleanText(formData.get("relation"));
   const message = cleanNullableText(formData.get("message"));
 
-  if (!relation) {
-    redirect(pathWithParams(redirectPath, { error: "店舗との関係を選択してください。" }));
+  if (relation !== "authorized_manager") {
+    redirect(pathWithParams(redirectPath, { error: "店舗管理権限の確認にチェックしてください。" }));
   }
 
   const { data: claimId, error } = await supabase.rpc("request_barber_shop_claim", {

@@ -71,11 +71,9 @@ function StoreResultCard({ shop }: { shop: BarberShop }) {
   const verified = shop.verification_status === "verified";
 
   return (
-    <Link
-      href={`/stores/${shop.id}`}
-      className="flex min-h-[5.75rem] items-center justify-between gap-3 rounded-[8px] border border-line bg-white px-3 py-2.5 text-left shadow-[0_6px_16px_rgba(17,17,17,0.025)]"
-    >
-      <span className="min-w-0">
+    <article className="rounded-[8px] border border-line bg-white px-3 py-2.5 text-left shadow-[0_6px_16px_rgba(17,17,17,0.025)]">
+      <div className="flex items-start justify-between gap-3">
+        <span className="min-w-0">
         <span className="line-clamp-2 text-sm font-black leading-snug text-ink">{shop.name}</span>
         <span className="mt-1 line-clamp-1 text-xs font-semibold text-mute">{shopAreaLabel(shop)}</span>
         <span className="mt-0.5 line-clamp-1 text-xs font-medium text-mute">{shopAddressLabel(shop)}</span>
@@ -84,9 +82,18 @@ function StoreResultCard({ shop }: { shop: BarberShop }) {
           {verified ? <BadgeCheck aria-hidden="true" size={12} className="text-blush" /> : null}
           {shopVerificationLabel(shop.verification_status)}
         </span>
-      </span>
-      <ChevronRight aria-hidden="true" size={18} className="shrink-0 text-mute" />
-    </Link>
+        </span>
+        <ChevronRight aria-hidden="true" size={18} className="mt-1 shrink-0 text-mute" />
+      </div>
+      <Link href={`/stores/${shop.id}`} className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
+        {verified ? "店舗詳細を見る" : "この店舗の管理を申請する"}
+      </Link>
+      {!verified ? (
+        <p className="mt-1.5 text-[0.66rem] font-semibold leading-relaxed text-mute">
+          店舗情報を管理する権限をお持ちの方のみ申請できます。
+        </p>
+      ) : null}
+    </article>
   );
 }
 
@@ -137,7 +144,7 @@ function ResultList({
   if (!loading && results.length === 0) {
     return (
       <div className="rounded-[8px] border border-line bg-neutral-50 p-3">
-        <p className="text-sm font-black text-ink">該当する店舗が見つかりませんでした</p>
+        <p className="text-sm font-black text-ink">お店が見つかりませんか？</p>
         <div className="mt-3">{emptyAction}</div>
       </div>
     );
@@ -165,20 +172,24 @@ function ResultList({
 function NotFoundAction({ isLoggedIn }: { isLoggedIn: boolean }) {
   if (isLoggedIn) {
     return (
-      <Link href="/stores/new" className="inline-flex h-10 w-full items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
-        店舗が見つからない方
-      </Link>
+      <div className="grid gap-2">
+        <p className="text-xs font-semibold leading-relaxed text-mute">店舗を新規登録し、管理申請を送信できます。</p>
+        <Link href="/stores/new" className="inline-flex h-10 w-full items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
+          新しい店舗を登録する
+        </Link>
+      </div>
     );
   }
 
   return (
     <div className="grid gap-2">
-      <Link href={loginHref("/stores/new", "店舗登録にはログインしてください。")} className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
-        ログインして店舗登録へ
+      <Link href={loginHref("/stores/new", "新しい店舗を登録するにはログインしてください。")} className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
+        ログインして新しい店舗を登録する
       </Link>
       <Link href={signupHref("/stores/new")} className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
-        会員登録へ
+        会員登録してから追加する
       </Link>
+      <p className="text-xs font-semibold leading-relaxed text-mute">店舗を新規登録し、管理申請を送信できます。</p>
     </div>
   );
 }
@@ -466,13 +477,13 @@ function StoreDirectorySheet({
                   </span>
                   <ChevronRight aria-hidden="true" size={18} className="ml-auto shrink-0 text-mute" />
                 </button>
-                <Link href={isLoggedIn ? "/stores/new" : loginHref("/stores/new", "店舗登録にはログインしてください。")} className="flex min-h-14 items-center gap-3 rounded-[8px] border border-line bg-white px-3 py-2.5 text-left">
+                <Link href={isLoggedIn ? "/stores/new" : loginHref("/stores/new", "新しい店舗を登録するにはログインしてください。")} className="flex min-h-14 items-center gap-3 rounded-[8px] border border-line bg-white px-3 py-2.5 text-left">
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-neutral-50 text-ink">
                     <PlusCircle aria-hidden="true" size={17} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-sm font-black text-ink">店舗が見つからない方</span>
-                    <span className="mt-0.5 block text-xs font-semibold text-mute">{isLoggedIn ? "店舗登録申請へ進む" : "ログイン後に登録申請"}</span>
+                    <span className="block text-sm font-black text-ink">新しい店舗を登録する</span>
+                    <span className="mt-0.5 block text-xs font-semibold text-mute">{isLoggedIn ? "検索で見つからない場合のみ" : "ログイン後に登録申請"}</span>
                   </span>
                   <ChevronRight aria-hidden="true" size={18} className="ml-auto shrink-0 text-mute" />
                 </Link>
@@ -622,6 +633,18 @@ export function StoreDirectoryProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<StoreDirectoryView>("menu");
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("storeDirectory") !== "1") return;
+
+    params.delete("storeDirectory");
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+    setView("menu");
+    setOpen(true);
+  }, []);
+
   const openStoreDirectory = useCallback((nextView: StoreDirectoryView = "menu") => {
     setView(nextView);
     setOpen(true);
@@ -663,14 +686,15 @@ export function StoreDirectoryStatsCard({ count }: { count: number | null }) {
   const countLabel = count == null ? null : count.toLocaleString("ja-JP");
 
   return (
-    <section className="px-4 pt-5">
+    <section id="barber-directory" className="scroll-mt-4 px-4 pt-5">
       <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.035)]">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-blush">BARBER DIRECTORY</p>
-            <h2 className="mt-1 text-base font-black text-ink">掲載店舗数</h2>
+            <h2 className="mt-1 text-base font-black text-ink">あなたのお店を検索</h2>
             <p className="mt-1 text-xs font-medium leading-relaxed text-mute">
-              理容店舗を業界データベースとして探せます。
+              店舗情報を管理したい方や、求人・承継情報を掲載したい方は、まず店舗を検索してください。
+              <span className="mt-0.5 block">Snapや記事の利用に店舗登録は必要ありません。</span>
             </p>
           </div>
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-neutral-50 text-ink">
