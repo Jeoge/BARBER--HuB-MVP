@@ -21,7 +21,7 @@ type ArticleEngagementPanelProps = {
 };
 
 const reactionButtonBase =
-  "inline-flex h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.72rem] font-black transition active:scale-[0.98] disabled:active:scale-100 disabled:cursor-not-allowed";
+  "inline-flex h-10 items-center justify-center gap-1.5 rounded-full border px-3 text-[0.72rem] font-black";
 
 const reactionConfig = {
   thanks: {
@@ -64,7 +64,7 @@ function LoginReactionLink({ articleId, label, children }: { articleId: string; 
   return (
     <Link
       href={pathWithParams("/login", { next: `/articles/${articleId}`, message: `${label}にはログインしてください。` })}
-      className={reactionButtonBase + " border-line/80 bg-white text-ink/78 active:opacity-70"}
+      className={`pressable ${reactionButtonBase} border-line/80 bg-white text-ink/78`}
     >
       {children}
       <span>{label}</span>
@@ -74,7 +74,7 @@ function LoginReactionLink({ articleId, label, children }: { articleId: string; 
 
 function CommentActionButton({ commentCount }: { commentCount: number }) {
   return (
-    <a href="#article-comments" className={reactionButtonBase + " border-line/80 bg-white text-ink/78 transition hover:border-blush/25 hover:bg-blushSoft/50 active:opacity-70"}>
+    <a href="#article-comments" className={`pressable ${reactionButtonBase} border-line/80 bg-white text-ink/78 hover:border-blush/25 hover:bg-blushSoft/50`}>
       <MessageCircle aria-hidden="true" size={15} strokeWidth={1.9} />
       <span>コメント {commentCount}</span>
     </a>
@@ -181,7 +181,7 @@ export function ArticleEngagementPanel({
         {currentUserId == null ? (
           <Link
             href={pathWithParams("/login", { next: `/articles/${articleId}`, message: "コメントにはログインしてください。" })}
-            className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white transition active:scale-[0.98] active:opacity-70"
+            className="pressable mt-3 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink text-sm font-black text-white"
           >
             ログインしてコメントする
           </Link>

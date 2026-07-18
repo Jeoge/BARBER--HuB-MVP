@@ -184,7 +184,7 @@ export function FloatingPostButton({ variant = "default" }: FloatingPostButtonPr
               <AuthGateLink
                 key={label}
                 href={href}
-                className="flex w-full items-center gap-2 rounded-[7px] px-3 py-2.5 text-left text-sm font-semibold text-ink transition active:scale-[0.98] disabled:opacity-60"
+                className="pressable flex w-full items-center gap-2 rounded-[7px] px-3 py-2.5 text-left text-sm font-semibold text-ink disabled:opacity-60"
                 kind={kind}
                 ariaLabel={label}
                 signupNextHref={signupNextHref}
@@ -202,7 +202,7 @@ export function FloatingPostButton({ variant = "default" }: FloatingPostButtonPr
               <p className="rounded-[8px] bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
                 投稿するには登録区分の設定が必要です。
               </p>
-              <Link href="/mypage/profile/edit" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
+              <Link href="/mypage/profile/edit" className="pressable inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
                 登録区分を設定する
               </Link>
             </div>
@@ -217,10 +217,10 @@ export function FloatingPostButton({ variant = "default" }: FloatingPostButtonPr
                   この登録区分では、通常のSnap・記事投稿はできません。告知・PR・協賛掲載をご希望の場合は、運営確認後に掲載できます。
                 </p>
               </div>
-              <Link href="/advertising" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
+              <Link href="/advertising" className="pressable inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
                 広告掲載・協賛を相談する
               </Link>
-              <Link href="/advertising/apply" className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
+              <Link href="/advertising/apply" className="pressable inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
                 公式告知を問い合わせる
               </Link>
             </div>
@@ -229,7 +229,7 @@ export function FloatingPostButton({ variant = "default" }: FloatingPostButtonPr
               <Link
                 key={label}
                 href={href}
-                className="flex w-full items-center gap-2 rounded-[7px] px-3 py-2.5 text-left text-sm font-semibold text-ink transition active:scale-[0.98]"
+                className="pressable flex w-full items-center gap-2 rounded-[7px] px-3 py-2.5 text-left text-sm font-semibold text-ink"
                 aria-label={label}
                 onClick={() => setOpen(false)}
               >
@@ -241,7 +241,7 @@ export function FloatingPostButton({ variant = "default" }: FloatingPostButtonPr
         </div>
       ) : null}
       <button
-        className={"pointer-events-auto ml-auto grid h-9 w-9 place-items-center rounded-full text-white transition active:scale-90 " + (isBackroom ? backRoomTheme.fabGradient : "bg-blush shadow-[0_6px_14px_rgba(255,59,134,0.18)]")}
+        className={"pressable pointer-events-auto ml-auto grid h-9 w-9 place-items-center rounded-full text-white " + (isBackroom ? backRoomTheme.fabGradient : "bg-blush shadow-[0_6px_14px_rgba(255,59,134,0.18)]")}
         aria-label={open ? "投稿メニューを閉じる" : "投稿メニューを開く"}
         onClick={() => setOpen((current) => !current)}
       >

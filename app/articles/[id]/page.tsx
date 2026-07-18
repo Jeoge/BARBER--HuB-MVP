@@ -1,28 +1,29 @@
-import { CalendarDays, ExternalLink } from "lucide-react";
+import { CalendarDays, ChevronRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode } from "react";
+import { ArticleThemeLinks } from "@/components/ArticleThemeLinks";
 import { ArticleEngagementPanel } from "@/components/ArticleEngagementPanel";
+import { BackRoomPromptCard } from "@/components/BackRoomPromptCard";
+import { ContentAdCard } from "@/components/ContentAdCard";
 import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
-import { ProductSection } from "@/components/ProductSection";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
-import { SponsorSection } from "@/components/SponsorSection";
-import { ToolActionLinks } from "@/components/ToolActionLinks";
 import { ARTICLE_IMAGE_MARKER_PATTERN, normalizeArticleImageMarkers, validArticleImageMarkerIndexes } from "@/lib/articleMedia";
-import { articles, findArticle, getRelatedProducts } from "@/lib/mockData";
-import { sponsorsForPlacement } from "@/lib/sponsors";
-import { resolveArticleImageUrl } from "@/lib/supabase/article-images";
+import { imageVariantForArticleCategory, primaryTopicSlugForArticleCategory } from "@/lib/articleCategories";
+import { getBackRoomPromptState } from "@/lib/backroomPrompt";
+import { resolveArticleImageUrl, resolveArticleImageUrls } from "@/lib/supabase/article-images";
 import {
   type ArticleDisplayImage,
+  type ArticleWithAuthor,
   articleAuthorMeta,
   articleAuthorName,
   articleDateLabel,
-  getArticleEngagement,
   getPublishedArticleById,
+  listRelatedPublishedArticles,
   listArticleComments,
 } from "@/lib/supabase/articles";
+import { getActiveContentAd } from "@/lib/supabase/content-ads";
 import { createClient } from "@/lib/supabase/server";
-import { getPrimaryTopicSlug, getTopicBundle } from "@/lib/topics";
 
 type ArticleDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -82,7 +83,7 @@ function YoutubeArticleLink({ url }: { url: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-5 flex items-center justify-between gap-3 rounded-[8px] border border-line bg-white p-3 text-sm font-black text-ink shadow-sm"
+      className="pressable mt-5 flex items-center justify-between gap-3 rounded-[8px] border border-line bg-white p-3 text-sm font-black text-ink shadow-sm"
     >
       <span className="min-w-0">
         <span className="block">YouTube動画を見る</span>
@@ -90,6 +91,36 @@ function YoutubeArticleLink({ url }: { url: string }) {
       </span>
       <ExternalLink aria-hidden="true" size={17} className="shrink-0 text-blush" />
     </a>
+  );
+}
+
+function RelatedArticlesSection({ title, articles }: { title: "関連記事" | "あわせて読む"; articles: ArticleWithAuthor[] }) {
+  if (articles.length === 0) return null;
+
+  return (
+    <section className="px-4 pt-7">
+      <h2 className="text-base font-black text-ink">{title}</h2>
+      <div className="mt-3 grid gap-2.5">
+        {articles.map((article) => (
+          <Link key={article.id} href={`/articles/${article.id}`} className="pressable flex gap-3 rounded-[8px] border border-line bg-white p-3 shadow-sm">
+            <div className="w-24 shrink-0">
+              <MagazineImage
+                src={article.image_url ?? undefined}
+                alt={article.title}
+                variant={imageVariantForArticleCategory(article.category)}
+                className="aspect-[4/3]"
+              />
+            </div>
+            <span className="min-w-0 flex-1">
+              <span className="text-[0.62rem] font-black text-blush">{article.category ?? "経験記事"}</span>
+              <span className="mt-1 line-clamp-2 block text-sm font-black leading-snug text-ink">{article.title}</span>
+              <span className="mt-1 block text-[0.68rem] font-bold text-mute">{articleDateLabel(article)}</span>
+            </span>
+            <ChevronRight aria-hidden="true" size={16} className="mt-1 shrink-0 text-mute" />
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -153,10 +184,18 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
   if (resolvedDbArticle != null) {
     const authorName = articleAuthorName(resolvedDbArticle);
     const authorMeta = articleAuthorMeta(resolvedDbArticle);
-    const { comments } = await listArticleComments(supabase, id, 30);
+    const primaryTopicSlug = primaryTopicSlugForArticleCategory(resolvedDbArticle.category);
+    const [commentResult, relatedResult, contentAd, backRoomState] = await Promise.all([
+      listArticleComments(supabase, id, 30),
+      listRelatedPublishedArticles(supabase, resolvedDbArticle, 3, user?.id),
+      getActiveContentAd(supabase, "article_bottom", primaryTopicSlug ?? "all"),
+      getBackRoomPromptState(supabase, user?.id),
+    ]);
+    const signedRelatedArticles = await resolveArticleImageUrls(relatedResult.articles);
     const articleBody = normalizeArticleImageMarkers(resolvedDbArticle.body, resolvedDbArticle.images.length);
     const inlineImageIndexes = validArticleImageMarkerIndexes(articleBody, resolvedDbArticle.images.length);
     const renderedInlineImageIndexes = new Set(Array.from(inlineImageIndexes).filter((imageIndex) => resolvedDbArticle.images[imageIndex]?.url != null));
+    const showBackRoomPrompt = contentAd == null;
 
     return (
       <PageChrome>
@@ -202,7 +241,7 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
             authorId={resolvedDbArticle.author_id}
             currentUserId={user?.id}
             metrics={resolvedDbArticle}
-            comments={comments}
+            comments={commentResult.comments}
             reactionError={query?.reactionError}
             commentError={query?.commentError}
             commentPosted={query?.comment === "posted"}
@@ -214,115 +253,26 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
 
           {resolvedDbArticle.youtube_url ? <YoutubeArticleLink url={resolvedDbArticle.youtube_url} /> : null}
         </article>
-      </PageChrome>
-    );
-  }
 
-  const article = findArticle(id);
-  const relatedProducts = getRelatedProducts(id);
-  const topicSlug = article == null ? undefined : getPrimaryTopicSlug(article);
-  const topicBundle = topicSlug == null ? undefined : getTopicBundle(topicSlug);
-  const isToolArticle = article?.topicSlugs?.includes("tools") ?? false;
-  const fallbackMetrics = await getArticleEngagement(supabase, id, null, user?.id);
-  const { comments: fallbackComments } = await listArticleComments(supabase, id, 30);
+        <ContentAdCard ad={contentAd} />
 
-  if (article == null) {
-    return (
-      <PageChrome>
-        <section className="px-4 pt-8">
-          <h1 className="text-2xl font-black text-ink">記事が見つかりません</h1>
-          <p className="mt-3 text-sm font-medium leading-relaxed text-mute">
-            指定された記事は、編集部の一覧にまだ登録されていません。
-          </p>
-          <Link href="/" className="mt-5 inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
-            ホームへ戻る
-          </Link>
-        </section>
+        <RelatedArticlesSection title={relatedResult.heading} articles={signedRelatedArticles} />
+
+        <ArticleThemeLinks currentSlug={primaryTopicSlug} />
+
+        {showBackRoomPrompt ? <BackRoomPromptCard topicSlug={primaryTopicSlug} state={backRoomState} /> : null}
       </PageChrome>
     );
   }
 
   return (
     <PageChrome>
-      <article className="px-4 pt-5">
-        <span className="rounded-full bg-blushSoft px-2.5 py-1 text-[0.68rem] font-black text-blush">
-          {article.category}
-        </span>
-        <h1 className="mt-3 text-[1.55rem] font-black leading-tight text-ink">{article.title}</h1>
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-bold text-mute">
-          <ProfileMiniLink profileId={article.profileId} fallbackName={article.author} compact size="feed" />
-          <span className="inline-flex items-center gap-1">
-            <CalendarDays aria-hidden="true" size={15} />
-            {article.date}
-          </span>
-        </div>
-        <MagazineImage src={article.imageUrl} alt={article.title} variant={article.accent} className="mt-4 aspect-[16/10]" />
-
-        <ArticleEngagementPanel
-          articleId={article.id}
-          currentUserId={user?.id}
-          metrics={fallbackMetrics}
-          comments={fallbackComments}
-          reactionError={query?.reactionError}
-          commentError={query?.commentError}
-          commentPosted={query?.comment === "posted"}
-        />
-
-        <div className="mt-5 space-y-4 text-[0.92rem] font-medium leading-relaxed text-ink">
-          <p className="font-bold text-mute">{article.summary}</p>
-          {article.body.map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
-          ))}
-        </div>
-      </article>
-
-      <ProductSection
-        title="この記事に出てきた道具"
-        subtitle="記事の文脈に合う商品だけを、BARBER HUB編集部が整理します。"
-        products={relatedProducts}
-      />
-
-      {isToolArticle ? <ToolActionLinks /> : null}
-
-      <SponsorSection
-        eyebrow="PR / Partner"
-        title="この記事に関連する協賛情報"
-        subtitle="記事内容に近い道具・講習だけを表示します。"
-        items={sponsorsForPlacement("article")}
-        compact
-      />
-
-      <section className="px-4 pt-7">
-        <h2 className="text-base font-black text-ink">{topicBundle == null ? "関連記事" : `関連する${topicBundle.topic.label}情報`}</h2>
-        <div className="mt-3 grid gap-2">
-          {(topicBundle?.articles ?? articles)
-            .filter((item) => item.id !== article.id)
-            .slice(0, 3)
-            .map((item) => (
-              <Link key={item.id} href={`/articles/${item.id}`} className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
-                <p className="text-[0.68rem] font-black text-blush">{item.category}</p>
-                <p className="mt-1 text-sm font-black leading-snug text-ink">{item.title}</p>
-              </Link>
-            ))}
-        </div>
+      <section className="px-4 pt-8">
+        <h1 className="text-2xl font-black text-ink">記事が見つかりません</h1>
+        <Link href="/" className="pressable mt-5 inline-flex h-11 items-center justify-center rounded-[8px] bg-blush px-4 text-sm font-black text-white">
+          ホームへ戻る
+        </Link>
       </section>
-
-      {topicBundle == null ? null : (
-        <section className="px-4 pt-5">
-          <div className="grid gap-2">
-            <Link href="/post/backroom" className="rounded-[8px] border border-blush/20 bg-blushSoft p-3 shadow-sm">
-              <p className="text-[0.68rem] font-black text-blush">Back Room</p>
-              <p className="mt-1 text-sm font-black leading-snug text-ink">この記事の話題をBack Roomで話す</p>
-            </Link>
-            {topicBundle.seminars.slice(0, 1).map((seminar) => (
-              <Link key={seminar.id} href="/seminars" className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
-                <p className="text-[0.68rem] font-black text-blush">関連講習</p>
-                <p className="mt-1 text-sm font-black leading-snug text-ink">{seminar.title}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
     </PageChrome>
   );
 }
