@@ -83,6 +83,10 @@ export function normalizeShopSearchText(value: string) {
     .trim();
 }
 
+export function normalizeShopPhoneSearchText(value: string) {
+  return value.normalize("NFKC").replace(/[^0-9]/g, "");
+}
+
 export function shopAreaLabel(shop: Pick<BarberShop, "prefecture" | "municipality">) {
   return [shop.prefecture, shop.municipality].filter(Boolean).join("");
 }
