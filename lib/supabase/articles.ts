@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { stripArticleImageMarkers } from "@/lib/articleMedia";
-import { topicCategoriesForArticle } from "@/lib/articleCategories";
+import {
+  fallbackTopicSlugsForRelatedArticles,
+  primaryTopicSlugForArticleCategory,
+  topicCategoriesForArticle,
+  type ArticleTopicSlug,
+} from "@/lib/articleCategories";
 
 export type ArticleAuthorProfile = {
   id: string;
@@ -709,6 +714,62 @@ export async function listPublishedArticles(supabase: SupabaseClient, limit = 5,
   }
 }
 
+export async function listPublishedArticlesByCategories(
+  supabase: SupabaseClient,
+  categories: string[],
+  limit = 8,
+  viewerId?: string | null
+) {
+  const cleanedCategories = Array.from(new Set(categories.map((category) => category.trim()).filter(Boolean)));
+  if (cleanedCategories.length === 0) return { articles: [], error: null };
+
+  try {
+    const { data, error } = await supabase
+      .from("articles")
+      .select(articleSelect)
+      .in("category", cleanedCategories)
+      .eq("is_published", true)
+      .eq("is_deleted", false)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Category published articles joined select failed", {
+        categories: cleanedCategories,
+        message: error.message,
+      });
+
+      const fallback = await supabase
+        .from("articles")
+        .select(articleBaseSelect)
+        .in("category", cleanedCategories)
+        .eq("is_published", true)
+        .eq("is_deleted", false)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (!fallback.error) {
+        return { articles: await hydrateArticles(supabase, normalizeArticles(fallback.data), viewerId), error: null };
+      }
+
+      console.error("Category published articles fallback select failed", {
+        categories: cleanedCategories,
+        message: fallback.error.message,
+      });
+    }
+
+    return { articles: await hydrateArticles(supabase, normalizeArticles(data), viewerId), error };
+  } catch (error) {
+    console.error("Category published articles select threw", {
+      categories: cleanedCategories,
+      message: errorMessage(error),
+    });
+    return { articles: [], error };
+  }
+}
+
 export async function listPublishedArticlesByTopic(supabase: SupabaseClient, topicSlug: string, limit = 8, viewerId?: string | null) {
   const categories = topicCategoriesForArticle(topicSlug);
   if (categories.length === 0) return { articles: [], error: null };
@@ -758,6 +819,153 @@ export async function listPublishedArticlesByTopic(supabase: SupabaseClient, top
     });
     return { articles: [], error };
   }
+}
+
+async function listRelatedArticleCandidates(
+  supabase: SupabaseClient,
+  categories: string[] | null,
+  excludeIds: string[],
+  limit: number,
+  viewerId?: string | null
+) {
+  try {
+    let query = supabase
+      .from("articles")
+      .select(articleSelect)
+      .eq("is_published", true)
+      .eq("is_deleted", false)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (categories != null && categories.length > 0) {
+      query = query.in("category", Array.from(new Set(categories)));
+    }
+
+    if (excludeIds.length === 1) {
+      query = query.neq("id", excludeIds[0]);
+    } else if (excludeIds.length > 1) {
+      query = query.not("id", "in", `(${excludeIds.join(",")})`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Related articles joined select failed", {
+        categories,
+        message: error.message,
+      });
+
+      let fallbackQuery = supabase
+        .from("articles")
+        .select(articleBaseSelect)
+        .eq("is_published", true)
+        .eq("is_deleted", false)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (categories != null && categories.length > 0) {
+        fallbackQuery = fallbackQuery.in("category", Array.from(new Set(categories)));
+      }
+
+      if (excludeIds.length === 1) {
+        fallbackQuery = fallbackQuery.neq("id", excludeIds[0]);
+      } else if (excludeIds.length > 1) {
+        fallbackQuery = fallbackQuery.not("id", "in", `(${excludeIds.join(",")})`);
+      }
+
+      const fallback = await fallbackQuery;
+      if (!fallback.error) {
+        return { articles: await hydrateArticles(supabase, normalizeArticles(fallback.data), viewerId), error: null };
+      }
+
+      console.error("Related articles fallback select failed", {
+        categories,
+        message: fallback.error.message,
+      });
+      return { articles: [], error: fallback.error };
+    }
+
+    return { articles: await hydrateArticles(supabase, normalizeArticles(data), viewerId), error: null };
+  } catch (error) {
+    console.error("Related articles select threw", {
+      categories,
+      message: errorMessage(error),
+    });
+    return { articles: [], error };
+  }
+}
+
+export type RelatedArticlesResult = {
+  articles: ArticleWithAuthor[];
+  heading: "関連記事" | "あわせて読む";
+  topicSlug: ArticleTopicSlug | null;
+  usedFallback: boolean;
+};
+
+export async function listRelatedPublishedArticles(
+  supabase: SupabaseClient,
+  currentArticle: Pick<ArticleRecord, "id" | "category">,
+  limit = 3,
+  viewerId?: string | null
+): Promise<RelatedArticlesResult> {
+  const topicSlug = primaryTopicSlugForArticleCategory(currentArticle.category);
+  const selected: ArticleWithAuthor[] = [];
+  const selectedIds = new Set([currentArticle.id]);
+  let usedFallback = false;
+
+  function pushUnique(articles: ArticleWithAuthor[], fallback: boolean) {
+    for (const article of articles) {
+      if (selected.length >= limit) return;
+      if (selectedIds.has(article.id)) continue;
+      selectedIds.add(article.id);
+      selected.push(article);
+      if (fallback) usedFallback = true;
+    }
+  }
+
+  if (topicSlug != null) {
+    const sameTopicCategories = topicCategoriesForArticle(topicSlug);
+    const sameTopicResult = await listRelatedArticleCandidates(
+      supabase,
+      sameTopicCategories,
+      Array.from(selectedIds),
+      limit,
+      viewerId
+    );
+    pushUnique(sameTopicResult.articles, false);
+  }
+
+  if (selected.length < limit && topicSlug != null) {
+    const fallbackCategories = fallbackTopicSlugsForRelatedArticles(topicSlug).flatMap((slug) => topicCategoriesForArticle(slug));
+    const fallbackResult = await listRelatedArticleCandidates(
+      supabase,
+      fallbackCategories,
+      Array.from(selectedIds),
+      Math.max(limit * 2, 6),
+      viewerId
+    );
+    pushUnique(fallbackResult.articles, true);
+  }
+
+  if (selected.length < limit) {
+    const latestResult = await listRelatedArticleCandidates(
+      supabase,
+      null,
+      Array.from(selectedIds),
+      Math.max(limit * 3, 9),
+      viewerId
+    );
+    pushUnique(latestResult.articles, true);
+  }
+
+  return {
+    articles: selected.slice(0, limit),
+    heading: usedFallback || topicSlug == null ? "あわせて読む" : "関連記事",
+    topicSlug,
+    usedFallback,
+  };
 }
 
 export async function listEditorPickArticles(supabase: SupabaseClient, limit = 3, viewerId?: string | null) {

@@ -2,7 +2,6 @@ import {
   editorPickTagForArticleCategory,
   imageVariantForArticleCategory,
 } from "@/lib/articleCategories";
-import { articles, posts } from "@/lib/mockData";
 import { articleAuthorName, type ArticleWithAuthor } from "@/lib/supabase/articles";
 
 export type HomeEditorPickItem = {
@@ -17,59 +16,8 @@ export type HomeEditorPickItem = {
   avatarUrl?: string | null;
 };
 
-type FallbackPickSource =
-  | { type: "article"; tag: string; item: (typeof articles)[number]; title: string }
-  | { type: "post"; tag: string; item: (typeof posts)[number]; title: string };
-
-const fallbackPickSources: FallbackPickSource[] = [
-  { type: "article", tag: "FEATURE", item: articles[0], title: "仕上げ前の一言で、次回予約が変わる" },
-  { type: "post", tag: "SNAP", item: posts[0], title: "今日のフェード投稿" },
-  { type: "article", tag: "TOOLS", item: articles.find((article) => article.id === "silent-clipper") ?? articles[0], title: "静音バリカンを朝イチ施術で試す" },
-  { type: "article", tag: "MANAGEMENT", item: articles.find((article) => article.id === "freee-api-cost") ?? articles[0], title: "固定費を見直して、営業に集中する" },
-  { type: "article", tag: "SEMINAR", item: articles.find((article) => article.id === "fukuoka-seminar") ?? articles[0], title: "講習会に行けない人の全国レポート" },
-];
-
-function hrefForFallbackPick(pick: FallbackPickSource) {
-  if (pick.type === "post") return `/posts/${pick.item.id}`;
-  return `/articles/${pick.item.id}`;
-}
-
-function authorForFallbackPick(pick: FallbackPickSource) {
-  if ("authorLabel" in pick.item) return pick.item.authorLabel;
-  if ("author" in pick.item) return pick.item.author;
-  return "BARBER HUB EDIT";
-}
-
-function profileIdForFallbackPick(pick: FallbackPickSource) {
-  if ("profileId" in pick.item) return pick.item.profileId;
-  return "barber-hub-editor";
-}
-
-function imageForFallbackPick(pick: FallbackPickSource) {
-  if ("imageUrl" in pick.item) return pick.item.imageUrl;
-  return undefined;
-}
-
-function variantForFallbackPick(pick: FallbackPickSource) {
-  return "accent" in pick.item ? pick.item.accent : "haircut";
-}
-
 export function rotateEditorPicks<T>(items: T[], offset: number) {
   return items.map((_, index) => items[(index + offset) % items.length]);
-}
-
-export function fallbackEditorPickItems() {
-  return fallbackPickSources.map((pick) => ({
-    key: `fallback-${pick.type}-${pick.item.id}`,
-    href: hrefForFallbackPick(pick),
-    tag: pick.tag,
-    title: pick.title,
-    imageUrl: imageForFallbackPick(pick),
-    imageVariant: variantForFallbackPick(pick),
-    profileId: profileIdForFallbackPick(pick),
-    authorName: authorForFallbackPick(pick),
-    avatarUrl: null,
-  }));
 }
 
 export function articleToHomeEditorPick(article: ArticleWithAuthor): HomeEditorPickItem {
@@ -87,9 +35,5 @@ export function articleToHomeEditorPick(article: ArticleWithAuthor): HomeEditorP
 }
 
 export function composeHomeEditorPicks(selectedArticles: ArticleWithAuthor[], limit = 3) {
-  const selected = selectedArticles.slice(0, limit).map(articleToHomeEditorPick);
-  const seenHrefs = new Set(selected.map((item) => item.href));
-  const fallback = fallbackEditorPickItems().filter((item) => !seenHrefs.has(item.href));
-
-  return [...selected, ...fallback].slice(0, limit);
+  return selectedArticles.slice(0, limit).map(articleToHomeEditorPick);
 }

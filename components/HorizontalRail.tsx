@@ -24,9 +24,13 @@ type HorizontalRailProps = {
 };
 
 export function HorizontalRail({ title, items, hrefPrefix = "/articles" }: HorizontalRailProps) {
+  if (items.length === 0) return null;
+
+  const actionHref = hrefPrefix === "/jobs" || hrefPrefix === "/seminars" ? hrefPrefix : undefined;
+
   return (
     <section className="pt-9">
-      <SectionTitle title={title} action="すべて見る" />
+      <SectionTitle title={title} action={actionHref ? "すべて見る" : undefined} actionHref={actionHref} />
       <div className="no-scrollbar flex gap-3.5 overflow-x-auto px-4 pb-1">
         {items.map((item) => {
           const href = hrefPrefix === "/jobs" || hrefPrefix === "/seminars" ? hrefPrefix : `${hrefPrefix}/${item.id}`;

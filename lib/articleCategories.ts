@@ -5,8 +5,12 @@ export const ARTICLE_CATEGORIES = [
   "技術",
   "集客",
   "AI活用",
+  "AI",
   "独立",
   "道具",
+  "メーカー新商品",
+  "店販",
+  "開業準備",
   "求人",
   "講習会",
   "講習会レポート",
@@ -20,6 +24,22 @@ export const ARTICLE_TOPIC_CATEGORY_MAP: Record<ArticleTopicSlug, string[]> = {
   ai: ["AI活用", "AI"],
   technique: ["技術", "講習会", "講習会レポート", "コンクールレポート"],
   tools: ["道具", "メーカー新商品", "店販", "開業準備"],
+};
+
+export const ARTICLE_TOPIC_NAV: Array<{ slug: ArticleTopicSlug; label: string; href: string }> = [
+  { slug: "management", label: "経営", href: "/topics/management" },
+  { slug: "marketing", label: "集客", href: "/topics/marketing" },
+  { slug: "ai", label: "AI", href: "/topics/ai" },
+  { slug: "technique", label: "技術", href: "/topics/technique" },
+  { slug: "tools", label: "道具", href: "/topics/tools" },
+];
+
+export const ARTICLE_RELATED_FALLBACK_TOPICS: Record<ArticleTopicSlug, ArticleTopicSlug[]> = {
+  management: ["marketing", "ai"],
+  marketing: ["management", "ai"],
+  ai: ["management", "marketing"],
+  technique: ["tools"],
+  tools: ["technique", "management"],
 };
 
 const EDITOR_PICK_TAGS: Record<string, string> = {
@@ -64,6 +84,22 @@ export function defaultArticleCategory(categoryParam: string | undefined, typePa
 
 export function topicCategoriesForArticle(slug: string) {
   return ARTICLE_TOPIC_CATEGORY_MAP[slug as ArticleTopicSlug] ?? [];
+}
+
+export function isArticleTopicSlug(value: string): value is ArticleTopicSlug {
+  return Object.hasOwn(ARTICLE_TOPIC_CATEGORY_MAP, value);
+}
+
+export function articleTopicLabel(slug: ArticleTopicSlug | string | null | undefined) {
+  return ARTICLE_TOPIC_NAV.find((topic) => topic.slug === slug)?.label ?? "";
+}
+
+export function primaryTopicSlugForArticleCategory(category: string | null | undefined) {
+  return topicSlugsForArticleCategory(category)[0] ?? null;
+}
+
+export function fallbackTopicSlugsForRelatedArticles(slug: ArticleTopicSlug | null | undefined) {
+  return slug == null ? [] : ARTICLE_RELATED_FALLBACK_TOPICS[slug] ?? [];
 }
 
 export function topicSlugsForArticleCategory(category: string | null | undefined) {

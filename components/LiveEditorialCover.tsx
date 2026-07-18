@@ -3,11 +3,7 @@
 import { ChevronRight, Newspaper } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import {
-  fallbackEditorPickItems,
-  rotateEditorPicks,
-  type HomeEditorPickItem,
-} from "@/lib/editorPicks";
+import { type HomeEditorPickItem } from "@/lib/editorPicks";
 import { isPublishedWithinHours } from "@/lib/news-drafts/quality";
 import { news } from "@/lib/mockData";
 import type { NewsItem } from "@/lib/mockData";
@@ -51,11 +47,9 @@ export function LiveEditorialCover({ newsItems, editorPicks }: LiveEditorialCove
 
   const state = useMemo(() => {
     const current = now ?? new Date(2026, 0, 1, 9, 30);
-    const fallbackItems = fallbackEditorPickItems();
-    const offset = (current.getHours() + current.getMinutes()) % fallbackItems.length;
     const minutes = Math.floor(current.getMinutes() / 10) * 10;
     const updatedAt = `${String(current.getHours()).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-    const picks = editorPicks && editorPicks.length > 0 ? editorPicks : rotateEditorPicks(fallbackItems, offset);
+    const picks = editorPicks ?? [];
     return { current, picks, updatedAt };
   }, [editorPicks, now]);
 
@@ -71,40 +65,46 @@ export function LiveEditorialCover({ newsItems, editorPicks }: LiveEditorialCove
         <p className="text-[0.62rem] font-medium uppercase tracking-[0.12em] text-mute">{state.updatedAt} update</p>
       </div>
 
-      <div className="no-scrollbar mt-2.5 -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
-        {[lead, ...highlights].map((pick, index) => (
-          <article
-            key={pick.key}
-            className={(index === 0 ? "w-[72%]" : "w-[56%]") + " shrink-0 snap-start rounded-[7px] border border-line/60 bg-white p-2 shadow-[0_5px_14px_rgba(17,17,17,0.022)]"}
-          >
-            <Link href={pick.href} className="block">
-              <MagazineImage src={pick.imageUrl} alt={pick.title} variant={pick.imageVariant} className="aspect-[16/7.6]" />
-              <div className="mt-1.5 flex items-center justify-between gap-2">
-                <p className="text-[0.54rem] font-semibold uppercase tracking-[0.13em] text-blush">{pick.tag}</p>
-                {index === 0 ? (
-                  <span className="inline-flex items-center gap-0.5 text-[0.58rem] font-semibold text-mute">
-                    READ
-                    <ChevronRight aria-hidden="true" size={11} />
-                  </span>
-                ) : null}
-              </div>
-              <h3 className={(index === 0 ? "text-[0.9rem]" : "text-[0.76rem]") + " editorial-serif mt-1 line-clamp-2 leading-snug text-ink"}>
-                {pick.title}
-              </h3>
-            </Link>
-            {index === 0 ? (
-              <ProfileMiniLink
-                profileId={pick.profileId}
-                fallbackName={pick.authorName}
-                avatarUrl={pick.avatarUrl}
-                compact
-                size="feed"
-                className="mt-1.5 max-w-full"
-              />
-            ) : null}
-          </article>
-        ))}
-      </div>
+      {lead ? (
+        <div className="no-scrollbar mt-2.5 -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
+          {[lead, ...highlights].map((pick, index) => (
+            <article
+              key={pick.key}
+              className={(index === 0 ? "w-[72%]" : "w-[56%]") + " shrink-0 snap-start rounded-[7px] border border-line/60 bg-white p-2 shadow-[0_5px_14px_rgba(17,17,17,0.022)]"}
+            >
+              <Link href={pick.href} className="block">
+                <MagazineImage src={pick.imageUrl} alt={pick.title} variant={pick.imageVariant} className="aspect-[16/7.6]" />
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <p className="text-[0.54rem] font-semibold uppercase tracking-[0.13em] text-blush">{pick.tag}</p>
+                  {index === 0 ? (
+                    <span className="inline-flex items-center gap-0.5 text-[0.58rem] font-semibold text-mute">
+                      READ
+                      <ChevronRight aria-hidden="true" size={11} />
+                    </span>
+                  ) : null}
+                </div>
+                <h3 className={(index === 0 ? "text-[0.9rem]" : "text-[0.76rem]") + " editorial-serif mt-1 line-clamp-2 leading-snug text-ink"}>
+                  {pick.title}
+                </h3>
+              </Link>
+              {index === 0 ? (
+                <ProfileMiniLink
+                  profileId={pick.profileId}
+                  fallbackName={pick.authorName}
+                  avatarUrl={pick.avatarUrl}
+                  compact
+                  size="feed"
+                  className="mt-1.5 max-w-full"
+                />
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-2.5 rounded-[8px] border border-line/80 bg-white px-3 py-3 text-sm font-black text-mute shadow-[0_5px_14px_rgba(17,17,17,0.022)]">
+          準備中
+        </div>
+      )}
 
       <div className="mt-2.5 rounded-[8px] border border-line/80 bg-white px-3 py-2.5 shadow-[0_6px_18px_rgba(17,17,17,0.025)]">
         <div className="mb-1.5 flex items-center justify-between gap-3">

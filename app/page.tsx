@@ -9,13 +9,12 @@ import { LiveEditorialCover } from "@/components/LiveEditorialCover";
 import { LegalLinks } from "@/components/LegalLinks";
 import { QASection } from "@/components/QASection";
 import { SnapSection } from "@/components/SnapSection";
-import { SponsorSection } from "@/components/SponsorSection";
+import { ContentAdCard } from "@/components/ContentAdCard";
 import { StoreDirectoryProvider, StoreDirectoryStatsCard, StoreSearchHeaderButton } from "@/components/StoreDirectorySearch";
 import { imageVariantForArticleCategory } from "@/lib/articleCategories";
 import { composeHomeEditorPicks } from "@/lib/editorPicks";
 import { composeNewsWithFallback, listPublicNews } from "@/lib/news-drafts/public-news";
-import { articles, jobs, seminars } from "@/lib/mockData";
-import { sponsorsForPlacement } from "@/lib/sponsors";
+import { jobs, seminars } from "@/lib/mockData";
 import { resolveArticleImageUrls } from "@/lib/supabase/article-images";
 import {
   articleAuthorMeta,
@@ -23,9 +22,11 @@ import {
   articleExcerpt,
   listEditorPickArticles,
   listPublishedArticles,
+  listPublishedArticlesByCategories,
   type ArticleWithAuthor,
 } from "@/lib/supabase/articles";
 import { getPublicBarberShopCount } from "@/lib/supabase/barber-shops";
+import { getActiveContentAd } from "@/lib/supabase/content-ads";
 import { listQaQuestions } from "@/lib/supabase/qa";
 import { createClient } from "@/lib/supabase/server";
 
@@ -51,13 +52,17 @@ export default async function Home() {
     { news: approvedNews, error: publicNewsError },
     editorPickResult,
     latestArticleResult,
+    manufacturerArticleResult,
     qaQuestionResult,
+    homeAd,
   ] = await Promise.all([
     getPublicBarberShopCount(supabase),
     listPublicNews(supabase, 4),
     listEditorPickArticles(supabase, 3),
     listPublishedArticles(supabase, 5),
+    listPublishedArticlesByCategories(supabase, ["メーカー新商品"], 5),
     listQaQuestions(supabase, 3),
+    getActiveContentAd(supabase, "home"),
   ]);
 
   if (storeCountError) {
@@ -78,25 +83,23 @@ export default async function Home() {
     console.error("Latest articles lookup failed");
   }
 
+  if (manufacturerArticleResult.error) {
+    console.error("Manufacturer articles lookup failed");
+  }
+
   if (qaQuestionResult.error) {
     console.error("Home Q&A questions lookup failed");
   }
 
-  const [editorPickArticles, latestArticles] = await Promise.all([
+  const [editorPickArticles, latestArticles, manufacturerArticles] = await Promise.all([
     resolveArticleImageUrls(editorPickResult.articles),
     resolveArticleImageUrls(latestArticleResult.articles),
+    resolveArticleImageUrls(manufacturerArticleResult.articles),
   ]);
   const homeNews = composeNewsWithFallback(approvedNews, 4);
-  const homeEditorPicks = editorPickArticles.length > 0 ? composeHomeEditorPicks(editorPickArticles, 3) : undefined;
+  const homeEditorPicks = composeHomeEditorPicks(editorPickArticles.length > 0 ? editorPickArticles : latestArticles, 3);
   const dbArticleRailItems = latestArticles.map(articleRailItem);
-  const dbArticleIds = new Set(dbArticleRailItems.map((article) => article.id));
-  const homeArticleRailItems =
-    dbArticleRailItems.length > 0
-      ? [
-          ...dbArticleRailItems,
-          ...articles.filter((article) => !dbArticleIds.has(article.id)),
-        ].slice(0, 5)
-      : articles.slice(0, 5);
+  const manufacturerArticleRailItems = manufacturerArticles.map(articleRailItem);
 
   return (
     <StoreDirectoryProvider>
@@ -105,17 +108,13 @@ export default async function Home() {
         <CategoryNavigation />
         <LiveEditorialCover newsItems={homeNews} editorPicks={homeEditorPicks} />
         <SnapSection />
-        <SponsorSection
-          eyebrow="Sponsored"
-          title="今週の協賛パートナー"
-          items={sponsorsForPlacement("home")}
-        />
+        <ContentAdCard ad={homeAd} />
         <BackyardSection />
         <StoreDirectoryStatsCard count={storeCount} />
-        <HorizontalRail title="新着記事" items={homeArticleRailItems} />
+        <HorizontalRail title="新着記事" items={dbArticleRailItems} />
         <ContributionSection />
         <QASection questions={qaQuestionResult.questions} />
-        <HorizontalRail title="メーカー新商品" items={articles.filter((article) => article.category === "メーカー新商品")} />
+        <HorizontalRail title="メーカー新商品" items={manufacturerArticleRailItems} />
         <HorizontalRail title="講習会" items={seminars} hrefPrefix="/seminars" />
         <HorizontalRail title="学生・求人" items={jobs} hrefPrefix="/jobs" />
         <LegalLinks />
