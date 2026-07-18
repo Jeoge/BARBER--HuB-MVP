@@ -137,8 +137,25 @@ function hasUnexpectedPhoneFormat(phone: string | null | undefined, normalizedPh
   return Boolean(phone) && !/^0\d{9,10}$/.test(normalizedPhone);
 }
 
-function deriveMunicipality(rawMunicipality: string, address: string, source: string) {
-  if (rawMunicipality) return rawMunicipality;
+const TOKYO_MUNICIPALITY_ALIASES = new Map([
+  ["東村", "東村山市"],
+  ["羽村", "羽村市"],
+  ["武蔵村", "武蔵村山市"],
+  ["西多摩郡瑞穂町", "瑞穂町"],
+  ["西多摩郡日の出町", "日の出町"],
+  ["西多摩郡奥多摩町", "奥多摩町"],
+  ["西多摩郡檜原村", "檜原村"],
+  ["八丈島八丈町", "八丈町"],
+  ["三宅島三宅村", "三宅村"],
+]);
+
+function normalizeMunicipalityForPrefecture(prefecture: string, municipality: string) {
+  if (prefecture !== "東京都") return municipality;
+  return TOKYO_MUNICIPALITY_ALIASES.get(municipality) ?? municipality;
+}
+
+function deriveMunicipality(rawMunicipality: string, prefecture: string, address: string, source: string) {
+  if (rawMunicipality) return normalizeMunicipalityForPrefecture(prefecture, rawMunicipality);
 
   const normalizedAddress = cleanImportText(address, 120);
   const normalizedSource = cleanImportText(source, 120);
@@ -163,7 +180,7 @@ function deriveMunicipality(rawMunicipality: string, address: string, source: st
     }
   }
 
-  return "";
+  return normalizeMunicipalityForPrefecture(prefecture, "");
 }
 
 function isDuplicateCandidate(row: PreparedImportRow, shop: ExistingShopForDuplicate) {
@@ -254,7 +271,7 @@ function prepareRows(headers: string[], rows: string[][]) {
     const address = cleanImportText(rowValue(csvRow, index, "住所"), 240);
     const phone = cleanImportPhone(rowValue(csvRow, index, "電話番号"));
     const source = cleanImportText(rowValue(csvRow, index, "掲載元"), 240);
-    const municipality = deriveMunicipality(cleanImportText(rowValue(csvRow, index, "市区町村"), 80), address, source);
+    const municipality = deriveMunicipality(cleanImportText(rowValue(csvRow, index, "市区町村"), 80), prefecture, address, source);
     const statusResult = normalizeCsvImportVerificationStatus(rowValue(csvRow, index, "認証状態"));
     const normalizedName = normalizeShopSearchText(name);
     const normalizedPhone = normalizeImportPhone(phone);
