@@ -2,11 +2,9 @@ import { pathWithParams } from "@/lib/auth/redirects";
 import {
   canCreateArticle,
   canCreateBackroom,
-  canCreateJob,
   canCreateQa,
   canCreateReport,
   canCreateSnap,
-  canCreateSuccession,
   classifyAccountType,
   type AccountProfileLike,
 } from "@/lib/accountTypes";
@@ -24,7 +22,7 @@ export type PostPermissionResult =
   | { allowed: true }
   | {
       allowed: false;
-      destination: "profile" | "advertising";
+      destination: "profile" | "advertising" | "mypage";
       message: string;
     };
 
@@ -37,9 +35,9 @@ export const ACCOUNT_TYPE_UNKNOWN_MESSAGE =
 export const ORGANIZATION_POST_RESTRICTED_MESSAGE =
   "企業・団体アカウントでは通常投稿はできません。商品紹介、学校案内、講習会告知、組合案内、求人支援、協賛掲載をご希望の場合は、広告掲載・協賛の問い合わせをご利用ください。";
 
-const salonOwnerRequiredMessages: Record<Extract<PostCapability, "job" | "succession">, string> = {
-  job: "求人掲載はサロンオーナーまたはサロン登録のアカウントで利用できます。プロフィール編集で登録区分と店舗情報を確認してください。",
-  succession: "開業・承継情報の掲載はサロンオーナーまたはサロン登録のアカウントで利用できます。プロフィール編集で登録区分を確認してください。",
+const salonFeatureRequiredMessages: Record<Extract<PostCapability, "job" | "succession">, string> = {
+  job: "求人掲載には、認証済み店舗に紐づいたサロン機能が必要です。マイページからサロン機能を追加してください。",
+  succession: "開業・承継情報の掲載には、認証済み店舗に紐づいたサロン機能が必要です。マイページからサロン機能を追加してください。",
 };
 
 function capabilityAllowed(profile: AccountProfileLike | null | undefined, capability: PostCapability) {
@@ -48,12 +46,19 @@ function capabilityAllowed(profile: AccountProfileLike | null | undefined, capab
   if (capability === "report") return canCreateReport(profile);
   if (capability === "qa") return canCreateQa(profile);
   if (capability === "backroom") return canCreateBackroom(profile);
-  if (capability === "job") return canCreateJob(profile);
-  return canCreateSuccession(profile);
+  return false;
 }
 
 export function getPostPermission(profile: AccountProfileLike | null | undefined, capability: PostCapability): PostPermissionResult {
   if (capabilityAllowed(profile, capability)) return { allowed: true };
+
+  if (capability === "job" || capability === "succession") {
+    return {
+      allowed: false,
+      destination: "mypage",
+      message: salonFeatureRequiredMessages[capability],
+    };
+  }
 
   const classification = classifyAccountType(profile);
 
@@ -81,14 +86,6 @@ export function getPostPermission(profile: AccountProfileLike | null | undefined
     };
   }
 
-  if (capability === "job" || capability === "succession") {
-    return {
-      allowed: false,
-      destination: "profile",
-      message: salonOwnerRequiredMessages[capability],
-    };
-  }
-
   return {
     allowed: false,
     destination: "profile",
@@ -104,6 +101,12 @@ export function getPostPermissionRedirect(profile: AccountProfileLike | null | u
     return pathWithParams("/advertising", {
       message: permission.message,
       next: nextPath,
+    });
+  }
+
+  if (permission.destination === "mypage") {
+    return pathWithParams("/mypage", {
+      storeError: permission.message,
     });
   }
 

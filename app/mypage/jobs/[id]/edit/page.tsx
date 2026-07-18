@@ -4,7 +4,8 @@ import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { JobPostForm } from "@/app/post/job/JobPostForm";
 import { pathWithParams } from "@/lib/auth/redirects";
-import { getUserJobPost, isSalonJobPosterProfile } from "@/lib/supabase/jobs";
+import { listOwnedVerifiedBarberShops, shopAreaLabel } from "@/lib/supabase/barber-shops";
+import { getUserJobPost } from "@/lib/supabase/jobs";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
@@ -26,18 +27,38 @@ export default async function JobEditPage({ params, searchParams }: JobEditPageP
     redirect(pathWithParams("/login", { next: editPath, message: "求人を編集するにはログインしてください。" }));
   }
 
-  const { profile } = await getAccountProfile(supabase, user.id);
+  const [{ profile }, { shops: verifiedShops }] = await Promise.all([
+    getAccountProfile(supabase, user.id),
+    listOwnedVerifiedBarberShops(supabase, user.id, 1),
+  ]);
 
-  if (profile == null || !isSalonJobPosterProfile(profile)) {
+  if (verifiedShops.length === 0) {
     return (
       <PageChrome>
-        <PageHeaderBlock eyebrow="JOB EDIT" title="求人を編集する" body="求人編集には店舗情報の登録が必要です。" />
+        <PageHeaderBlock eyebrow="JOB EDIT" title="求人を編集する" body="求人編集には認証済み店舗に紐づいたサロン機能が必要です。" />
         <section className="px-4 pt-5">
           <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.035)]">
-            <p className="text-sm font-black text-ink">求人掲載には店舗情報の登録が必要です。</p>
-            <p className="mt-2 text-xs font-medium leading-relaxed text-mute">まずはマイページで店舗情報を登録してください。</p>
+            <p className="text-sm font-black text-ink">サロン機能を追加してください。</p>
+            <p className="mt-2 text-xs font-medium leading-relaxed text-mute">プロフィール区分だけでは求人編集はできません。店舗確認が完了すると利用できます。</p>
+            <Link href="/?storeDirectory=1" className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink px-4 text-sm font-black text-white">
+              サロン機能を追加する
+            </Link>
+          </div>
+        </section>
+      </PageChrome>
+    );
+  }
+
+  if (profile == null) {
+    return (
+      <PageChrome>
+        <PageHeaderBlock eyebrow="JOB EDIT" title="求人を編集する" body="求人編集にはプロフィール設定が必要です。" />
+        <section className="px-4 pt-5">
+          <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.035)]">
+            <p className="text-sm font-black text-ink">プロフィールを設定してください。</p>
+            <p className="mt-2 text-xs font-medium leading-relaxed text-mute">表示名や連絡先の初期値を確認してから編集できます。</p>
             <Link href="/mypage/profile/edit" className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink px-4 text-sm font-black text-white">
-              店舗情報を登録する
+              プロフィールを設定する
             </Link>
           </div>
         </section>
@@ -61,10 +82,18 @@ export default async function JobEditPage({ params, searchParams }: JobEditPageP
     );
   }
 
+  const defaultShop = verifiedShops[0];
+  const formProfile = {
+    ...profile,
+    salon_name: profile.salon_name ?? defaultShop.name,
+    shop_address: profile.shop_address ?? defaultShop.address,
+    region: profile.region ?? shopAreaLabel(defaultShop),
+  };
+
   return (
     <PageChrome>
       <PageHeaderBlock eyebrow="JOB EDIT" title="求人を編集する" body="掲載状態、条件、直接連絡先を更新できます。" />
-      <JobPostForm profile={profile} userEmail={user.email} error={query?.error} initialJob={job} />
+      <JobPostForm profile={formProfile} userEmail={user.email} error={query?.error} initialJob={job} />
     </PageChrome>
   );
 }

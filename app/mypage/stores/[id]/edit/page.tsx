@@ -80,7 +80,7 @@ export default async function StoreEditPage({ params, searchParams }: StoreEditP
       <PageHeaderBlock
         eyebrow="STORE ADMIN"
         title="店舗情報を編集"
-        body="オーナー認証済み店舗のディレクトリ基本情報を編集します。口コミ、評価、ランキングは扱いません。"
+        body="認証済み店舗のディレクトリ基本情報を編集します。口コミ、評価、ランキングは扱いません。"
       />
 
       <form action={updateVerifiedBarberShopAction} className="grid gap-5 px-4 pt-5">

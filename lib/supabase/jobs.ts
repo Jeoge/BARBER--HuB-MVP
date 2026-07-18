@@ -109,26 +109,6 @@ function encodedMailto(email: string, salonName: string) {
   return `mailto:${email}?subject=${subject}`;
 }
 
-export function isSalonJobPosterProfile(profile: AccountProfile | null | undefined) {
-  const salonName = text(profile?.salon_name);
-  const shopAddress = text(profile?.shop_address);
-  const jobType = text(profile?.job_type)?.toLowerCase() ?? "";
-
-  return Boolean(
-    salonName ||
-      shopAddress ||
-      jobType.includes("salon") ||
-      jobType.includes("shop") ||
-      jobType.includes("business") ||
-      jobType.includes("barber") ||
-      jobType.includes("owner") ||
-      profile?.job_type?.includes("サロン") ||
-      profile?.job_type?.includes("店舗") ||
-      profile?.job_type?.includes("理容室") ||
-      profile?.job_type?.includes("美容室")
-  );
-}
-
 export async function listPublishedJobPosts(supabase: SupabaseClient, limit = 100) {
   const { data, error } = await supabase
     .from("job_posts")

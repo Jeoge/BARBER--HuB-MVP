@@ -4,6 +4,7 @@ import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { SuccessionPostForm } from "@/app/post/succession/SuccessionPostForm";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { listOwnedVerifiedBarberShops, shopAreaLabel } from "@/lib/supabase/barber-shops";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { getUserSuccessionPost } from "@/lib/supabase/succession";
@@ -26,7 +27,27 @@ export default async function SuccessionEditPage({ params, searchParams }: Succe
     redirect(pathWithParams("/login", { next: editPath, message: "開業・承継情報を編集するにはログインしてください。" }));
   }
 
-  const { profile } = await getAccountProfile(supabase, user.id);
+  const [{ profile }, { shops: verifiedShops }] = await Promise.all([
+    getAccountProfile(supabase, user.id),
+    listOwnedVerifiedBarberShops(supabase, user.id, 1),
+  ]);
+
+  if (verifiedShops.length === 0) {
+    return (
+      <PageChrome>
+        <PageHeaderBlock eyebrow="SUCCESSION EDIT" title="開業・承継情報を編集する" body="編集には認証済み店舗に紐づいたサロン機能が必要です。" />
+        <section className="px-4 pt-5">
+          <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.035)]">
+            <p className="text-sm font-black text-ink">サロン機能を追加してください。</p>
+            <p className="mt-2 text-xs font-medium leading-relaxed text-mute">プロフィール区分だけでは編集できません。店舗確認が完了すると利用できます。</p>
+            <Link href="/?storeDirectory=1" className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-[8px] bg-ink px-4 text-sm font-black text-white">
+              サロン機能を追加する
+            </Link>
+          </div>
+        </section>
+      </PageChrome>
+    );
+  }
 
   if (profile == null) {
     return (
@@ -61,10 +82,16 @@ export default async function SuccessionEditPage({ params, searchParams }: Succe
     );
   }
 
+  const defaultShop = verifiedShops[0];
+  const formProfile = {
+    ...profile,
+    region: profile.region ?? shopAreaLabel(defaultShop),
+  };
+
   return (
     <PageChrome>
       <PageHeaderBlock eyebrow="SUCCESSION EDIT" title="開業・承継情報を編集する" body="公開情報と非公開情報を分けて更新できます。" />
-      <SuccessionPostForm profile={profile} error={query?.error} initialPost={post} />
+      <SuccessionPostForm profile={formProfile} error={query?.error} initialPost={post} />
     </PageChrome>
   );
 }

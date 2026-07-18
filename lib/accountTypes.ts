@@ -76,16 +76,6 @@ const organizationAliases = [
   "viewer",
 ];
 
-const salonOwnerAliases = [
-  "サロン",
-  "サロンオーナー",
-  "salon",
-  "salon_owner",
-  "owner",
-  "shop_owner",
-  "barber_shop_owner",
-];
-
 const aliasLabels = new Map<string, string>([
   ["barber", "理容師"],
   ["stylist", "美容師"],
@@ -121,7 +111,6 @@ function normalizedSet(values: string[]) {
 
 const personalAccountTypes = normalizedSet(personalAliases);
 const organizationAccountTypes = normalizedSet(organizationAliases);
-const salonOwnerAccountTypes = normalizedSet(salonOwnerAliases);
 const selectableAccountTypes = normalizedSet(ACCOUNT_TYPE_OPTIONS.map((option) => option.value));
 
 export function isSelectableAccountType(value: string | null | undefined) {
@@ -182,13 +171,4 @@ export function canCreateQa(profileOrValue: AccountProfileLike | string | null |
 
 export function canCreateBackroom(profileOrValue: AccountProfileLike | string | null | undefined) {
   return isPersonalCreator(profileOrValue);
-}
-
-export function canCreateJob(profileOrValue: AccountProfileLike | string | null | undefined) {
-  const accountType = getAccountType(profileOrValue);
-  return Boolean(accountType && salonOwnerAccountTypes.has(normalizeAccountType(accountType)));
-}
-
-export function canCreateSuccession(profileOrValue: AccountProfileLike | string | null | undefined) {
-  return canCreateJob(profileOrValue);
 }

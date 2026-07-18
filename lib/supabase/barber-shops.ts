@@ -38,6 +38,10 @@ export type BarberShopClaim = {
   updated_at: string | null;
 };
 
+export type BarberShopClaimWithShop = BarberShopClaim & {
+  shop: BarberShop | null;
+};
+
 export type BarberShopMunicipality = {
   municipality: string;
   shop_count: number;
@@ -151,6 +155,23 @@ export async function listOwnedVerifiedBarberShops(supabase: SupabaseClient, use
   };
 }
 
+export async function hasOwnedVerifiedBarberShop(supabase: SupabaseClient, userId: string) {
+  const { data, error } = await supabase
+    .from("barber_shops")
+    .select("id")
+    .eq("owner_user_id", userId)
+    .eq("verification_status", "verified")
+    .eq("is_deleted", false)
+    .eq("is_duplicate", false)
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+
+  return {
+    hasShop: data?.id != null,
+    error,
+  };
+}
+
 export async function getOwnedVerifiedBarberShop(supabase: SupabaseClient, userId: string, id: string) {
   const { data, error } = await supabase
     .from("barber_shops")
@@ -181,6 +202,37 @@ export async function getMyBarberShopClaim(supabase: SupabaseClient, userId: str
   return {
     claim: data,
     error,
+  };
+}
+
+export async function listMyPendingBarberShopClaims(supabase: SupabaseClient, userId: string, limit = 20) {
+  const { data, error } = await supabase
+    .from("barber_shop_claims")
+    .select("id, shop_id, user_id, status, relation_text, message, created_at, updated_at")
+    .eq("user_id", userId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(limit)
+    .returns<BarberShopClaim[]>();
+
+  const claims = data ?? [];
+
+  if (error || claims.length === 0) {
+    return {
+      claims: claims.map((claim) => ({ ...claim, shop: null })),
+      error,
+    };
+  }
+
+  const shopIds = Array.from(new Set(claims.map((claim) => claim.shop_id)));
+  const { data: shops, error: shopsError } = await publicShopQuery(supabase)
+    .in("id", shopIds)
+    .returns<BarberShop[]>();
+  const shopById = new Map((shops ?? []).map((shop) => [shop.id, shop]));
+
+  return {
+    claims: claims.map((claim) => ({ ...claim, shop: shopById.get(claim.shop_id) ?? null })),
+    error: shopsError,
   };
 }
 

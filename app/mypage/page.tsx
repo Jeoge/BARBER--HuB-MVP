@@ -1,4 +1,4 @@
-import { BadgeCheck, BriefcaseBusiness, Building2, FilePenLine, LogOut, MapPin, Megaphone, Pencil, Send, Sparkles, UserRoundCheck } from "lucide-react";
+import { BadgeCheck, Building2, Clock3, FilePenLine, LogOut, MapPin, Megaphone, Pencil, Search, Send, Sparkles, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
@@ -10,7 +10,7 @@ import { MagazineImage } from "@/components/MagazineImage";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { SnapImageCarousel } from "@/components/SnapImageCarousel";
-import { canCreateJob, canCreateSuccession, classifyAccountType, getAccountTypeLabel } from "@/lib/accountTypes";
+import { classifyAccountType, getAccountTypeLabel } from "@/lib/accountTypes";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { isNewsReviewAdminUserId } from "@/lib/news-drafts/review";
 import { resolveArticleImageUrls } from "@/lib/supabase/article-images";
@@ -31,7 +31,13 @@ import {
   type BackroomPostWithAuthor,
 } from "@/lib/supabase/backroom";
 import { listFollowingProfiles } from "@/lib/supabase/follows";
-import { listOwnedVerifiedBarberShops, shopAreaLabel, type BarberShop } from "@/lib/supabase/barber-shops";
+import {
+  listMyPendingBarberShopClaims,
+  listOwnedVerifiedBarberShops,
+  shopAreaLabel,
+  type BarberShop,
+  type BarberShopClaimWithShop,
+} from "@/lib/supabase/barber-shops";
 import { jobAreaLabel, jobStatusLabel, listUserJobPosts, type JobPost } from "@/lib/supabase/jobs";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import {
@@ -388,8 +394,8 @@ function MyJobPostList({ jobs, canCreate }: { jobs: JobPost[]; canCreate: boolea
             新しく求人を掲載する
           </Link>
         ) : (
-          <Link href="/mypage/profile/edit" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
-            登録区分を確認する
+          <Link href="/?storeDirectory=1" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+            サロン機能を追加する
           </Link>
         )}
       </div>
@@ -451,13 +457,16 @@ function MyVerifiedStoreList({ shops }: { shops: BarberShop[] }) {
   if (shops.length === 0) {
     return (
       <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-        認証済み店舗はまだありません。店舗検索からオーナー認証を申請できます。
+        認証済み店舗はまだありません。店舗検索から店舗管理を申請できます。
       </div>
     );
   }
 
   return (
     <div className="grid gap-2.5">
+      <p className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+        この店舗に紐づく求人・承継・店舗管理機能を利用できます。
+      </p>
       {shops.map((shop) => (
         <article key={shop.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
           <div className="flex items-start gap-3">
@@ -487,6 +496,79 @@ function MyVerifiedStoreList({ shops }: { shops: BarberShop[] }) {
           </div>
         </article>
       ))}
+      <div className="grid grid-cols-2 gap-2">
+        <Link href="/post/job" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
+          求人を掲載
+        </Link>
+        <Link href="/post/succession" className="inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-3 text-xs font-black text-white">
+          事業承継・居抜き情報を掲載
+        </Link>
+        <span className="col-span-2 inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-mute">
+          備品売却は準備中
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function claimDateLabel(value: string | null) {
+  if (!value) return "未取得";
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function MyPendingStoreClaimList({ claims }: { claims: BarberShopClaimWithShop[] }) {
+  if (claims.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-2.5">
+      <p className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+        店舗管理の申請を受け付けました。確認が完了すると店舗機能を利用できます。
+      </p>
+      {claims.map((claim) => (
+        <article key={claim.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <div className="flex items-start gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-blush">
+              <Clock3 aria-hidden="true" size={17} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">確認中</span>
+                <span className="text-[0.66rem] font-bold text-mute">{claim.shop?.municipality ?? "市区町村未取得"}</span>
+              </div>
+              <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{claim.shop?.name ?? "店舗情報を確認中"}</p>
+              <p className="mt-1 text-xs font-semibold text-mute">申請日時: {claimDateLabel(claim.created_at)}</p>
+            </div>
+          </div>
+          <Link href={`/stores/${claim.shop_id}`} className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-ink">
+            店舗詳細を見る
+          </Link>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function SalonFeatureInviteCard() {
+  return (
+    <div className="grid gap-3">
+      <p className="text-sm font-medium leading-relaxed text-mute">
+        求人、事業承継、居抜き、備品売却、店舗情報の管理を利用する場合は、店舗を追加してください。
+      </p>
+      <p className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+        Snap、記事、Back Room、Q&Aは個人登録のまま利用できます。
+      </p>
+      <Link href="/?storeDirectory=1" className="inline-flex h-11 items-center justify-center gap-1.5 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
+        <Search aria-hidden="true" size={15} />
+        サロン機能を追加する
+      </Link>
     </div>
   );
 }
@@ -502,8 +584,8 @@ function MySuccessionPostList({ posts, canCreate }: { posts: SuccessionPublicPos
             新しく掲載する
           </Link>
         ) : (
-          <Link href="/mypage/profile/edit" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
-            登録区分を確認する
+          <Link href="/?storeDirectory=1" className="mt-3 inline-flex h-10 items-center justify-center rounded-[8px] bg-ink px-4 text-xs font-black text-white">
+            サロン機能を追加する
           </Link>
         )}
       </div>
@@ -605,14 +687,16 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const hasProfile = profile != null;
   const accountClassification = classifyAccountType(profile);
   const canUseNormalPosting = accountClassification === "personal";
-  const canUseJobPosting = canCreateJob(profile);
-  const canUseSuccessionPosting = canCreateSuccession(profile);
-  const showSalonAdmin = Boolean(canUseJobPosting || profile?.salon_name?.trim() || profile?.job_type?.includes("サロン"));
-  const { jobs: salonJobPostings, error: salonJobPostingsError } = showSalonAdmin
-    ? await listUserJobPosts(supabase, user.id, 30)
-    : { jobs: [], error: null };
-  const { posts: mySuccessionPosts, error: mySuccessionPostsError } = await listUserSuccessionPosts(supabase, user.id, 30);
   const { shops: verifiedBarberShops, error: verifiedBarberShopsError } = await listOwnedVerifiedBarberShops(supabase, user.id, 20);
+  const { claims: pendingBarberShopClaims, error: pendingBarberShopClaimsError } = await listMyPendingBarberShopClaims(supabase, user.id, 20);
+  const hasVerifiedBarberShop = verifiedBarberShops.length > 0;
+  const hasPendingBarberShopClaim = pendingBarberShopClaims.length > 0;
+  const canUseJobPosting = hasVerifiedBarberShop;
+  const canUseSuccessionPosting = hasVerifiedBarberShop;
+  const { jobs: salonJobPostings, error: salonJobPostingsError } = await listUserJobPosts(supabase, user.id, 30);
+  const { posts: mySuccessionPosts, error: mySuccessionPostsError } = await listUserSuccessionPosts(supabase, user.id, 30);
+  const showSalonAdmin = Boolean(hasVerifiedBarberShop || salonJobPostings.length > 0 || salonJobPostingsError);
+  const showSuccessionAdmin = Boolean(hasVerifiedBarberShop || mySuccessionPosts.length > 0 || mySuccessionPostsError);
 
   const snapCountsById = new Map(snapReactionCounts.map((counts) => [counts.snap_id, counts]));
   const articleCountsById = new Map(articleReactionCounts.map((counts) => [counts.article_id, counts]));
@@ -969,8 +1053,26 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         )}
       </SectionCard>
 
+      {pendingBarberShopClaimsError ? (
+        <SectionCard eyebrow="STORE CLAIM" title="店舗管理申請">
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            店舗管理申請を読み込めませんでした。時間をおいて再読み込みしてください。
+          </div>
+        </SectionCard>
+      ) : hasPendingBarberShopClaim ? (
+        <SectionCard eyebrow="STORE CLAIM" title="申請中の店舗">
+          <MyPendingStoreClaimList claims={pendingBarberShopClaims} />
+        </SectionCard>
+      ) : null}
+
+      {!verifiedBarberShopsError && !hasVerifiedBarberShop && !hasPendingBarberShopClaim && !pendingBarberShopClaimsError ? (
+        <SectionCard eyebrow="SALON FEATURES" title="店舗機能を利用する方へ">
+          <SalonFeatureInviteCard />
+        </SectionCard>
+      ) : null}
+
       {verifiedBarberShopsError || verifiedBarberShops.length > 0 ? (
-        <SectionCard eyebrow="STORE DIRECTORY" title="店舗ディレクトリ管理">
+        <SectionCard eyebrow="SALON FEATURES" title="サロン機能">
           {verifiedBarberShopsError ? (
             <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
               認証済み店舗を読み込めませんでした。時間をおいて再読み込みしてください。
@@ -1040,15 +1142,17 @@ export default async function MyPage({ searchParams }: MyPageProps) {
         </SectionCard>
       ) : null}
 
-      <SectionCard eyebrow="SUCCESSION ADMIN" title="開業・承継掲載管理">
-        {mySuccessionPostsError ? (
-          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-            開業・承継情報を読み込めませんでした。時間をおいて再読み込みしてください。
-          </div>
-        ) : (
-          <MySuccessionPostList posts={mySuccessionPosts} canCreate={canUseSuccessionPosting} />
-        )}
-      </SectionCard>
+      {showSuccessionAdmin ? (
+        <SectionCard eyebrow="SUCCESSION ADMIN" title="開業・承継掲載管理">
+          {mySuccessionPostsError ? (
+            <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+              開業・承継情報を読み込めませんでした。時間をおいて再読み込みしてください。
+            </div>
+          ) : (
+            <MySuccessionPostList posts={mySuccessionPosts} canCreate={canUseSuccessionPosting} />
+          )}
+        </SectionCard>
+      ) : null}
 
       <section className="px-4 pt-5">
         <div className="rounded-[10px] border border-blush/20 bg-blushSoft p-4">

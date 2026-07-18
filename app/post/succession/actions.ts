@@ -4,8 +4,8 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
-import { getPostPermissionRedirect } from "@/lib/permissions";
 import { hasSafetyConfirmations, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
+import { hasOwnedVerifiedBarberShop } from "@/lib/supabase/barber-shops";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
@@ -198,7 +198,10 @@ async function requireSuccessionPoster(redirectPath: string) {
     redirect(pathWithParams("/login", { next: redirectPath, message: "開業・承継情報の掲載にはログインしてください。" }));
   }
 
-  const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+  const [{ profile, error: profileError }, { hasShop, error: verifiedShopError }] = await Promise.all([
+    getAccountProfile(supabase, user.id),
+    hasOwnedVerifiedBarberShop(supabase, user.id),
+  ]);
 
   if (profileError) {
     console.error("Succession post profile lookup failed", {
@@ -208,9 +211,16 @@ async function requireSuccessionPoster(redirectPath: string) {
     redirectToSuccessionForm(redirectPath, "プロフィール情報を確認できませんでした。時間をおいて再度お試しください。");
   }
 
-  const permissionRedirect = getPostPermissionRedirect(profile, "succession", redirectPath);
-  if (permissionRedirect) {
-    redirect(permissionRedirect);
+  if (verifiedShopError) {
+    console.error("Succession post verified shop lookup failed", {
+      userId: user.id,
+      message: verifiedShopError.message,
+    });
+    redirectToSuccessionForm(redirectPath, "掲載に必要なサロン機能を確認できませんでした。時間をおいて再度お試しください。");
+  }
+
+  if (!hasShop) {
+    redirectToSuccessionForm(redirectPath, "開業・承継情報の掲載には、マイページからサロン機能を追加し、店舗確認を完了してください。");
   }
 
   if (profile == null) {

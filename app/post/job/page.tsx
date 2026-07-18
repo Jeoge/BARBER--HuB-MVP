@@ -1,10 +1,8 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { pathWithParams } from "@/lib/auth/redirects";
-import { getPostPermissionRedirect } from "@/lib/permissions";
-import { isSalonJobPosterProfile } from "@/lib/supabase/jobs";
+import { listOwnedVerifiedBarberShops, shopAreaLabel } from "@/lib/supabase/barber-shops";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { JobPostForm } from "./JobPostForm";
@@ -74,7 +72,10 @@ export default async function JobPostPage({ searchParams }: JobPostPageProps) {
     );
   }
 
-  const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+  const [{ profile, error: profileError }, { shops: verifiedShops, error: verifiedShopsError }] = await Promise.all([
+    getAccountProfile(supabase, user.id),
+    listOwnedVerifiedBarberShops(supabase, user.id, 1),
+  ]);
 
   if (profileError) {
     return (
@@ -90,18 +91,31 @@ export default async function JobPostPage({ searchParams }: JobPostPageProps) {
     );
   }
 
-  const permissionRedirect = getPostPermissionRedirect(profile, "job", "/post/job");
-  if (permissionRedirect) {
-    redirect(permissionRedirect);
-  }
-
-  if (profile == null || !isSalonJobPosterProfile(profile)) {
+  if (verifiedShopsError) {
     return (
       <PageChrome>
         <PageHeaderBlock
           eyebrow="JOB REGISTER"
           title="求人を掲載する"
-          body="求人掲載には、店舗名・店舗住所などの店舗情報登録が必要です。"
+          body="求人掲載に必要な店舗機能を確認できませんでした。"
+        />
+        <AccessCard
+          title="サロン機能を確認できませんでした"
+          body="時間をおいて再読み込みしてください。"
+          primaryHref="/mypage"
+          primaryLabel="マイページへ"
+        />
+      </PageChrome>
+    );
+  }
+
+  if (verifiedShops.length === 0) {
+    return (
+      <PageChrome>
+        <PageHeaderBlock
+          eyebrow="JOB REGISTER"
+          title="求人を掲載する"
+          body="求人掲載には、認証済み店舗に紐づいたサロン機能が必要です。"
         />
         {params?.error ? (
           <section className="px-4 pt-4">
@@ -111,10 +125,10 @@ export default async function JobPostPage({ searchParams }: JobPostPageProps) {
           </section>
         ) : null}
         <AccessCard
-          title="求人掲載には店舗情報の登録が必要です"
-          body="まずはマイページでサロン名、店舗住所、職種などを登録してください。通常会員のままでは求人掲載はできません。"
-          primaryHref="/mypage/profile/edit"
-          primaryLabel="店舗情報を登録する"
+          title="サロン機能を追加してください"
+          body="プロフィールでサロンオーナーを選ぶだけでは求人掲載できません。マイページから店舗を追加し、確認完了後に利用できます。"
+          primaryHref="/?storeDirectory=1"
+          primaryLabel="サロン機能を追加する"
           secondaryHref="/jobs"
           secondaryLabel="求人一覧を見る"
         />
@@ -122,14 +136,38 @@ export default async function JobPostPage({ searchParams }: JobPostPageProps) {
     );
   }
 
+  if (profile == null) {
+    return (
+      <PageChrome>
+        <PageHeaderBlock eyebrow="JOB REGISTER" title="求人を掲載する" body="求人掲載にはプロフィール設定が必要です。" />
+        <AccessCard
+          title="プロフィールを設定してください"
+          body="表示名や連絡先の初期値を確認してから求人を掲載できます。"
+          primaryHref="/mypage/profile/edit"
+          primaryLabel="プロフィールを設定する"
+          secondaryHref="/jobs"
+          secondaryLabel="求人一覧を見る"
+        />
+      </PageChrome>
+    );
+  }
+
+  const defaultShop = verifiedShops[0];
+  const formProfile = {
+    ...profile,
+    salon_name: profile.salon_name ?? defaultShop.name,
+    shop_address: profile.shop_address ?? defaultShop.address,
+    region: profile.region ?? shopAreaLabel(defaultShop),
+  };
+
   return (
     <PageChrome>
       <PageHeaderBlock
         eyebrow="JOB REGISTER"
         title="求人を掲載する"
-        body="まずは無料で、あなたのサロンの求人をBARBER HUBに掲載できます。"
+        body="認証済み店舗に紐づく求人をBARBER HUBに掲載できます。"
       />
-      <JobPostForm profile={profile} userEmail={user.email} error={params?.error} />
+      <JobPostForm profile={formProfile} userEmail={user.email} error={params?.error} />
     </PageChrome>
   );
 }

@@ -117,12 +117,12 @@ export default async function StoreDetailPage({ params, searchParams }: StoreDet
           </div>
           {pageParams?.registered === "1" ? (
             <p className="mt-4 rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-xs font-black leading-relaxed text-ink">
-              店舗登録を受け付けました。認証状態は申請中として保存されています。
+              店舗管理の申請を受け付けました。確認が完了すると店舗機能を利用できます。
             </p>
           ) : null}
           {pageParams?.claim === "pending" ? (
             <p className="mt-4 rounded-[8px] border border-blush/20 bg-blushSoft p-3 text-xs font-black leading-relaxed text-ink">
-              オーナー認証申請を受け付けました。確認が完了するまでお待ちください。
+              店舗管理の申請を受け付けました。確認が完了すると店舗機能を利用できます。
             </p>
           ) : null}
           {pageParams?.error ? (
@@ -171,19 +171,19 @@ export default async function StoreDetailPage({ params, searchParams }: StoreDet
           <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.035)]">
             <div className="flex items-center gap-2 text-sm font-black text-ink">
               <ShieldCheck aria-hidden="true" size={17} className="text-blush" />
-              このお店を管理する
+              この店舗の管理を申請する
             </div>
             {hasPendingClaim ? (
               <p className="mt-3 rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-                この店舗への認証申請はすでに受付済みです。申請しただけでは認証済みにはなりません。
+                店舗管理の申請を受け付けました。確認が完了すると店舗機能を利用できます。
               </p>
             ) : user == null ? (
               <div className="mt-3 grid gap-2">
                 <p className="text-xs font-medium leading-relaxed text-mute">
-                  オーナー認証申請にはログインが必要です。戻り先を保持してログインできます。
+                  店舗管理申請にはログインが必要です。戻り先を保持してログインできます。
                 </p>
-                <Link href={pathWithParams("/login", { next: `/stores/${shop.id}?claim=1`, message: "店舗のオーナー認証申請にはログインしてください。" })} className="inline-flex h-11 items-center justify-center rounded-[8px] bg-ink px-3 text-sm font-black text-white">
-                  ログインして管理申請
+                <Link href={pathWithParams("/login", { next: `/stores/${shop.id}?claim=1`, message: "店舗管理申請にはログインしてください。" })} className="inline-flex h-11 items-center justify-center rounded-[8px] bg-ink px-3 text-sm font-black text-white">
+                  ログインして店舗管理を申請
                 </Link>
                 <Link href={pathWithParams("/signup", { next: `/stores/${shop.id}?claim=1` })} className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
                   会員登録へ
@@ -192,24 +192,13 @@ export default async function StoreDetailPage({ params, searchParams }: StoreDet
             ) : (
               <form action={requestBarberShopClaimAction} className="mt-3 grid gap-3">
                 <input type="hidden" name="shopId" value={shop.id} />
-                <label className="grid gap-2">
-                  <span className="text-xs font-black text-ink">店舗との関係</span>
-                  <select
-                    name="relation"
-                    required
-                    className="h-11 rounded-[8px] border border-line bg-white px-3 text-xs font-semibold text-ink outline-none focus:border-blush"
-                    defaultValue=""
-                  >
-                    <option value="" disabled>選択してください</option>
-                    <option value="owner">オーナー</option>
-                    <option value="representative">代表者</option>
-                    <option value="manager">店長・管理者</option>
-                    <option value="staff">スタッフ</option>
-                    <option value="related">その他関係者</option>
-                  </select>
+                <label className="flex items-start gap-2 rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-ink">
+                  <input name="relation" type="checkbox" value="authorized_manager" required className="mt-0.5 h-4 w-4 shrink-0 accent-blush" />
+                  私は、この店舗のオーナー、代表者、または店舗情報を管理する正当な権限を持っています。
                 </label>
+                <p className="text-[0.68rem] font-semibold leading-relaxed text-mute">虚偽の申請や、権限のない店舗への申請は禁止されています。</p>
                 <label className="grid gap-2">
-                  <span className="text-xs font-black text-ink">補足（任意）</span>
+                  <span className="text-xs font-black text-ink">確認事項・補足（任意）</span>
                   <textarea
                     name="message"
                     rows={3}
@@ -218,7 +207,7 @@ export default async function StoreDetailPage({ params, searchParams }: StoreDet
                   />
                 </label>
                 <button type="submit" className="inline-flex h-11 items-center justify-center rounded-[8px] bg-ink px-3 text-sm font-black text-white">
-                  このお店を管理する
+                  店舗管理を申請する
                 </button>
               </form>
             )}

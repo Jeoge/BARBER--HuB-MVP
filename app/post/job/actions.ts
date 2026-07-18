@@ -4,9 +4,8 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
-import { getPostPermissionRedirect } from "@/lib/permissions";
 import { hasSafetyConfirmations, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
-import { isSalonJobPosterProfile } from "@/lib/supabase/jobs";
+import { hasOwnedVerifiedBarberShop } from "@/lib/supabase/barber-shops";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 
@@ -191,7 +190,10 @@ async function requireJobPoster(redirectPath: string) {
     redirect(pathWithParams("/login", { next: redirectPath, message: "求人掲載にはログインしてください。" }));
   }
 
-  const { profile, error: profileError } = await getAccountProfile(supabase, user.id);
+  const [{ profile, error: profileError }, { hasShop, error: verifiedShopError }] = await Promise.all([
+    getAccountProfile(supabase, user.id),
+    hasOwnedVerifiedBarberShop(supabase, user.id),
+  ]);
 
   if (profileError) {
     console.error("Job post profile lookup failed", {
@@ -201,13 +203,20 @@ async function requireJobPoster(redirectPath: string) {
     redirectToJobForm(redirectPath, "プロフィール情報を確認できませんでした。時間をおいて再度お試しください。");
   }
 
-  const permissionRedirect = getPostPermissionRedirect(profile, "job", redirectPath);
-  if (permissionRedirect) {
-    redirect(permissionRedirect);
+  if (verifiedShopError) {
+    console.error("Job post verified shop lookup failed", {
+      userId: user.id,
+      message: verifiedShopError.message,
+    });
+    redirectToJobForm(redirectPath, "求人掲載に必要なサロン機能を確認できませんでした。時間をおいて再度お試しください。");
   }
 
-  if (profile == null || !isSalonJobPosterProfile(profile)) {
-    redirectToJobForm(redirectPath, "求人掲載には店舗情報の登録が必要です。まずはマイページで店舗情報を登録してください。");
+  if (!hasShop) {
+    redirectToJobForm(redirectPath, "求人掲載には、マイページからサロン機能を追加し、店舗確認を完了してください。");
+  }
+
+  if (profile == null) {
+    redirectToJobForm(redirectPath, "プロフィール設定後に求人掲載できます。");
   }
 
   return { supabase, user };
