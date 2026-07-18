@@ -9,6 +9,7 @@ import {
   getPublicBarberShop,
   shopAddressLabel,
   shopAreaLabel,
+  shopPhoneLabel,
   shopVerificationLabel,
 } from "@/lib/supabase/barber-shops";
 import { createClient } from "@/lib/supabase/server";
@@ -138,7 +139,9 @@ export default async function StoreDetailPage({ params, searchParams }: StoreDet
           <DetailRow label="店舗名" value={shop.name} />
           <DetailRow label="地域" value={shopAreaLabel(shop)} />
           <DetailRow label="住所" value={shopAddressLabel(shop)} />
+          <DetailRow label="電話番号" value={shopPhoneLabel(shop.phone)} />
           <DetailRow label="認証状態" value={shopVerificationLabel(shop.verification_status)} />
+          <DetailRow label="掲載元" value={shop.source} />
         </div>
         <p className="mt-3 rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-medium leading-relaxed text-mute">
           BARBER HUBの店舗ディレクトリは、口コミ・評価・ランキングを扱いません。掲載情報は店舗基本情報と認証状態を中心に整理します。
@@ -168,7 +171,7 @@ export default async function StoreDetailPage({ params, searchParams }: StoreDet
           <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.035)]">
             <div className="flex items-center gap-2 text-sm font-black text-ink">
               <ShieldCheck aria-hidden="true" size={17} className="text-blush" />
-              この店舗のオーナーですか？
+              このお店を管理する
             </div>
             {hasPendingClaim ? (
               <p className="mt-3 rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
@@ -180,7 +183,7 @@ export default async function StoreDetailPage({ params, searchParams }: StoreDet
                   オーナー認証申請にはログインが必要です。戻り先を保持してログインできます。
                 </p>
                 <Link href={pathWithParams("/login", { next: `/stores/${shop.id}?claim=1`, message: "店舗のオーナー認証申請にはログインしてください。" })} className="inline-flex h-11 items-center justify-center rounded-[8px] bg-ink px-3 text-sm font-black text-white">
-                  ログインして申請する
+                  ログインして管理申請
                 </Link>
                 <Link href={pathWithParams("/signup", { next: `/stores/${shop.id}?claim=1` })} className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
                   会員登録へ
@@ -215,7 +218,7 @@ export default async function StoreDetailPage({ params, searchParams }: StoreDet
                   />
                 </label>
                 <button type="submit" className="inline-flex h-11 items-center justify-center rounded-[8px] bg-ink px-3 text-sm font-black text-white">
-                  認証申請へ進む
+                  このお店を管理する
                 </button>
               </form>
             )}

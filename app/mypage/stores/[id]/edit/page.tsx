@@ -112,6 +112,7 @@ export default async function StoreEditPage({ params, searchParams }: StoreEditP
             <Field name="municipality" label="市区町村" defaultValue={shop.municipality} required />
           </div>
           <Field name="address" label="住所" defaultValue={shop.address} required />
+          <Field name="phone" label="電話番号（任意）" defaultValue={shop.phone} placeholder="092-000-0000" />
           <Field name="postal_code" label="郵便番号（任意）" defaultValue={shop.postal_code} placeholder="819-0000" />
         </section>
 

@@ -154,6 +154,7 @@ export async function updateVerifiedBarberShopAction(formData: FormData) {
   const municipality = cleanText(formData.get("municipality"));
   const address = cleanText(formData.get("address"));
   const postalCode = cleanNullableText(formData.get("postal_code"));
+  const phone = cleanNullableText(formData.get("phone"));
   const normalizedName = normalizeShopSearchText(name);
 
   if (!name || !prefecture || !municipality || !address || !normalizedName) {
@@ -169,6 +170,7 @@ export async function updateVerifiedBarberShopAction(formData: FormData) {
       municipality,
       address,
       postal_code: postalCode,
+      phone,
     })
     .eq("id", shopId)
     .eq("owner_user_id", user.id)

@@ -28,7 +28,9 @@ import {
   barberShopSelect,
   listBarberShopMunicipalities,
   normalizeShopSearchText,
+  shopAddressLabel,
   shopAreaLabel,
+  shopPhoneLabel,
   shopVerificationLabel,
   type BarberShop,
   type BarberShopMunicipality,
@@ -54,7 +56,7 @@ function useStoreDirectory() {
 }
 
 function cleanLikeInput(value: string) {
-  return value.replace(/[%_]/g, "");
+  return value.replace(/[%_,()]/g, "");
 }
 
 function loginHref(next: string, message: string) {
@@ -71,11 +73,13 @@ function StoreResultCard({ shop }: { shop: BarberShop }) {
   return (
     <Link
       href={`/stores/${shop.id}`}
-      className="flex min-h-[4.25rem] items-center justify-between gap-3 rounded-[8px] border border-line bg-white px-3 py-2.5 text-left shadow-[0_6px_16px_rgba(17,17,17,0.025)]"
+      className="flex min-h-[5.75rem] items-center justify-between gap-3 rounded-[8px] border border-line bg-white px-3 py-2.5 text-left shadow-[0_6px_16px_rgba(17,17,17,0.025)]"
     >
       <span className="min-w-0">
         <span className="line-clamp-2 text-sm font-black leading-snug text-ink">{shop.name}</span>
         <span className="mt-1 line-clamp-1 text-xs font-semibold text-mute">{shopAreaLabel(shop)}</span>
+        <span className="mt-0.5 line-clamp-1 text-xs font-medium text-mute">{shopAddressLabel(shop)}</span>
+        <span className="mt-0.5 line-clamp-1 text-xs font-semibold text-ink/70">{shopPhoneLabel(shop.phone)}</span>
         <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-line bg-neutral-50 px-2 py-0.5 text-[0.62rem] font-semibold text-ink/72">
           {verified ? <BadgeCheck aria-hidden="true" size={12} className="text-blush" /> : null}
           {shopVerificationLabel(shop.verification_status)}
@@ -124,7 +128,7 @@ function ResultList({
     return (
       <div className="grid gap-2.5" aria-label="店舗情報を読み込み中">
         {[0, 1, 2].map((item) => (
-          <div key={item} className="h-[4.25rem] animate-pulse rounded-[8px] border border-line bg-neutral-50" />
+          <div key={item} className="h-[5.75rem] animate-pulse rounded-[8px] border border-line bg-neutral-50" />
         ))}
       </div>
     );
@@ -283,6 +287,7 @@ function StoreDirectorySheet({
 
   async function fetchResults(offset = 0, append = false) {
     const normalizedName = normalizeShopSearchText(nameQuery);
+    const queryText = cleanLikeInput(nameQuery.trim());
 
     if (view === "name" && normalizedName.length === 0) {
       setResults([]);
@@ -313,7 +318,14 @@ function StoreDirectorySheet({
       .range(offset, offset + BARBER_SHOP_PAGE_SIZE - 1);
 
     if (view === "name") {
-      request = request.ilike("normalized_name", `%${cleanLikeInput(normalizedName)}%`);
+      const normalizedQuery = cleanLikeInput(normalizedName);
+      request = request.or(
+        [
+          `normalized_name.ilike.%${normalizedQuery}%`,
+          `municipality.ilike.%${queryText}%`,
+          `address.ilike.%${queryText}%`,
+        ].join(",")
+      );
       if (namePrefecture) request = request.eq("prefecture", namePrefecture);
       if (nameMunicipality.trim()) request = request.ilike("municipality", `%${cleanLikeInput(nameMunicipality.trim())}%`);
     }
@@ -378,7 +390,7 @@ function StoreDirectorySheet({
 
   if (!open) return null;
 
-  const title = view === "name" ? "店名から探す" : view === "area" ? "地域から探す" : view === "verified" ? "認証済み店舗" : "店舗を検索";
+  const title = view === "name" ? "店舗を検索" : view === "area" ? "地域から探す" : view === "verified" ? "認証済み店舗" : "店舗を検索";
   const showBack = view !== "menu";
 
   return (
@@ -429,8 +441,8 @@ function StoreDirectorySheet({
                     <Search aria-hidden="true" size={17} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-sm font-black text-ink">店名から探す</span>
-                    <span className="mt-0.5 block text-xs font-semibold text-mute">一部一致・地域絞り込み</span>
+                    <span className="block text-sm font-black text-ink">店名・住所から探す</span>
+                    <span className="mt-0.5 block text-xs font-semibold text-mute">店名、市区町村、住所で検索</span>
                   </span>
                   <ChevronRight aria-hidden="true" size={18} className="ml-auto shrink-0 text-mute" />
                 </button>
@@ -470,12 +482,12 @@ function StoreDirectorySheet({
             {view === "name" ? (
               <div className="grid gap-4">
                 <label className="grid gap-2">
-                  <span className="text-sm font-black text-ink">店舗名</span>
+                  <span className="text-sm font-black text-ink">店名・市区町村・住所</span>
                   <input
                     value={nameQuery}
                     onChange={(event) => setNameQuery(event.target.value)}
                     className="h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush"
-                    placeholder="例：BARBER HUB"
+                    placeholder="例：姪浜 / 久留米市 / 理容キモト"
                     autoFocus
                   />
                 </label>
@@ -507,7 +519,7 @@ function StoreDirectorySheet({
                 </div>
                 {normalizeShopSearchText(nameQuery).length === 0 ? (
                   <p className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
-                    店舗名を入力すると候補を表示します。空文字で全店舗は取得しません。
+                    店名、市区町村、住所を入力すると候補を表示します。空文字で全店舗は取得しません。
                   </p>
                 ) : (
                   <ResultList

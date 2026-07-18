@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type BarberShopVerificationStatus = "unclaimed" | "pending" | "verified" | "rejected" | "suspended";
+export type BarberShopVerificationStatus = "unverified" | "unclaimed" | "pending" | "verified" | "rejected" | "suspended";
 
 export type BarberShop = {
   id: string;
@@ -9,7 +9,11 @@ export type BarberShop = {
   prefecture: string;
   municipality: string;
   address: string;
+  phone: string | null;
+  source: string | null;
   postal_code: string | null;
+  normalized_address: string;
+  normalized_phone: string;
   status: string;
   verification_status: BarberShopVerificationStatus;
   owner_user_id: string | null;
@@ -48,7 +52,11 @@ export const barberShopSelect = `
   prefecture,
   municipality,
   address,
+  phone,
+  source,
   postal_code,
+  normalized_address,
+  normalized_phone,
   status,
   verification_status,
   owner_user_id,
@@ -81,12 +89,17 @@ export function shopAddressLabel(shop: Pick<BarberShop, "prefecture" | "municipa
   return shop.address;
 }
 
+export function shopPhoneLabel(phone: string | null | undefined) {
+  const value = phone?.trim();
+  return value ? value : "電話番号未登録";
+}
+
 export function shopVerificationLabel(status: BarberShopVerificationStatus | string | null | undefined) {
   if (status === "verified") return "認証済み";
   if (status === "pending") return "認証申請中";
-  if (status === "rejected") return "未認証店舗";
+  if (status === "rejected") return "未認証";
   if (status === "suspended") return "停止中";
-  return "未認証店舗";
+  return "未認証";
 }
 
 function publicShopQuery(supabase: SupabaseClient) {
