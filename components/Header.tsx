@@ -11,7 +11,7 @@ export function Header({ action, variant = "default" }: HeaderProps) {
   if (variant === "home") {
     return (
       <header className="sticky top-0 z-40 overflow-hidden border-b border-white/10 bg-[#050505] text-white">
-        <div className="relative mx-auto flex min-h-[calc(9.25rem+env(safe-area-inset-top))] max-w-[430px] items-center justify-center overflow-hidden px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
+        <div className="relative mx-auto flex min-h-[calc(7.75rem+env(safe-area-inset-top))] max-w-[430px] items-center justify-center overflow-hidden px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_-18%,rgba(255,59,134,0.11),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0)_48%)]"
