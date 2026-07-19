@@ -185,7 +185,10 @@ body[data-comment-sheet-open="true"] .global-post-fab {
 }
 
 .home-brand-signature {
-  letter-spacing: 0;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Noto Serif JP", Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .editorial-serif {
