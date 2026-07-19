@@ -10,7 +10,7 @@ import { LegalLinks } from "@/components/LegalLinks";
 import { QASection } from "@/components/QASection";
 import { SnapSection } from "@/components/SnapSection";
 import { ContentAdCard } from "@/components/ContentAdCard";
-import { StoreDirectoryProvider, StoreDirectoryStatsCard, StoreSearchHeaderButton } from "@/components/StoreDirectorySearch";
+import { StoreDirectoryProvider, StoreDirectoryStatsCard } from "@/components/StoreDirectorySearch";
 import { imageVariantForArticleCategory } from "@/lib/articleCategories";
 import { composeHomeEditorPicks } from "@/lib/editorPicks";
 import { composeNewsWithFallback, listPublicNews } from "@/lib/news-drafts/public-news";
@@ -104,7 +104,7 @@ export default async function Home() {
   return (
     <StoreDirectoryProvider>
       <main className="mx-auto min-h-screen max-w-[430px] overflow-x-hidden bg-white pb-40 shadow-[0_0_70px_rgba(17,17,17,0.06)]">
-        <Header action={<StoreSearchHeaderButton />} />
+        <Header variant="home" />
         <CategoryNavigation />
         <LiveEditorialCover newsItems={homeNews} editorPicks={homeEditorPicks} />
         <SnapSection />
