@@ -1,21 +1,12 @@
+import "server-only";
+
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isSafeBackroomImageStoragePath } from "@/lib/backroomImages";
+import { BACKROOM_CATEGORIES, type BackroomCategory } from "@/lib/backroomConstants";
+import { createBackroomSignedUrlMap } from "@/lib/supabase/backroom-images";
 
-export const BACKROOM_CATEGORIES = [
-  "営業後トーク",
-  "相談",
-  "経営",
-  "独立",
-  "スタッフ",
-  "集客",
-  "技術",
-  "材料",
-  "STU",
-  "アシスタント",
-  "趣味",
-  "雑談",
-] as const;
-
-export type BackroomCategory = (typeof BACKROOM_CATEGORIES)[number];
+export { BACKROOM_CATEGORIES } from "@/lib/backroomConstants";
+export type { BackroomCategory } from "@/lib/backroomConstants";
 
 export type BackroomAuthorProfile = {
   id: string;
@@ -49,16 +40,26 @@ export type BackroomPostWithAuthor = BackroomPostRecord & {
   profiles: BackroomAuthorProfile | null;
   backroom_profile: BackroomMemberProfile | null;
   comment_count: number;
+  images: BackroomDisplayImage[];
+};
+
+export type BackroomDisplayImage = {
+  id: string;
+  url: string | null;
+  sort_order: number;
+  width: number | null;
+  height: number | null;
 };
 
 export type BackroomComment = {
   id: string;
   post_id: string;
   user_id: string;
-  body: string;
+  body: string | null;
   created_at: string | null;
   profiles: BackroomAuthorProfile | null;
   backroom_profile: BackroomMemberProfile | null;
+  images: BackroomDisplayImage[];
 };
 
 type RawBackroomPost = BackroomPostRecord & {
@@ -71,6 +72,24 @@ type RawBackroomComment = Omit<BackroomComment, "profiles"> & {
 
 type BackroomCommentCountRow = {
   post_id: string;
+};
+
+type BackroomThreadImageRow = {
+  id: string;
+  thread_id: string;
+  storage_path: string;
+  sort_order: number;
+  width: number | null;
+  height: number | null;
+};
+
+type BackroomCommentImageRow = {
+  id: string;
+  comment_id: string;
+  storage_path: string;
+  sort_order: number;
+  width: number | null;
+  height: number | null;
 };
 
 type BackroomMemberRow = {
@@ -130,6 +149,7 @@ function normalizePosts(data: unknown): BackroomPostWithAuthor[] {
     profiles: normalizeProfile(post.profiles),
     backroom_profile: null,
     comment_count: 0,
+    images: [],
   }));
 }
 
@@ -142,6 +162,7 @@ function normalizePost(data: unknown): BackroomPostWithAuthor | null {
     profiles: normalizeProfile(post.profiles),
     backroom_profile: null,
     comment_count: 0,
+    images: [],
   };
 }
 
@@ -150,6 +171,7 @@ function normalizeComments(data: unknown): BackroomComment[] {
     ...comment,
     profiles: normalizeProfile(comment.profiles),
     backroom_profile: null,
+    images: [],
   }));
 }
 
@@ -209,6 +231,94 @@ async function withCommentBackroomMembers(supabase: SupabaseClient, comments: Ba
     ...comment,
     backroom_profile: memberByUserId.get(comment.user_id) ?? null,
   }));
+}
+
+async function withBackroomThreadImages(supabase: SupabaseClient, posts: BackroomPostWithAuthor[]) {
+  const threadIds = posts.map((post) => post.id);
+  if (threadIds.length === 0) return posts;
+
+  try {
+    const { data, error } = await supabase
+      .from("backroom_thread_images")
+      .select("id, thread_id, storage_path, sort_order, width, height")
+      .in("thread_id", threadIds)
+      .order("sort_order", { ascending: true })
+      .returns<BackroomThreadImageRow[]>();
+
+    if (error) {
+      console.error("Back Room thread images select failed", { message: error.message });
+      return posts;
+    }
+
+    const rows = data ?? [];
+    const validRows = rows.filter((row) => isSafeBackroomImageStoragePath(row.storage_path, "threads", row.thread_id));
+    const signedUrlByPath = await createBackroomSignedUrlMap(
+      validRows.map((row) => row.storage_path),
+      { operation: "thread images", count: threadIds.length }
+    );
+    const imagesByThreadId = new Map<string, BackroomDisplayImage[]>();
+
+    validRows.forEach((row) => {
+      const images = imagesByThreadId.get(row.thread_id) ?? [];
+      images.push({
+        id: row.id,
+        url: signedUrlByPath.get(row.storage_path) ?? null,
+        sort_order: row.sort_order,
+        width: row.width,
+        height: row.height,
+      });
+      imagesByThreadId.set(row.thread_id, images);
+    });
+
+    return posts.map((post) => ({ ...post, images: imagesByThreadId.get(post.id) ?? [] }));
+  } catch (error) {
+    console.error("Back Room thread images select threw", { message: errorMessage(error) });
+    return posts;
+  }
+}
+
+async function withBackroomCommentImages(supabase: SupabaseClient, comments: BackroomComment[]) {
+  const commentIds = comments.map((comment) => comment.id);
+  if (commentIds.length === 0) return comments;
+
+  try {
+    const { data, error } = await supabase
+      .from("backroom_comment_images")
+      .select("id, comment_id, storage_path, sort_order, width, height")
+      .in("comment_id", commentIds)
+      .order("sort_order", { ascending: true })
+      .returns<BackroomCommentImageRow[]>();
+
+    if (error) {
+      console.error("Back Room comment images select failed", { message: error.message });
+      return comments;
+    }
+
+    const rows = data ?? [];
+    const validRows = rows.filter((row) => isSafeBackroomImageStoragePath(row.storage_path, "comments", row.comment_id));
+    const signedUrlByPath = await createBackroomSignedUrlMap(
+      validRows.map((row) => row.storage_path),
+      { operation: "comment images", count: commentIds.length }
+    );
+    const imagesByCommentId = new Map<string, BackroomDisplayImage[]>();
+
+    validRows.forEach((row) => {
+      const images = imagesByCommentId.get(row.comment_id) ?? [];
+      images.push({
+        id: row.id,
+        url: signedUrlByPath.get(row.storage_path) ?? null,
+        sort_order: row.sort_order,
+        width: row.width,
+        height: row.height,
+      });
+      imagesByCommentId.set(row.comment_id, images);
+    });
+
+    return comments.map((comment) => ({ ...comment, images: imagesByCommentId.get(comment.id) ?? [] }));
+  } catch (error) {
+    console.error("Back Room comment images select threw", { message: errorMessage(error) });
+    return comments;
+  }
 }
 
 async function withCommentCounts(supabase: SupabaseClient, posts: BackroomPostWithAuthor[]) {
@@ -420,7 +530,8 @@ export async function getBackroomPostById(supabase: SupabaseClient, id: string) 
     }
 
     const normalizedPost = normalizePost(data);
-    const post = normalizedPost ? (await withBackroomMembers(supabase, [normalizedPost]))[0] : null;
+    const postWithMembers = normalizedPost ? (await withBackroomMembers(supabase, [normalizedPost]))[0] : null;
+    const post = postWithMembers ? (await withBackroomThreadImages(supabase, [postWithMembers]))[0] : null;
     const withCounts = post ? await withCommentCounts(supabase, [post]) : [];
 
     return { post: withCounts[0] ?? null, error };
@@ -466,7 +577,8 @@ export async function listBackroomComments(supabase: SupabaseClient, postId: str
       });
     }
 
-    return { comments: await withCommentBackroomMembers(supabase, normalizeComments(data)), error };
+    const commentsWithImages = await withBackroomCommentImages(supabase, normalizeComments(data));
+    return { comments: await withCommentBackroomMembers(supabase, commentsWithImages), error };
   } catch (error) {
     console.error("Back Room comments select threw", {
       postId,

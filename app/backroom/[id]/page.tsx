@@ -1,9 +1,9 @@
-import { ArrowLeft, MessageCircle, Send, UserRound } from "lucide-react";
+import { ArrowLeft, MessageCircle, UserRound } from "lucide-react";
 import Link from "next/link";
 import { SignupRequiredCard } from "@/components/AuthGate";
+import { BackroomCommentForm } from "@/components/BackroomCommentForm";
+import { BackroomDisplayImage } from "@/components/BackroomDisplayImage";
 import { BackroomSetupRequiredCard } from "@/components/BackroomSetupRequiredCard";
-import { FormDisclaimer } from "@/components/FormDisclaimer";
-import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { PageChrome } from "@/components/PageChrome";
 import { backRoomTheme } from "@/lib/backRoomTheme";
 import {
@@ -38,7 +38,15 @@ function CommentItem({ comment }: { comment: BackroomComment }) {
           <span className="mt-0.5 block text-[0.66rem] font-bold text-mute">{backroomDateLabel({ created_at: comment.created_at })}</span>
         </span>
       </div>
-      <p className="mt-3 whitespace-pre-wrap text-sm font-medium leading-relaxed text-ink">{comment.body}</p>
+      {comment.body ? <p className="mt-3 whitespace-pre-wrap text-sm font-medium leading-relaxed text-ink">{comment.body}</p> : null}
+      {comment.images.map((image) => (
+        <BackroomDisplayImage
+          key={image.id}
+          src={image.url}
+          alt="コメントに添付された画像"
+          className="mt-3 block max-h-[32rem] w-full rounded-[8px] bg-neutral-950 object-contain object-center"
+        />
+      ))}
     </article>
   );
 }
@@ -140,6 +148,14 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
         </div>
         <div className="mt-4 rounded-[10px] border border-line bg-white p-4 shadow-sm">
           <p className="whitespace-pre-wrap text-[0.94rem] font-medium leading-relaxed text-ink">{post.body}</p>
+          {post.images.map((image) => (
+            <BackroomDisplayImage
+              key={image.id}
+              src={image.url}
+              alt={post.title}
+              className="mt-4 block max-h-[min(72vh,44rem)] w-full rounded-[10px] bg-neutral-950 object-contain object-center"
+            />
+          ))}
         </div>
       </article>
 
@@ -174,32 +190,7 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
       </section>
 
       <section className="px-4 pt-5">
-        <form action={createBackroomCommentAction} className="rounded-[10px] border border-line bg-white p-3 shadow-sm">
-          <input type="hidden" name="postId" value={post.id} />
-          {query?.commentError ? (
-            <div className="mb-3 rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
-              {query.commentError}
-            </div>
-          ) : null}
-          <label className="grid gap-2">
-            <span className="text-sm font-black text-ink">コメントする</span>
-            <textarea
-              name="body"
-              rows={4}
-              maxLength={1000}
-              required
-              className={"resize-none rounded-[8px] border border-line bg-neutral-50 px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:bg-white " + backRoomTheme.focusRing}
-              placeholder="相談、経験共有、雑談を気軽に残してください。"
-            />
-          </label>
-          <LoadingSubmitButton pendingText="コメント中..." className={"mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] text-sm font-black " + backRoomTheme.primaryButton}>
-            <Send aria-hidden="true" size={16} />
-            コメント投稿
-          </LoadingSubmitButton>
-          <FormDisclaimer className="mt-2">
-            相手への敬意を持ってコメントしてください。個人攻撃、実名批判、顧客情報、他店への誹謗中傷は投稿できません。
-          </FormDisclaimer>
-        </form>
+        <BackroomCommentForm action={createBackroomCommentAction} postId={post.id} error={query?.commentError} />
       </section>
     </PageChrome>
   );

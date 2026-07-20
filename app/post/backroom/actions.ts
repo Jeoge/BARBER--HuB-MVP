@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { cleanupCreatedBackroomPost, imageErrorMessage, prepareBackroomImage, submittedBackroomImage, uploadBackroomImage } from "@/lib/backroomImageServer";
 import { getPostPermissionRedirect } from "@/lib/permissions";
 import { hasSafetyConfirmations, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
 import { getBackroomProfile, isBackroomCategory, normalizeBackroomCategory } from "@/lib/supabase/backroom";
@@ -132,6 +133,14 @@ export async function createBackroomPostAction(formData: FormData) {
     redirectToBackroomPost({ error: SAFETY_CONFIRMATION_ERROR });
   }
 
+  let preparedImage: Awaited<ReturnType<typeof prepareBackroomImage>> = null;
+  try {
+    preparedImage = await prepareBackroomImage(submittedBackroomImage(formData));
+  } catch (error) {
+    console.error("Back Room thread image validation failed", { userId: user.id, message: errorMessage(error) });
+    redirectToBackroomPost({ error: imageErrorMessage(error) });
+  }
+
   const postId = randomUUID();
   const now = new Date().toISOString();
   const { data, error } = await supabase
@@ -167,6 +176,55 @@ export async function createBackroomPostAction(formData: FormData) {
       savedId: data?.id ?? null,
     });
     redirectToBackroomPost({ error: "Back Room投稿を保存できませんでした。もう一度お試しください。" });
+  }
+
+  if (preparedImage) {
+    let uploadPath = "";
+
+    try {
+      uploadPath = await uploadBackroomImage(supabase, "threads", postId, user.id, preparedImage);
+      const { data: imageRow, error: imageRowError } = await supabase
+        .from("backroom_thread_images")
+        .insert({
+          thread_id: postId,
+          storage_path: uploadPath,
+          sort_order: 0,
+          width: preparedImage.width,
+          height: preparedImage.height,
+          byte_size: preparedImage.byteSize,
+          mime_type: preparedImage.contentType,
+        })
+        .select("id, storage_path")
+        .maybeSingle<{ id: string; storage_path: string }>();
+
+      if (imageRowError || imageRow?.storage_path !== uploadPath) {
+        console.error("Back Room thread image row save verification failed", {
+          postId,
+          userId: user.id,
+          message: imageRowError?.message ?? "saved path verification failed",
+        });
+        await cleanupCreatedBackroomPost(supabase, {
+          postId,
+          userId: user.id,
+          uploadedPaths: [uploadPath],
+          reason: "thread image row save failure",
+        });
+        redirectToBackroomPost({ error: "画像付きBack Room投稿を保存できませんでした。もう一度お試しください。" });
+      }
+    } catch (error) {
+      console.error("Back Room thread image save threw", { postId, userId: user.id, message: errorMessage(error) });
+      await cleanupCreatedBackroomPost(supabase, {
+        postId,
+        userId: user.id,
+        uploadedPaths: uploadPath ? [uploadPath] : [],
+        reason: "thread image save threw",
+      });
+      redirectToBackroomPost({
+        error: errorMessage(error).includes("upload_failed")
+          ? "画像アップロードに失敗しました。画像形式または容量を確認してください。"
+          : "画像付きBack Room投稿を保存できませんでした。もう一度お試しください。",
+      });
+    }
   }
 
   revalidatePath("/backroom");
