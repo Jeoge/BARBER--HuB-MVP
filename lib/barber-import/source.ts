@@ -4,7 +4,6 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { createBarberShopCsv, parseDelimitedText } from "./csv";
 import { cleanImportText } from "./normalization";
-import { PREFECTURES } from "@/lib/japanAreas";
 
 const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
 const MAX_SOURCE_REDIRECTS = 3;
@@ -12,9 +11,28 @@ const SOURCE_TIMEOUT_MS = 15_000;
 const MAX_SOURCE_ROWS = 20_000;
 const MAX_SOURCE_COLUMNS = 80;
 
-const PDF_PARSE_FAILURE_MESSAGE = "このPDFは自動解析できませんでした。ファイルをダウンロードして手動で確認してください";
+const AUTO_PARSE_FAILURE_MESSAGE = "このページまたはファイルは自動解析できませんでした。手動で確認してください";
 
 export type SourceFormat = "CSV" | "TSV" | "xlsx" | "HTML table" | "text PDF";
+
+export type SourceColumnMapping = {
+  name: number | null;
+  address: number | null;
+  phone: number | null;
+};
+
+export type BarberShopSourceAnalysis = {
+  sourceUrl: string;
+  finalUrl: string;
+  format: SourceFormat;
+  headers: string[];
+  sampleRows: string[][];
+  autoMapping: SourceColumnMapping;
+  excludedColumnIndexes: number[];
+  prefecture: string;
+  municipality: string;
+  sourceName: string;
+};
 
 export type BarberShopSourcePreviewRow = {
   rowNumber: number;
@@ -33,12 +51,17 @@ export type BarberShopSourcePreview = {
   csv: string;
   rows: BarberShopSourcePreviewRow[];
   fetchedCount: number;
+  outputCount: number;
   validCount: number;
   blankCounts: {
     name: number;
+    prefecture: number;
+    municipality: number;
     address: number;
     phone: number;
+    source: number;
   };
+  excludedCount: number;
   errorCount: number;
 };
 
@@ -66,13 +89,13 @@ type SourceTable = {
 };
 
 const SOURCE_HEADER_ALIASES = {
-  name: ["店名", "店舗名", "屋号", "理容所名称", "理容所名", "施設名称", "施設名", "営業所名称", "営業所名", "事業所名"],
+  name: ["店名", "店舗名", "屋号", "理容所名称", "理容所名", "施設名称", "施設名", "営業所名称", "営業所名", "事業所名", "名称"],
   prefecture: ["都道府県", "都道府県名", "県名"],
   municipality: ["市区町村", "市町村", "自治体", "所在地市区町村", "所在市区町村"],
-  address: ["住所", "所在地", "施設所在地", "営業所在地", "所在地住所"],
-  phone: ["電話", "電話番号", "連絡先", "電話番号等"],
+  address: ["住所", "所在地", "施設所在地", "営業所在地", "営業所所在地", "所在地住所"],
+  phone: ["電話", "電話番号", "TEL", "連絡先", "電話番号等"],
   postalCode: ["郵便番号", "郵便番号〒", "〒"],
-  representative: ["氏名", "氏名代表者名", "代表者名", "代表者", "設置者氏名"],
+  representative: ["氏名", "氏名代表者名", "代表者名", "代表者", "設置者氏名", "開設者名", "管理者名"],
   verification: ["認証状態", "認証ステータス", "認証区分"],
 } as const;
 
@@ -94,7 +117,14 @@ function headerMatches(header: string, alias: string) {
 
 function fieldHeaderIndex(headers: string[], field: SourceField) {
   const aliases = SOURCE_HEADER_ALIASES[field];
-  return headers.findIndex((header) => aliases.some((alias) => headerMatches(header, alias)));
+  const usableHeader = (header: string) => {
+    if (field === "name" && SOURCE_HEADER_ALIASES.representative.some((alias) => headerMatches(header, alias))) return false;
+    if (field === "address" && /市区町村|市町村|郵便番号/.test(normalizeHeader(header))) return false;
+    return true;
+  };
+  const exactIndex = headers.findIndex((header) => usableHeader(header) && aliases.some((alias) => normalizeHeader(header) === normalizeHeader(alias)));
+  if (exactIndex >= 0) return exactIndex;
+  return headers.findIndex((header) => usableHeader(header) && aliases.some((alias) => headerMatches(header, alias)));
 }
 
 function recognizedHeaderCount(headers: string[]) {
@@ -175,13 +205,12 @@ function parseHtmlTable(html: string): SourceTable {
     ), 0);
     const headers = parsedRows[headerIndex] ?? [];
     const score = recognizedHeaderCount(headers);
-    if (score === 0) continue;
 
     const candidate = { headers, rows: parsedRows.slice(headerIndex + 1), format: "HTML table" as const };
     if (!best || score > recognizedHeaderCount(best.headers) || candidate.rows.length > best.rows.length) best = candidate;
   }
 
-  if (!best) throw new BarberShopSourceError("対応するHTML表を確認できませんでした。掲載ファイルのURLを直接指定してください。", "parse_failed");
+  if (!best) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "parse_failed");
   return best;
 }
 
@@ -201,13 +230,13 @@ function parsePdfLines(text: string): SourceTable {
   };
   const headerIndex = lines.slice(0, 30).findIndex((line) => recognizedHeaderCount(pdfCells(line)) > 0);
 
-  if (headerIndex < 0) throw new BarberShopSourceError(PDF_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
+  if (headerIndex < 0) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
 
   const headerLine = lines[headerIndex];
   const headers = pdfCells(headerLine).map((cell) => cleanCell(cell));
   const rows = lines.slice(headerIndex + 1).map((line) => pdfCells(line).map((cell) => cleanCell(cell))).filter((row) => row.some(Boolean));
 
-  if (rows.length === 0 || recognizedHeaderCount(headers) === 0) throw new BarberShopSourceError(PDF_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
+  if (rows.length === 0 || recognizedHeaderCount(headers) === 0) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
   return { headers, rows, format: "text PDF" };
 }
 
@@ -223,11 +252,11 @@ async function parseXlsx(bytes: Uint8Array): Promise<SourceTable> {
       recognizedHeaderCount(row) > recognizedHeaderCount(rows[bestIndex] ?? []) ? index : bestIndex
     ), 0);
     const headers = rows[headerIndex] ?? [];
-    if (recognizedHeaderCount(headers) === 0) throw new Error("unrecognized headers");
+    if (headers.length === 0) throw new Error("missing headers");
     return { headers, rows: rows.slice(headerIndex + 1), format: "xlsx" };
   } catch (error) {
     if (error instanceof BarberShopSourceError) throw error;
-    throw new BarberShopSourceError("Excelファイルを表として解析できませんでした。ファイルをダウンロードして手動で確認してください。", "parse_failed");
+    throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "parse_failed");
   }
 }
 
@@ -246,7 +275,7 @@ async function parsePdf(bytes: Uint8Array): Promise<SourceTable> {
     }
   } catch (error) {
     if (error instanceof BarberShopSourceError) throw error;
-    throw new BarberShopSourceError(PDF_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
+    throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
   }
 }
 
@@ -254,12 +283,19 @@ function isPrivateIpv4(value: string) {
   const parts = value.split(".").map(Number);
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
   const number = (((parts[0] * 256 + parts[1]) * 256 + parts[2]) * 256 + parts[3]);
-  return parts[0] === 10
+  return parts[0] === 0
+    || parts[0] === 10
     || parts[0] === 127
     || (parts[0] === 169 && parts[1] === 254)
     || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31)
     || (parts[0] === 192 && parts[1] === 168)
     || (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127)
+    || (parts[0] === 192 && parts[1] === 0 && parts[2] === 0)
+    || (parts[0] === 192 && parts[1] === 0 && parts[2] === 2)
+    || (parts[0] === 198 && parts[1] === 18)
+    || (parts[0] === 198 && parts[1] === 19)
+    || (parts[0] === 198 && parts[1] === 51 && parts[2] === 100)
+    || (parts[0] === 203 && parts[1] === 0 && parts[2] === 113)
     || number === 0
     || number >= 0xe0000000;
 }
@@ -270,8 +306,11 @@ function isPrivateIp(value: string) {
   if (isIP(normalized) !== 6) return true;
   if (normalized.startsWith("::ffff:")) return isPrivateIpv4(normalized.slice("::ffff:".length));
   return normalized === "::1"
+    || normalized === "::"
     || normalized.startsWith("fc")
     || normalized.startsWith("fd")
+    || normalized.startsWith("ff")
+    || normalized.startsWith("2001:db8")
     || /^fe[89a-f]/.test(normalized)
     || normalized.startsWith("::ffff:127.");
 }
@@ -351,6 +390,7 @@ async function fetchSource(input: string): Promise<SourceResponse> {
     }
     if (!response.ok) {
       clearTimeout(timeout);
+      if (response.status === 401 || response.status === 403) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "fetch_failed");
       throw new BarberShopSourceError("公式ページを取得できませんでした。URLと公開状態を確認してください。", "fetch_failed");
     }
 
@@ -373,113 +413,185 @@ async function parseSource(response: SourceResponse): Promise<SourceTable> {
   const fileName = response.fileName;
   const contentType = response.contentType;
   const type = contentType.split(";", 1)[0];
+  const genericType = type === "" || type === "application/octet-stream";
+  const pdfExtension = /\.pdf$/i.test(fileName);
+  const xlsxExtension = /\.xlsx$/i.test(fileName);
+  const htmlExtension = /\.html?$/i.test(fileName);
+  const textExtension = /\.(?:csv|tsv|txt)$/i.test(fileName);
 
-  if (type === "application/pdf" || /\.pdf$/i.test(fileName)) return parsePdf(response.bytes);
-  if (type.includes("spreadsheet") || type === "application/vnd.ms-excel" || /\.xlsx$/i.test(fileName)) return parseXlsx(response.bytes);
+  if (type === "application/pdf" || (pdfExtension && genericType)) return parsePdf(response.bytes);
+  if (pdfExtension && type !== "application/pdf" && !genericType) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "unsupported");
+  if (type.includes("spreadsheet") || type === "application/vnd.ms-excel" || (xlsxExtension && genericType)) return parseXlsx(response.bytes);
+  if (xlsxExtension && !type.includes("spreadsheet") && type !== "application/vnd.ms-excel" && !genericType) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "unsupported");
 
-  const isHtml = type === "text/html" || type === "application/xhtml+xml" || /\.html?$/i.test(fileName);
+  const isHtml = type === "text/html" || type === "application/xhtml+xml" || (htmlExtension && genericType);
   if (isHtml) return parseHtmlTable(new TextDecoder("utf-8", { fatal: false }).decode(response.bytes));
+  if (htmlExtension && !isHtml && !genericType) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "unsupported");
 
-  const textType = type.startsWith("text/") || type === "application/csv" || type === "application/octet-stream" || type === "";
+  const textType = type.startsWith("text/") || type === "application/csv" || (genericType && textExtension);
   if (textType) {
     const decoded = decodeText(response.bytes);
     const delimiter = detectDelimiter(decoded.text, fileName, contentType);
     const rows = parseDelimitedText(stripBom(decoded.text), delimiter).map((row) => row.slice(0, MAX_SOURCE_COLUMNS).map((cell) => cleanCell(cell)));
     const headers = rows[0] ?? [];
-    if (recognizedHeaderCount(headers) === 0) throw new BarberShopSourceError("CSV / TSVの見出しを確認できませんでした。", "parse_failed");
+    if (headers.length === 0 || rows.length < 2) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "parse_failed");
     return { headers, rows: rows.slice(1), format: delimiter === "\t" ? "TSV" : "CSV" };
   }
 
-  throw new BarberShopSourceError("CSV、TSV、xlsx、HTML表、テキストPDF以外の形式には対応していません。", "unsupported");
+  throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "unsupported");
 }
 
-function prefectureFromAddress(address: string) {
-  const normalized = address.replace(/^〒?\d{3}-?\d{4}/, "").replace(/[\s\u3000]/g, "");
-  return PREFECTURES.find((prefecture) => normalized.startsWith(prefecture)) ?? "";
+type SourceConversionInput = {
+  sourceUrl: string;
+  prefecture: string;
+  municipality: string;
+  sourceName: string;
+  mapping: SourceColumnMapping;
+};
+
+function autoSourceColumnMapping(table: SourceTable): SourceColumnMapping {
+  return {
+    name: fieldHeaderIndex(table.headers, "name") >= 0 ? fieldHeaderIndex(table.headers, "name") : null,
+    address: fieldHeaderIndex(table.headers, "address") >= 0 ? fieldHeaderIndex(table.headers, "address") : null,
+    phone: fieldHeaderIndex(table.headers, "phone") >= 0 ? fieldHeaderIndex(table.headers, "phone") : null,
+  };
 }
 
-function municipalityFromAddress(address: string, prefecture: string) {
-  const normalized = address.replace(/^〒?\d{3}-?\d{4}/, "").replace(/[\s\u3000]/g, "").replace(new RegExp(`^${prefecture}`), "");
-  return normalized.match(/^(.+?市.+?区|.+?郡.+?[町村]|.+?市|.+?区|.+?町|.+?村)/)?.[1] ?? "";
+function cellAt(row: string[], index: number | null) {
+  return index == null ? "" : cleanCell(row[index] ?? "");
 }
 
-function valueAt(row: string[], headers: string[], field: SourceField) {
-  const index = fieldHeaderIndex(headers, field);
-  return index >= 0 ? cleanCell(row[index] ?? "") : "";
+function csvSafeValue(value: string) {
+  return /^[=+\-@]/.test(value) ? `'${value}` : value;
 }
 
-function normalizeSourcePhone(value: string) {
-  const normalized = value.normalize("NFKC").replace(/[^0-9]/g, "");
-  return normalized.length === 9 ? `0${normalized}` : value;
-}
+function sourceRowsToCsv(table: SourceTable, input: SourceConversionInput) {
+  if (input.mapping.name == null) throw new BarberShopSourceError("店名に対応する列を選択してください。", "parse_failed");
 
-function sourceRowsToCsv(table: SourceTable, sourceUrl: string) {
-  const rows = table.rows.slice(0, MAX_SOURCE_ROWS).map((row) => {
-    const rawAddress = valueAt(row, table.headers, "address");
-    const prefecture = valueAt(row, table.headers, "prefecture") || prefectureFromAddress(rawAddress);
-    const municipality = valueAt(row, table.headers, "municipality") || municipalityFromAddress(rawAddress, prefecture);
-    const phone = normalizeSourcePhone(valueAt(row, table.headers, "phone"));
-    return [
-      valueAt(row, table.headers, "name"),
-      prefecture,
-      municipality,
-      rawAddress,
-      phone,
-      sourceUrl,
-      "未認証",
-    ];
-  });
+  const sourcePrefectureIndex = fieldHeaderIndex(table.headers, "prefecture");
+  const sourceMunicipalityIndex = fieldHeaderIndex(table.headers, "municipality");
+  const prefectureFallback = cleanCell(input.prefecture, 20);
+  const municipalityFallback = cleanCell(input.municipality, 80);
+  const sourceName = cleanCell(input.sourceName, 240);
+  const convertedRows: string[][] = [];
+  const previewRows: BarberShopSourcePreviewRow[] = [];
+  let excludedCount = 0;
 
-  if (rows.length === 0) throw new BarberShopSourceError("一覧データの行を確認できませんでした。", "parse_failed");
+  table.rows.slice(0, MAX_SOURCE_ROWS).forEach((row, index) => {
+    const name = cellAt(row, input.mapping.name);
+    const prefecture = cellAt(row, sourcePrefectureIndex >= 0 ? sourcePrefectureIndex : null) || prefectureFallback;
+    const municipality = cellAt(row, sourceMunicipalityIndex >= 0 ? sourceMunicipalityIndex : null) || municipalityFallback;
+    const address = cellAt(row, input.mapping.address);
+    const phone = cellAt(row, input.mapping.phone);
 
-  const previewRows = rows.map((row, index): BarberShopSourcePreviewRow => {
-    const [name, prefecture, municipality, address, phone] = row;
+    if (![name, prefecture, municipality, address, phone].some(Boolean)) {
+      excludedCount += 1;
+      return;
+    }
+
     const validationErrors: string[] = [];
     if (!name) validationErrors.push("店名が空です。");
     if (!prefecture) validationErrors.push("都道府県が空です。");
     if (!municipality) validationErrors.push("市区町村が空です。");
+    if (!sourceName) validationErrors.push("掲載元が空です。");
 
-    return {
+    const outputValues = [name, prefecture, municipality, address, phone, sourceName, "未認証"].map(csvSafeValue);
+    convertedRows.push(outputValues);
+    previewRows.push({
       rowNumber: index + 2,
-      name,
-      prefecture,
-      municipality,
-      address,
-      phone,
+      name: outputValues[0],
+      prefecture: outputValues[1],
+      municipality: outputValues[2],
+      address: outputValues[3],
+      phone: outputValues[4],
       validationErrors,
-    };
+    });
   });
 
+  if (convertedRows.length === 0) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "parse_failed");
+
+  const validCount = previewRows.filter((row) => row.validationErrors.length === 0).length;
   return {
-    csv: `\uFEFF${createBarberShopCsv(rows)}`,
+    csv: `\uFEFF${createBarberShopCsv(convertedRows)}`,
     rows: previewRows,
+    fetchedCount: table.rows.length,
+    outputCount: convertedRows.length,
+    excludedCount,
+    validCount,
+    blankCounts: {
+      name: previewRows.filter((row) => !row.name).length,
+      prefecture: previewRows.filter((row) => !row.prefecture).length,
+      municipality: previewRows.filter((row) => !row.municipality).length,
+      address: previewRows.filter((row) => !row.address).length,
+      phone: previewRows.filter((row) => !row.phone).length,
+      source: sourceName ? 0 : previewRows.length,
+    },
+    errorCount: previewRows.length - validCount,
   };
 }
 
-export async function createBarberShopSourcePreview(sourceUrl: string): Promise<BarberShopSourcePreview> {
-  if (!sourceUrl || sourceUrl.length > 2048) throw new BarberShopSourceError("URLの形式を確認してください。", "invalid_url");
-  const response = await fetchSource(sourceUrl);
+function cleanSourceInput(input: Omit<SourceConversionInput, "mapping">) {
+  return {
+    sourceUrl: input.sourceUrl.trim().slice(0, 2048),
+    prefecture: cleanCell(input.prefecture, 20),
+    municipality: cleanCell(input.municipality, 80),
+    sourceName: cleanCell(input.sourceName, 240),
+  };
+}
+
+function ensureMapping(mapping: SourceColumnMapping, headers: string[]) {
+  for (const index of [mapping.name, mapping.address, mapping.phone]) {
+    if (index != null && (!Number.isInteger(index) || index < 0 || index >= headers.length)) {
+      throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "parse_failed");
+    }
+  }
+  const excludedIndexes = new Set([
+    fieldHeaderIndex(headers, "representative"),
+    fieldHeaderIndex(headers, "postalCode"),
+  ]);
+  if ([mapping.name, mapping.address, mapping.phone].some((index) => index != null && excludedIndexes.has(index))) {
+    throw new BarberShopSourceError("氏名・代表者名・開設者名・管理者名・郵便番号の列は出力対象にできません。", "parse_failed");
+  }
+}
+
+export async function analyzeBarberShopSource(input: Omit<SourceConversionInput, "mapping">): Promise<BarberShopSourceAnalysis> {
+  const cleaned = cleanSourceInput(input);
+  if (!cleaned.sourceUrl) throw new BarberShopSourceError("URLの形式を確認してください。", "invalid_url");
+  const response = await fetchSource(cleaned.sourceUrl);
   const table = await parseSource(response);
-  const transformed = sourceRowsToCsv(table, response.finalUrl);
-  const validCount = transformed.rows.filter((row) => row.validationErrors.length === 0).length;
+
+  return {
+    ...cleaned,
+    finalUrl: response.finalUrl,
+    format: table.format,
+    headers: table.headers,
+    sampleRows: table.rows.slice(0, 10),
+    autoMapping: autoSourceColumnMapping(table),
+    excludedColumnIndexes: table.headers
+      .map((_, index) => index)
+      .filter((index) => fieldHeaderIndex(table.headers, "representative") === index || fieldHeaderIndex(table.headers, "postalCode") === index),
+  };
+}
+
+export async function createBarberShopSourcePreview(input: SourceConversionInput): Promise<BarberShopSourcePreview> {
+  const cleaned = cleanSourceInput(input);
+  if (!cleaned.sourceUrl) throw new BarberShopSourceError("URLの形式を確認してください。", "invalid_url");
+  const response = await fetchSource(cleaned.sourceUrl);
+  const table = await parseSource(response);
+  ensureMapping(input.mapping, table.headers);
+  const transformed = sourceRowsToCsv(table, { ...cleaned, mapping: input.mapping });
 
   return {
     format: table.format,
     finalUrl: response.finalUrl,
     fileName: `barber-hub-official-source-${Date.now()}.csv`,
     csv: transformed.csv,
-    rows: transformed.rows.slice(0, 50),
-    fetchedCount: transformed.rows.length,
-    validCount,
-    blankCounts: {
-      name: transformed.rows.filter((row) => !row.name).length,
-      address: transformed.rows.filter((row) => !row.address).length,
-      phone: transformed.rows.filter((row) => !row.phone).length,
-    },
-    errorCount: transformed.rows.length - validCount,
+    rows: transformed.rows.slice(0, 20),
+    fetchedCount: transformed.fetchedCount,
+    outputCount: transformed.outputCount,
+    validCount: transformed.validCount,
+    blankCounts: transformed.blankCounts,
+    excludedCount: transformed.excludedCount,
+    errorCount: transformed.errorCount,
   };
-}
-
-export function pdfParseFailureMessage() {
-  return PDF_PARSE_FAILURE_MESSAGE;
 }

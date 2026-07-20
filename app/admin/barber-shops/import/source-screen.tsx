@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { OfficialSourceCsvDownloadButton } from "@/components/OfficialSourceCsvDownloadButton";
-import type { BarberShopSourcePreview } from "@/lib/barber-import/source";
+import type { BarberShopSourceAnalysis, BarberShopSourcePreview } from "@/lib/barber-import/source";
+import { PREFECTURES } from "@/lib/japanAreas";
 import { fetchBarberShopSourceAction, initialOfficialSourceActionState } from "./source-actions";
 
 function Banner({ type, message }: { type: "success" | "error" | "info"; message: string }) {
@@ -25,6 +26,86 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
       <p className="text-[0.66rem] font-black uppercase tracking-[0.12em] text-mute">{label}</p>
       <p className="mt-1 text-xl font-black text-ink">{typeof value === "number" ? value.toLocaleString("ja-JP") : value}</p>
     </div>
+  );
+}
+
+function ColumnSelect({
+  label,
+  name,
+  headers,
+  value,
+  disabledIndexes,
+  required = false,
+}: {
+  label: string;
+  name: string;
+  headers: string[];
+  value: number | null;
+  disabledIndexes: number[];
+  required?: boolean;
+}) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-xs font-black text-ink">{label}{required ? "" : "（任意）"}</span>
+      <select
+        name={name}
+        required={required}
+        defaultValue={value == null ? "" : String(value)}
+        className="h-11 min-w-0 rounded-[8px] border border-line bg-white px-2 text-xs font-semibold text-ink outline-none focus:border-blush"
+      >
+        <option value="" disabled={required}>{required ? "選択してください" : "選択なし"}</option>
+        {headers.map((header, index) => (
+          <option key={`${index}-${header}`} value={index} disabled={disabledIndexes.includes(index)}>
+            {index + 1}. {header || "（空見出し）"}
+            {disabledIndexes.includes(index) ? "（個人情報等のため対象外）" : ""}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function SourceAnalysisPanel({ analysis, formAction }: { analysis: BarberShopSourceAnalysis; formAction: (formData: FormData) => void }) {
+  return (
+    <section className="grid gap-4 rounded-[8px] border border-line bg-white p-4 shadow-sm">
+      <div>
+        <h2 className="text-sm font-black text-ink">列の対応を確認</h2>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-mute">
+          自動判定を初期値にしています。店名だけ必須です。住所・電話番号は「選択なし」のままでもCSVを作成できます。
+        </p>
+      </div>
+      <form action={formAction} className="grid gap-3">
+        <input type="hidden" name="mode" value="create" />
+        <input type="hidden" name="sourceUrl" value={analysis.sourceUrl} />
+        <input type="hidden" name="prefecture" value={analysis.prefecture} />
+        <input type="hidden" name="municipality" value={analysis.municipality} />
+        <input type="hidden" name="sourceName" value={analysis.sourceName} />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <ColumnSelect label="店名に対応する列" name="nameColumn" headers={analysis.headers} value={analysis.autoMapping.name} disabledIndexes={analysis.excludedColumnIndexes} required />
+          <ColumnSelect label="住所に対応する列" name="addressColumn" headers={analysis.headers} value={analysis.autoMapping.address} disabledIndexes={analysis.excludedColumnIndexes} />
+          <ColumnSelect label="電話番号に対応する列" name="phoneColumn" headers={analysis.headers} value={analysis.autoMapping.phone} disabledIndexes={analysis.excludedColumnIndexes} />
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs font-semibold leading-relaxed text-mute">取得先: {analysis.finalUrl} / 形式: {analysis.format}</p>
+          <LoadingSubmitButton pendingText="CSV作成中..." className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
+            この列でCSVを作成
+            <ArrowRight aria-hidden="true" size={17} />
+          </LoadingSubmitButton>
+        </div>
+      </form>
+      <div className="overflow-x-auto rounded-[8px] border border-line">
+        <table className="min-w-[720px] text-left text-xs">
+          <thead className="border-b border-line bg-neutral-50 text-mute">
+            <tr>{analysis.headers.map((header, index) => <th key={`${index}-${header}`} className="px-2 py-2 font-black">{index + 1}. {header || "（空見出し）"}</th>)}</tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {analysis.sampleRows.map((row, rowIndex) => (
+              <tr key={rowIndex}>{analysis.headers.map((_, columnIndex) => <td key={columnIndex} className="max-w-[14rem] px-2 py-2 font-medium text-ink">{row[columnIndex] || ""}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -49,7 +130,7 @@ function ResultTable({ preview }: { preview: BarberShopSourcePreview }) {
                 <th className="px-2 py-2 font-black">市区町村</th>
                 <th className="px-2 py-2 font-black">住所</th>
                 <th className="px-2 py-2 font-black">電話番号</th>
-                <th className="px-2 py-2 font-black">重複</th>
+                <th className="px-2 py-2 font-black">重複確認</th>
                 <th className="px-2 py-2 font-black">確認</th>
               </tr>
             </thead>
@@ -78,6 +159,7 @@ function ResultTable({ preview }: { preview: BarberShopSourcePreview }) {
 
 export function OfficialSourceScreen() {
   const [state, formAction] = useActionState(fetchBarberShopSourceAction, initialOfficialSourceActionState);
+  const analysis = state.analysis;
   const preview = state.preview;
 
   return (
@@ -100,28 +182,49 @@ export function OfficialSourceScreen() {
 
       <section className="mt-4 grid gap-3">
         {state.error ? <Banner type="error" message={state.error} /> : null}
-        {preview ? <Banner type="success" message={`取得・解析しました。形式: ${preview.format}`} /> : null}
+        {analysis && !preview ? <Banner type="success" message={`取得・解析しました。列の対応を確認してください。形式: ${analysis.format}`} /> : null}
+        {preview ? <Banner type="success" message={`CSVを作成しました。形式: ${preview.format}`} /> : null}
         <div className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-black text-ink">
             <LinkIcon aria-hidden="true" size={17} className="text-blush" />
             公式ページまたは掲載ファイルURL
           </div>
-          <form action={formAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-            <input
-              name="sourceUrl"
-              type="url"
-              inputMode="url"
-              required
-              placeholder="https://www.example.go.jp/official-list.html"
-              className="h-11 min-w-0 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush"
-            />
-            <LoadingSubmitButton pendingText="取得・解析中..." className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
-              取得して確認
-              <ArrowRight aria-hidden="true" size={17} />
-            </LoadingSubmitButton>
+          <form action={formAction} className="mt-4 grid gap-3">
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+              <input
+                name="sourceUrl"
+                type="url"
+                inputMode="url"
+                required
+                defaultValue={analysis?.sourceUrl ?? ""}
+                placeholder="https://www.example.go.jp/official-list.html"
+                className="h-11 min-w-0 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush"
+              />
+              <LoadingSubmitButton pendingText="取得・解析中..." className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
+                取得して確認
+                <ArrowRight aria-hidden="true" size={17} />
+              </LoadingSubmitButton>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="grid gap-2">
+                <span className="text-xs font-black text-ink">都道府県（元データにない場合の補完）</span>
+                <select name="prefecture" defaultValue={analysis?.prefecture ?? ""} className="h-11 min-w-0 rounded-[8px] border border-line bg-white px-2 text-xs font-semibold text-ink outline-none focus:border-blush">
+                  <option value="">未選択</option>
+                  {PREFECTURES.map((prefecture) => <option key={prefecture} value={prefecture}>{prefecture}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-2">
+                <span className="text-xs font-black text-ink">市区町村（任意・補完用）</span>
+                <input name="municipality" defaultValue={analysis?.municipality ?? ""} placeholder="例：○○市" className="h-11 min-w-0 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush" />
+              </label>
+              <label className="grid gap-2">
+                <span className="text-xs font-black text-ink">掲載元名</span>
+                <input name="sourceName" defaultValue={analysis?.sourceName ?? ""} placeholder="例：○○市保健所 公式一覧" className="h-11 min-w-0 rounded-[8px] border border-line bg-white px-3 text-sm font-semibold text-ink outline-none focus:border-blush" />
+              </label>
+            </div>
           </form>
           <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
-            対応: CSV / TSV / xlsx / HTML table / テキストとして解析できるPDF。画像だけのPDF、複雑なPDF、OCRは対象外です。HTTPSのみ、最大8MB・15秒で取得します。
+            対応: CSV / TSV / xlsx / HTML table / テキスト抽出可能なPDF。画像だけのPDF、OCR、CAPTCHA、ログイン必須・JavaScript操作が必要な一覧は対象外です。HTTPSのみ、最大8MB・15秒で取得します。
           </p>
         </div>
       </section>
@@ -129,12 +232,15 @@ export function OfficialSourceScreen() {
       {preview ? (
         <div className="mt-5 grid gap-4">
           <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
-            <StatCard label="取得件数" value={preview.fetchedCount} />
-            <StatCard label="有効件数" value={preview.validCount} />
+            <StatCard label="元データ件数" value={preview.fetchedCount} />
+            <StatCard label="出力予定件数" value={preview.outputCount} />
             <StatCard label="店名空欄" value={preview.blankCounts.name} />
+            <StatCard label="都道府県空欄" value={preview.blankCounts.prefecture} />
+            <StatCard label="市区町村空欄" value={preview.blankCounts.municipality} />
             <StatCard label="住所空欄" value={preview.blankCounts.address} />
             <StatCard label="電話番号空欄" value={preview.blankCounts.phone} />
-            <StatCard label="重複候補" value="既存画面" />
+            <StatCard label="掲載元空欄" value={preview.blankCounts.source} />
+            <StatCard label="除外行数" value={preview.excludedCount} />
             <StatCard label="エラー件数" value={preview.errorCount} />
           </section>
 
@@ -143,7 +249,7 @@ export function OfficialSourceScreen() {
               <AlertTriangle aria-hidden="true" size={16} className="mt-0.5 shrink-0" />
               <p>この画面では既存店舗との重複判定を行いません。CSVダウンロード後、既存画面のプレビューで完全一致・重複候補を確認してください。</p>
             </div>
-            <p>代表者氏名など公開に不要な個人情報は出力せず、郵便番号も現行CSV形式に列がないため出力していません。掲載元には取得後の公式URLを設定し、認証状態はすべて「未認証」です。</p>
+            <p>代表者氏名など公開に不要な個人情報は出力せず、郵便番号も現行CSV形式に列がないため出力していません。掲載元名は入力値を使い、認証状態はすべて「未認証」です。式として解釈される先頭文字はCSV側で安全化します。</p>
           </section>
 
           <ResultTable preview={preview} />
@@ -159,6 +265,10 @@ export function OfficialSourceScreen() {
               この画面では店舗登録も既存プレビュー作成も行いません。CSVをダウンロードして既存画面で選択し、そこで最終確認・登録してください。
             </div>
           </section>
+        </div>
+      ) : analysis ? (
+        <div className="mt-5 grid gap-4">
+          <SourceAnalysisPanel analysis={analysis} formAction={formAction} />
         </div>
       ) : (
         <div className="mt-5">
