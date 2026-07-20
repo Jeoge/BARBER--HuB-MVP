@@ -173,7 +173,7 @@ begin
     raise exception 'backroom_comment_image_path_invalid';
   end if;
 
-  if p_mime_type not in ('image/jpeg', 'image/png', 'image/webp') then
+  if p_mime_type is null or p_mime_type not in ('image/jpeg', 'image/png', 'image/webp') then
     raise exception 'backroom_comment_image_mime_invalid';
   end if;
 
