@@ -120,6 +120,7 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - URLはHTTPSだけを許可し、localhost、loopback、private、link-local、metadata endpoint、file、ftp、内部ネットワーク向けのDNS解決先を拒否する。
 - DNS解決後のIPを検証し、リダイレクトは3回以内、タイムアウトは15秒、取得容量は8MB以内にする。MIME typeと拡張子の組み合わせも確認する。
 - CSV / TSV / xlsx / HTML table / テキストPDFだけを対象にし、HTMLのscriptやOfficeマクロを実行しない。OCR、CAPTCHA、ログイン、JavaScript操作、複雑な複数ページクロールは行わない。
+- HTMLはGETレスポンス内の店舗一覧テーブルだけを解析し、検索フォームへのPOST送信やブラウザ操作は行わない。ページネーションは検出して警告するが、次ページを取得せず1ページ分だけ処理する。
 - 取得履歴・原本・変換結果はDBやStorageへ保存しない。生成CSVは管理者のブラウザへ渡すだけで、店舗登録は既存CSV取込画面で行う。
 - CSVセルが `=`, `+`, `-`, `@` で始まる場合は、Excel等で式として実行されないよう安全化して出力する。
 - 取得元の代表者名、開設者名、管理者名、郵便番号はCSVへ出力しない。service role keyはクライアントへ渡さない。

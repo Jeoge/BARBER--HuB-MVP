@@ -73,6 +73,14 @@ function SourceAnalysisPanel({ analysis, formAction }: { analysis: BarberShopSou
         <p className="mt-1 text-xs font-medium leading-relaxed text-mute">
           自動判定を初期値にしています。店名だけ必須です。住所・電話番号は「選択なし」のままでもCSVを作成できます。
         </p>
+        <p className="mt-2 text-xs font-semibold leading-relaxed text-mute">
+          取得件数（このURL）: {analysis.pageDisplayCount.toLocaleString("ja-JP")}件 / ページ内表示件数: {analysis.pageDisplayCount.toLocaleString("ja-JP")}件
+        </p>
+        {analysis.paginationDetected ? (
+          <div className="mt-2">
+            <Banner type="info" message="ページネーションを検出しました。このURLの1ページ分のみ取得しています。全件として扱わず、必要なページのURL、CSV、Excel、PDFを指定してください。" />
+          </div>
+        ) : null}
       </div>
       <form action={formAction} className="grid gap-3">
         <input type="hidden" name="mode" value="create" />
@@ -223,6 +231,9 @@ export function OfficialSourceScreen() {
               </label>
             </div>
           </form>
+          <p className="mt-2 text-xs font-medium leading-relaxed text-mute">
+            組合サイトは「○○県理容生活衛生同業組合 組合加盟店一覧」など、公的な全施設一覧と区別できる掲載元名を入力してください。
+          </p>
           <p className="mt-3 text-xs font-medium leading-relaxed text-mute">
             対応: CSV / TSV / xlsx / HTML table / テキスト抽出可能なPDF。画像だけのPDF、OCR、CAPTCHA、ログイン必須・JavaScript操作が必要な一覧は対象外です。HTTPSのみ、最大8MB・15秒で取得します。
           </p>
@@ -232,7 +243,8 @@ export function OfficialSourceScreen() {
       {preview ? (
         <div className="mt-5 grid gap-4">
           <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
-            <StatCard label="元データ件数" value={preview.fetchedCount} />
+            <StatCard label="取得件数（このURL）" value={preview.fetchedCount} />
+            <StatCard label="ページ内表示件数" value={preview.pageDisplayCount} />
             <StatCard label="出力予定件数" value={preview.outputCount} />
             <StatCard label="店名空欄" value={preview.blankCounts.name} />
             <StatCard label="都道府県空欄" value={preview.blankCounts.prefecture} />
@@ -243,6 +255,10 @@ export function OfficialSourceScreen() {
             <StatCard label="除外行数" value={preview.excludedCount} />
             <StatCard label="エラー件数" value={preview.errorCount} />
           </section>
+
+          {preview.paginationDetected ? (
+            <Banner type="info" message="ページネーションを検出しました。このURLの1ページ分のみをCSV化しています。全件として扱わず、必要なページのURL、CSV、Excel、PDFを指定してください。" />
+          ) : null}
 
           <section className="grid gap-3 rounded-[8px] border border-amber-200 bg-amber-50 p-4 text-xs font-semibold leading-relaxed text-amber-900">
             <div className="flex items-start gap-2">

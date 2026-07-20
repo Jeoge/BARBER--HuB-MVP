@@ -13,6 +13,7 @@ const MAX_SOURCE_COLUMNS = 80;
 
 const AUTO_PARSE_FAILURE_MESSAGE = "このページまたはファイルは自動解析できませんでした。手動で確認してください";
 const HTML_TABLE_NOT_FOUND_MESSAGE = "HTMLテーブルが見つかりません。CSVなどの掲載ファイルURLを直接指定してください。";
+const SEARCH_REQUIRED_MESSAGE = "このページは検索操作が必要なため自動取得できません。検索結果ページのURL、CSV、Excel、PDFを指定してください";
 const CSV_PARSE_FAILURE_MESSAGE = "CSVまたはTSVを表として解析できませんでした。見出し行とデータ行を確認してください。";
 const XLSX_PARSE_FAILURE_MESSAGE = "Excelファイルを表として解析できませんでした。ファイルをダウンロードして手動で確認してください。";
 const PDF_PARSE_FAILURE_MESSAGE = "このPDFは自動解析できませんでした。ファイルをダウンロードして手動で確認してください";
@@ -36,6 +37,8 @@ export type BarberShopSourceAnalysis = {
   sampleRows: string[][];
   autoMapping: SourceColumnMapping;
   excludedColumnIndexes: number[];
+  pageDisplayCount: number;
+  paginationDetected: boolean;
   prefecture: string;
   municipality: string;
   sourceName: string;
@@ -58,6 +61,8 @@ export type BarberShopSourcePreview = {
   csv: string;
   rows: BarberShopSourcePreviewRow[];
   fetchedCount: number;
+  pageDisplayCount: number;
+  paginationDetected: boolean;
   outputCount: number;
   validCount: number;
   blankCounts: {
@@ -93,6 +98,8 @@ type SourceTable = {
   headers: string[];
   rows: string[][];
   format: SourceFormat;
+  pageDisplayCount: number;
+  paginationDetected: boolean;
 };
 
 const SOURCE_HEADER_ALIASES = {
@@ -136,6 +143,29 @@ function fieldHeaderIndex(headers: string[], field: SourceField) {
 
 function recognizedHeaderCount(headers: string[]) {
   return (Object.keys(SOURCE_HEADER_ALIASES) as SourceField[]).filter((field) => fieldHeaderIndex(headers, field) >= 0).length;
+}
+
+function hasSearchForm(html: string) {
+  return /<form\b/i.test(html) && /<(?:select|input|textarea|button)\b/i.test(html);
+}
+
+function htmlSignalText(value: string) {
+  return htmlEntityDecode(value).replace(/<[^>]*>/g, " ").replace(/[\r\n]+/g, " ");
+}
+
+function tableHasShopSignal(headers: string[], rows: string[][]) {
+  if (fieldHeaderIndex(headers, "name") >= 0 || fieldHeaderIndex(headers, "address") >= 0 || fieldHeaderIndex(headers, "phone") >= 0) return true;
+  const text = [...headers, ...rows.slice(0, 5).flat()].map(htmlSignalText).join(" ");
+  return /理容|店舗|店名|営業所|施設|住所|所在地|電話|TEL/i.test(text);
+}
+
+function detectPagination(html: string) {
+  const linkText = Array.from(html.matchAll(/<(?:a|button)\b[^>]*>([\s\S]*?)<\/(?:a|button)>/gi))
+    .map((match) => htmlSignalText(match[1] ?? ""))
+    .join(" ");
+  return /(?:pagination|pager|paging)/i.test(html)
+    || /(?:次へ|次のページ|前へ|前のページ|next|previous|page\s*\d+|ページ\s*\d+)/i.test(linkText)
+    || /<(?:a|link)\b[^>]*(?:href|rel)\s*=\s*["'][^"']*(?:[?&](?:page|paged|pageno|page_no|offset)=|(?:next|prev))/i.test(html);
 }
 
 function cleanCell(value: unknown, maxLength = 500) {
@@ -244,6 +274,7 @@ function parseHtmlTable(html: string): SourceTable {
   const safeHtml = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "");
   const tables = Array.from(safeHtml.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)).map((match) => match[1] ?? "");
   let best: SourceTable | null = null;
+  let bestHasShopSignal = false;
 
   for (const tableHtml of tables) {
     const rowMatches = Array.from(tableHtml.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi));
@@ -258,12 +289,29 @@ function parseHtmlTable(html: string): SourceTable {
     const headers = parsedRows[headerIndex] ?? [];
     const score = recognizedHeaderCount(headers);
 
-    const candidate = { headers, rows: parsedRows.slice(headerIndex + 1), format: "HTML table" as const };
-    if (!best || score > recognizedHeaderCount(best.headers) || candidate.rows.length > best.rows.length) best = candidate;
+    const candidate = {
+      headers,
+      rows: parsedRows.slice(headerIndex + 1),
+      format: "HTML table" as const,
+      pageDisplayCount: parsedRows.slice(headerIndex + 1).length,
+      paginationDetected: detectPagination(safeHtml),
+    };
+    const candidateHasShopSignal = tableHasShopSignal(candidate.headers, candidate.rows);
+    const bestScore = best ? recognizedHeaderCount(best.headers) : -1;
+    const shouldReplace = !best
+      || (candidateHasShopSignal && !bestHasShopSignal)
+      || (candidateHasShopSignal === bestHasShopSignal && (score > bestScore || (score === bestScore && candidate.rows.length > best.rows.length)));
+    if (shouldReplace) {
+      best = candidate;
+      bestHasShopSignal = candidateHasShopSignal;
+    }
   }
 
-  if (tables.length === 0) throw new BarberShopSourceError(HTML_TABLE_NOT_FOUND_MESSAGE, "parse_failed");
+  if (tables.length === 0) {
+    throw new BarberShopSourceError(hasSearchForm(safeHtml) ? SEARCH_REQUIRED_MESSAGE : HTML_TABLE_NOT_FOUND_MESSAGE, "parse_failed");
+  }
   if (!best) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "parse_failed");
+  if (hasSearchForm(safeHtml) && !bestHasShopSignal) throw new BarberShopSourceError(SEARCH_REQUIRED_MESSAGE, "parse_failed");
   return best;
 }
 
@@ -290,7 +338,7 @@ function parsePdfLines(text: string): SourceTable {
   const rows = lines.slice(headerIndex + 1).map((line) => pdfCells(line).map((cell) => cleanCell(cell))).filter((row) => row.some(Boolean));
 
   if (rows.length === 0 || recognizedHeaderCount(headers) === 0) throw new BarberShopSourceError(PDF_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
-  return { headers, rows, format: "text PDF" };
+  return { headers, rows, format: "text PDF", pageDisplayCount: rows.length, paginationDetected: false };
 }
 
 async function parseXlsx(bytes: Uint8Array): Promise<SourceTable> {
@@ -306,7 +354,8 @@ async function parseXlsx(bytes: Uint8Array): Promise<SourceTable> {
     ), 0);
     const headers = rows[headerIndex] ?? [];
     if (headers.length === 0) throw new Error("missing headers");
-    return { headers, rows: rows.slice(headerIndex + 1), format: "xlsx" };
+    const dataRows = rows.slice(headerIndex + 1);
+    return { headers, rows: dataRows, format: "xlsx", pageDisplayCount: dataRows.length, paginationDetected: false };
   } catch (error) {
     if (error instanceof BarberShopSourceError) throw error;
     throw new BarberShopSourceError(XLSX_PARSE_FAILURE_MESSAGE, "parse_failed");
@@ -508,7 +557,8 @@ async function parseSource(response: SourceResponse): Promise<SourceTable> {
     const rows = parseDelimitedText(stripBom(decoded.text), delimiter).map((row) => row.slice(0, MAX_SOURCE_COLUMNS).map((cell) => cleanCell(cell)));
     const headers = rows[0] ?? [];
     if (headers.length === 0 || rows.length < 2) throw new BarberShopSourceError(CSV_PARSE_FAILURE_MESSAGE, "parse_failed");
-    return { headers, rows: rows.slice(1), format: delimiter === "\t" ? "TSV" : "CSV" };
+    const dataRows = rows.slice(1);
+    return { headers, rows: dataRows, format: delimiter === "\t" ? "TSV" : "CSV", pageDisplayCount: dataRows.length, paginationDetected: false };
   }
 
   throw new BarberShopSourceError(UNSUPPORTED_FORMAT_MESSAGE, "unsupported");
@@ -588,6 +638,8 @@ function sourceRowsToCsv(table: SourceTable, input: SourceConversionInput) {
     csv: `\uFEFF${createBarberShopCsv(convertedRows)}`,
     rows: previewRows,
     fetchedCount: table.rows.length,
+    pageDisplayCount: table.pageDisplayCount,
+    paginationDetected: table.paginationDetected,
     outputCount: convertedRows.length,
     excludedCount,
     validCount,
@@ -640,6 +692,8 @@ export async function analyzeBarberShopSource(input: Omit<SourceConversionInput,
     headers: table.headers,
     sampleRows: table.rows.slice(0, 10),
     autoMapping: autoSourceColumnMapping(table),
+    pageDisplayCount: table.pageDisplayCount,
+    paginationDetected: table.paginationDetected,
     excludedColumnIndexes: table.headers
       .map((_, index) => index)
       .filter((index) => fieldHeaderIndex(table.headers, "representative") === index || fieldHeaderIndex(table.headers, "postalCode") === index),
@@ -661,6 +715,8 @@ export async function createBarberShopSourcePreview(input: SourceConversionInput
     csv: transformed.csv,
     rows: transformed.rows.slice(0, 20),
     fetchedCount: transformed.fetchedCount,
+    pageDisplayCount: transformed.pageDisplayCount,
+    paginationDetected: transformed.paginationDetected,
     outputCount: transformed.outputCount,
     validCount: transformed.validCount,
     blankCounts: transformed.blankCounts,
