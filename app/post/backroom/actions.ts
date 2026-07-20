@@ -4,8 +4,11 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
+import { isSafeBackroomImageStoragePath } from "@/lib/backroomImages";
+import { cleanupCreatedBackroomPost, imageErrorMessage, prepareBackroomImage, submittedBackroomImage, uploadBackroomImage } from "@/lib/backroomImageServer";
 import { getPostPermissionRedirect } from "@/lib/permissions";
 import { hasSafetyConfirmations, SAFETY_CONFIRMATION_ERROR, safetyMigrationErrorMessage } from "@/lib/safety";
+import { removeBackroomImageObjects, removeBackroomImageObjectsAsServer } from "@/lib/supabase/backroom-images";
 import { getBackroomProfile, isBackroomCategory, normalizeBackroomCategory } from "@/lib/supabase/backroom";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
@@ -132,6 +135,14 @@ export async function createBackroomPostAction(formData: FormData) {
     redirectToBackroomPost({ error: SAFETY_CONFIRMATION_ERROR });
   }
 
+  let preparedImage: Awaited<ReturnType<typeof prepareBackroomImage>> = null;
+  try {
+    preparedImage = await prepareBackroomImage(submittedBackroomImage(formData));
+  } catch (error) {
+    console.error("Back Room thread image validation failed", { userId: user.id, message: errorMessage(error) });
+    redirectToBackroomPost({ error: imageErrorMessage(error) });
+  }
+
   const postId = randomUUID();
   const now = new Date().toISOString();
   const { data, error } = await supabase
@@ -169,9 +180,154 @@ export async function createBackroomPostAction(formData: FormData) {
     redirectToBackroomPost({ error: "Back Room投稿を保存できませんでした。もう一度お試しください。" });
   }
 
+  if (preparedImage) {
+    let uploadPath = "";
+
+    try {
+      uploadPath = await uploadBackroomImage(supabase, "threads", postId, user.id, preparedImage);
+      const { data: imageRow, error: imageRowError } = await supabase
+        .from("backroom_thread_images")
+        .insert({
+          thread_id: postId,
+          storage_path: uploadPath,
+          sort_order: 0,
+          width: preparedImage.width,
+          height: preparedImage.height,
+          byte_size: preparedImage.byteSize,
+          mime_type: preparedImage.contentType,
+        })
+        .select("id, storage_path")
+        .maybeSingle<{ id: string; storage_path: string }>();
+
+      if (imageRowError || imageRow?.storage_path !== uploadPath) {
+        console.error("Back Room thread image row save verification failed", {
+          postId,
+          userId: user.id,
+          message: imageRowError?.message ?? "saved path verification failed",
+        });
+        await cleanupCreatedBackroomPost(supabase, {
+          postId,
+          userId: user.id,
+          uploadedPaths: [uploadPath],
+          reason: "thread image row save failure",
+        });
+        redirectToBackroomPost({ error: "画像付きBack Room投稿を保存できませんでした。もう一度お試しください。" });
+      }
+    } catch (error) {
+      console.error("Back Room thread image save threw", { postId, userId: user.id, message: errorMessage(error) });
+      await cleanupCreatedBackroomPost(supabase, {
+        postId,
+        userId: user.id,
+        uploadedPaths: uploadPath ? [uploadPath] : [],
+        reason: "thread image save threw",
+      });
+      redirectToBackroomPost({
+        error: errorMessage(error).includes("upload_failed")
+          ? "画像アップロードに失敗しました。画像形式または容量を確認してください。"
+          : "画像付きBack Room投稿を保存できませんでした。もう一度お試しください。",
+      });
+    }
+  }
+
   revalidatePath("/backroom");
   revalidatePath("/mypage");
   revalidatePath(`/profiles/${user.id}`);
   revalidatePath(`/backroom/${postId}`);
   redirect(pathWithParams(`/backroom/${postId}`, { posted: "1" }));
+}
+
+export async function deleteBackroomPostAction(formData: FormData) {
+  const postId = cleanText(formData.get("postId"));
+  if (!postId) redirect("/backroom");
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user == null) {
+    redirect(pathWithParams("/login", { next: `/backroom/${postId}`, message: "削除にはログインしてください。" }));
+  }
+
+  const { data: post, error: postError } = await supabase
+    .from("backroom_posts")
+    .select("id, user_id")
+    .eq("id", postId)
+    .maybeSingle<{ id: string; user_id: string }>();
+
+  if (postError || post == null || post.user_id !== user.id) {
+    console.error("Back Room post delete authorization failed", { postId, userId: user.id, message: postError?.message ?? "not owner" });
+    redirect(pathWithParams(`/backroom/${postId}`, { deleteError: "自分のスレッドだけ削除できます。" }));
+  }
+
+  const { data: imageRows, error: imageRowsError } = await supabase
+    .from("backroom_thread_images")
+    .select("storage_path")
+    .eq("thread_id", postId)
+    .returns<{ storage_path: string }[]>();
+
+  const missingImageTable = imageRowsError?.message.toLowerCase().includes("relation") && imageRowsError.message.toLowerCase().includes("backroom_thread_images");
+  if (imageRowsError && !missingImageTable) {
+    console.error("Back Room thread image paths select for delete failed", { postId, userId: user.id, message: imageRowsError.message });
+    redirect(pathWithParams(`/backroom/${postId}`, { deleteError: "スレッド画像を確認できませんでした。時間をおいて再度お試しください。" }));
+  }
+
+  const invalidThreadImagePath = (imageRows ?? []).some(
+    (row) => !isSafeBackroomImageStoragePath(row.storage_path, "threads", postId),
+  );
+  if (invalidThreadImagePath) {
+    console.error("Back Room thread delete found an unsafe image path", { postId, userId: user.id });
+    redirect(pathWithParams(`/backroom/${postId}`, { deleteError: "スレッド画像を確認できませんでした。時間をおいて再度お試しください。" }));
+  }
+  const imagePaths = (imageRows ?? []).map((row) => row.storage_path);
+  const { data: comments, error: commentsError } = await supabase
+    .from("backroom_comments")
+    .select("id")
+    .eq("post_id", postId)
+    .returns<{ id: string }[]>();
+  if (commentsError) {
+    console.error("Back Room comment ids select for thread delete failed", { postId, userId: user.id, message: commentsError.message });
+    redirect(pathWithParams(`/backroom/${postId}`, { deleteError: "コメントを確認できませんでした。時間をおいて再度お試しください。" }));
+  }
+
+  const commentIds = (comments ?? []).map((comment) => comment.id);
+  let commentImagePaths: string[] = [];
+  if (commentIds.length > 0 && !missingImageTable) {
+    const { data: commentImageRows, error: commentImageRowsError } = await supabase
+      .from("backroom_comment_images")
+      .select("comment_id, storage_path")
+      .in("comment_id", commentIds)
+      .returns<{ comment_id: string; storage_path: string }[]>();
+    if (commentImageRowsError) {
+      console.error("Back Room comment image paths select for thread delete failed", { postId, userId: user.id, message: commentImageRowsError.message });
+      redirect(pathWithParams(`/backroom/${postId}`, { deleteError: "コメント画像を確認できませんでした。時間をおいて再度お試しください。" }));
+    }
+    const invalidCommentImagePath = (commentImageRows ?? []).some(
+      (row) => !isSafeBackroomImageStoragePath(row.storage_path, "comments", row.comment_id),
+    );
+    if (invalidCommentImagePath) {
+      console.error("Back Room thread delete found an unsafe comment image path", { postId, userId: user.id });
+      redirect(pathWithParams(`/backroom/${postId}`, { deleteError: "コメント画像を確認できませんでした。時間をおいて再度お試しください。" }));
+    }
+    commentImagePaths = (commentImageRows ?? []).map((row) => row.storage_path);
+  }
+
+  const removed = await removeBackroomImageObjects(supabase, imagePaths, { operation: "thread delete", userId: user.id, parentId: postId });
+  if (!removed) {
+    redirect(pathWithParams(`/backroom/${postId}`, { deleteError: "スレッド画像を削除できませんでした。時間をおいて再度お試しください。" }));
+  }
+  const removedCommentImages = await removeBackroomImageObjectsAsServer(commentImagePaths, { operation: "thread comment image delete", userId: user.id, parentId: postId });
+  if (!removedCommentImages) {
+    redirect(pathWithParams(`/backroom/${postId}`, { deleteError: "コメント画像を削除できませんでした。時間をおいて再度お試しください。" }));
+  }
+
+  const { error } = await supabase.from("backroom_posts").delete().eq("id", postId).eq("user_id", user.id);
+  if (error) {
+    console.error("Back Room post delete failed", { postId, userId: user.id, message: error.message });
+    redirect(pathWithParams(`/backroom/${postId}`, { deleteError: "スレッドを削除できませんでした。時間をおいて再度お試しください。" }));
+  }
+
+  revalidatePath("/backroom");
+  revalidatePath("/mypage");
+  redirect(pathWithParams("/backroom", { deleted: "1" }));
 }

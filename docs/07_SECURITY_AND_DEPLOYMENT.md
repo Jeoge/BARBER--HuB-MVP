@@ -97,6 +97,10 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - private bucketの投稿画像は、公開中かつ未削除の投稿を取得するサーバー処理の中だけで30分程度の短時間signed URLを発行する。
 - 一般ユーザーが任意のStorage pathを渡してsigned URLを取得できるAPIやServer Actionを作らない。
 - アップロード後に投稿保存が失敗した場合は、今回アップロードしたStorage objectを削除する。
+- Back Roomのスレッド・コメント画像は `backroom-images` private bucketへ保存し、最大1枚・圧縮後1枚2MB以内、JPEG / PNG / WebPだけを許可する。HEIC / HEIFはブラウザ変換に成功した場合だけ送信する。
+- Back Room画像のDB RLSは既存のBack Room参加条件と親投稿・コメント所有者条件を維持し、他人のthread_id / comment_idや任意pathを登録できないようにする。Storage objectの直接SELECTは許可しない。
+- Back Room削除時は、所有権確認、path所属検証、Storage削除、DB削除の順で処理する。スレッド削除に巻き込まれる他人コメント画像は、サーバー専用service role処理で検証済みpathだけを削除する。service role keyはクライアントへ渡さない。
+- 画像テーブル・signed URL発行・個別画像読み込みの失敗では該当画像だけを非表示にし、本文・コメント・Back Room全体を壊さない。Storage pathは表示データへ含めない。
 - 投稿本文のHTMLやscriptを実行させない。
 - 記事のYouTube URLは対象カテゴリだけで受け付け、Server Action側でもYouTubeドメイン、https、動画ID、長さを検証する。検証済みURLが入力された場合だけ動画権利確認を必須にする。iframe埋め込み、自動再生、直接動画アップロード、動画Storageは行わない。
 - 画像URLが `undefined` でも画面全体をクラッシュさせない。

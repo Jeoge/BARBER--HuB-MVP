@@ -22,7 +22,7 @@
 | フォロー | `follows` |
 | 記事 | `articles`, `article_images`, `article_reactions`, `article_comments` |
 | 通知 | `notifications` |
-| Back Room | `backroom_profiles`, `backroom_posts`, `backroom_comments` |
+| Back Room | `backroom_profiles`, `backroom_posts`, `backroom_comments`, `backroom_thread_images`, `backroom_comment_images` |
 | Q&A | `qa_questions`, `qa_answers` |
 | 求人 | `job_posts` |
 | 事業承継 | `succession_posts`, `succession_post_private` |
@@ -39,6 +39,7 @@
 - `profile-images`
 - `article-images`
 - `content-ad-images`
+- `backroom-images`
 
 方針:
 
@@ -50,6 +51,7 @@
 - Snapの新規アップロードは圧縮後の `image/webp` または `image/jpeg` に限定する。
 - 記事の新規アップロードも圧縮後の `image/webp` または `image/jpeg` に限定する。
 - `content-ad-images` は広告管理用のprivate bucketとし、一般ユーザー向けのStorage policyを作らない。表示時だけサーバー側のservice roleで短時間のsigned URLを発行する。
+- `backroom-images` はBack Room専用のprivate bucketとし、JPEG / PNG / WebPだけを受け付ける。ファイルサイズ上限は1枚2MBとする。Storage objectのSELECT policyは作らず、表示時だけサーバー側で30分のsigned URLを発行する。
 
 ## 広告枠
 
@@ -138,6 +140,19 @@ RLS:
 - EDITOR'S PICK選定日時は `articles.editor_pick_at` に保存する。booleanではなく日時にすることで、最新選定順と将来の解除を扱えるようにする。
 - 手動並べ替えUIはまだ実装しない。表示順は `editor_pick_at desc` を基本にする。
 
+## Back Room画像設計
+
+`backroom_thread_images` と `backroom_comment_images` は、将来の複数画像拡張を妨げない専用画像テーブルです。今回のUIとServer Actionは `sort_order = 0` の1枚だけを受け付けます。
+
+- `backroom_thread_images`: `id`, `thread_id`, `storage_path`, `sort_order`, `width`, `height`, `byte_size`, `mime_type`, `created_at`。
+- `backroom_comment_images`: `id`, `comment_id`, `storage_path`, `sort_order`, `width`, `height`, `byte_size`, `mime_type`, `created_at`。
+- `thread_id` / `comment_id` は親削除時にcascadeする。Storage objectはcascadeでは消えないため、Server ActionがStorageを先に削除してから親行を削除する。
+- object pathは `threads/{thread_id}/{uuid}.webp` または `comments/{comment_id}/{uuid}.webp` とし、ユーザー入力ファイル名を使用しない。DB制約とRLSで親ID配下だけを許可する。
+- スレッド画像のSELECTはBack Room参加者かつ公開中スレッド、または本人のスレッドに限定する。コメント画像のSELECTはBack Room参加者かつ公開中スレッドのコメントに限定する。
+- INSERT / UPDATE / DELETEは親投稿・コメントの本人だけに限定し、Back Roomプロフィール参加条件も維持する。他人のthread_id / comment_idへ画像を追加・差し替えできない。
+- Storageはprivate bucketで、anon / authenticatedの直接SELECTを許可しない。通常のStorage pathはアプリ画面へ返さず、サーバー側のservice role clientが短時間signed URLへ変換したURLだけを表示用に返す。
+- 画像テーブルが未適用、画像行の取得、signed URL発行、個別画像の読み込みに失敗しても、該当画像を空にして本文・コメントを表示する。任意pathを受け取ってsigned URLを発行するAPIは作らない。
+
 ## 店舗ディレクトリのDB設計
 
 主要テーブル:
@@ -185,6 +200,9 @@ RLS:
 - `articles`: 公開中かつ未削除の記事、または本人の記事だけを閲覧できる。本人によるINSERT / UPDATEでも `editor_pick_at` を直接設定・変更できないようにする。
 - `article_images`: 公開中かつ未削除記事、または本人の記事に属する画像メタデータだけを閲覧できる。追加・更新・削除は本人の記事に限定し、Storage pathは `userId/articleId/` 配下だけを許可する。
 - `article-images`: private bucket。本人フォルダだけアップロード、更新、削除できる。authenticatedは本人フォルダのobject行だけをSELECTできる。公開記事画像の表示は、DB上の公開中・未削除記事確認後にサーバー側で発行する30分程度の短時間signed URLで行う。新規記事画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。
+- `backroom_thread_images`: Back Room参加者が公開中スレッドの画像情報をSELECTでき、INSERT / UPDATE / DELETEはスレッド投稿者本人だけに限定する。`storage_path` は `threads/{thread_id}/` 配下だけを許可する。
+- `backroom_comment_images`: Back Room参加者が公開中スレッドのコメント画像情報をSELECTでき、INSERT / UPDATE / DELETEはコメント投稿者本人だけに限定する。`storage_path` は `comments/{comment_id}/` 配下だけを許可する。
+- `backroom-images`: private bucket。Storage objectの直接SELECT policyは作らず、親投稿・コメントの本人だけにupload / update / deleteを許可する。スレッド削除に伴う他人コメント画像の削除は、所有権確認後のサーバー専用service role処理で、検証済みpathだけを対象にする。
 - `barber_shops`: 公開情報は閲覧可能。一般ユーザーの直接INSERT / DELETEは許可しない。認証済みオーナーのUPDATEは、店舗名、検索用店舗名、都道府県、市区町村、住所、郵便番号、電話番号の列に限定する。
 - `barber_shop_claims`: 申請者本人が自分の申請を確認・作成できる。
 - `barber_shop_import_batches`, `barber_shop_import_rows`: RLSを有効化し、anon / authenticated向けpolicyは作らない。CSV取込は管理者allowlist確認後、サーバー側service role clientと専用RPCで実行する。

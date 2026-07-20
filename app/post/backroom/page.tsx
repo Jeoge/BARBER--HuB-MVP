@@ -1,14 +1,14 @@
-import { ArrowLeft, Send, ShieldCheck, Sparkles, UserRoundPen } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Sparkles, UserRoundPen } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SignupRequiredCard } from "@/components/AuthGate";
+import { BackroomPostForm } from "@/components/BackroomPostForm";
 import { BackroomSetupRequiredCard } from "@/components/BackroomSetupRequiredCard";
 import { PageChrome } from "@/components/PageChrome";
-import { SafetyChecklistSubmit } from "@/components/SafetyChecklist";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { backRoomTheme } from "@/lib/backRoomTheme";
 import { getPostPermissionRedirect } from "@/lib/permissions";
-import { BACKROOM_CATEGORIES, getBackroomProfile } from "@/lib/supabase/backroom";
+import { getBackroomProfile } from "@/lib/supabase/backroom";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { createBackroomPostAction } from "./actions";
@@ -144,62 +144,7 @@ export default async function BackroomPostPage({ searchParams }: BackroomPostPag
         </div>
       </section>
 
-      <form action={createBackroomPostAction} className="grid gap-4 px-4 pt-4">
-        {params?.error ? (
-          <div className="rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
-            {params.error}
-          </div>
-        ) : null}
-
-        <label className="grid gap-2">
-        <span className="text-sm font-black text-ink">スレッドタイトル</span>
-          <input
-            name="title"
-            maxLength={120}
-            required
-            className={"h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-bold text-ink outline-none " + backRoomTheme.focusRing}
-            placeholder="例：静音バリカンでおすすめありますか？"
-          />
-        </label>
-
-        <label className="grid gap-2">
-          <span className="text-sm font-black text-ink">カテゴリー</span>
-          <select name="category" className={"h-12 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink outline-none " + backRoomTheme.focusRing}>
-            {BACKROOM_CATEGORIES.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="grid gap-2">
-          <span className="text-sm font-black text-ink">最初の本文</span>
-          <textarea
-            name="body"
-            rows={9}
-            maxLength={6000}
-            required
-            className={"resize-none rounded-[8px] border border-line bg-white px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none " + backRoomTheme.focusRing}
-            placeholder="相談、経験共有、営業後トークを気軽に書いてください。"
-          />
-        </label>
-
-        <div className={"rounded-[8px] p-3 text-[0.78rem] font-medium leading-relaxed text-ink " + backRoomTheme.notice}>
-          タイトル・カテゴリー・本文は必須です。個人名や店舗名を出した攻撃、晒しは避けてください。企業・団体から依頼された投稿や告知を主目的とする投稿は、PR・協賛掲載として扱う場合があります。
-        </div>
-
-        <SafetyChecklistSubmit
-          title="Back Room投稿前の確認"
-          body="Back Roomは会員限定の営業後コミュニティです。ただし、投稿内容の外部共有やスクリーンショットを完全に防ぐことはできません。個人名、顧客情報、他店批判、内部情報、機密情報は投稿しないでください。"
-          items={backroomSafetyItems}
-          pendingText="作成中..."
-          className={"inline-flex h-12 items-center justify-center gap-2 rounded-[8px] text-sm font-black " + backRoomTheme.primaryButton}
-        >
-          <Send aria-hidden="true" size={17} />
-          スレッドを作成
-        </SafetyChecklistSubmit>
-      </form>
+      <BackroomPostForm action={createBackroomPostAction} error={params?.error} safetyItems={backroomSafetyItems} />
     </PageChrome>
   );
 }
