@@ -99,7 +99,7 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - アップロード後に投稿保存が失敗した場合は、今回アップロードしたStorage objectを削除する。
 - Back Roomのスレッド・コメント画像は `backroom-images` private bucketへ保存し、最大1枚・圧縮後1枚2MB以内、JPEG / PNG / WebPだけを許可する。HEIC / HEIFはブラウザ変換に成功した場合だけ送信する。
 - Back Room画像のDB RLSは既存のBack Room参加条件と親投稿・コメント所有者条件を維持し、他人のthread_id / comment_idや任意pathを登録できないようにする。Storage objectの直接SELECTは許可しない。
-- Back Room削除時は、所有権確認、path所属検証、Storage削除、DB削除の順で処理する。スレッド削除に巻き込まれる他人コメント画像は、サーバー専用service role処理で検証済みpathだけを削除する。service role keyはクライアントへ渡さない。
+- 現在のBack Roomには正式な削除UI・削除Server Actionを追加しない。投稿失敗時の補償処理では、成功投稿として公開されていない作成途中のobjectを削除してから親行を片付ける。将来の正式削除では、本人権限確認、path所属検証、DB側の削除またはsoft delete、成功後のStorage object削除の順にし、Storage削除失敗は詳細ログを残してDB削除を巻き戻さない。service role keyはクライアントへ渡さない。
 - 画像テーブル・signed URL発行・個別画像読み込みの失敗では該当画像だけを非表示にし、本文・コメント・Back Room全体を壊さない。Storage pathは表示データへ含めない。
 - 投稿本文のHTMLやscriptを実行させない。
 - 記事のYouTube URLは対象カテゴリだけで受け付け、Server Action側でもYouTubeドメイン、https、動画ID、長さを検証する。検証済みURLが入力された場合だけ動画権利確認を必須にする。iframe埋め込み、自動再生、直接動画アップロード、動画Storageは行わない。

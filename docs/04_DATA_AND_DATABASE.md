@@ -146,7 +146,7 @@ RLS:
 
 - `backroom_thread_images`: `id`, `thread_id`, `storage_path`, `sort_order`, `width`, `height`, `byte_size`, `mime_type`, `created_at`。
 - `backroom_comment_images`: `id`, `comment_id`, `storage_path`, `sort_order`, `width`, `height`, `byte_size`, `mime_type`, `created_at`。
-- `thread_id` / `comment_id` は親削除時にcascadeする。Storage objectはcascadeでは消えないため、Server ActionがStorageを先に削除してから親行を削除する。
+- `thread_id` / `comment_id` は親削除時にcascadeする。Storage objectはcascadeでは消えない。現在は正式なBack Room削除UI・削除Server Actionを追加していないため、通常削除の順序は実装していない。将来の正式削除では、本人権限確認とpath所属検証後にDB削除またはsoft deleteを先に成功させ、その後Storage objectを削除する。投稿失敗時の補償処理だけは、成功投稿として公開されていない作成途中のStorage objectを先に削除する。
 - object pathは `threads/{thread_id}/{uuid}.webp` または `comments/{comment_id}/{uuid}.webp` とし、ユーザー入力ファイル名を使用しない。DB制約とRLSで親ID配下だけを許可する。
 - スレッド画像のSELECTはBack Room参加者かつ公開中スレッド、または本人のスレッドに限定する。コメント画像のSELECTはBack Room参加者かつ公開中スレッドのコメントに限定する。
 - INSERT / UPDATE / DELETEは親投稿・コメントの本人だけに限定し、Back Roomプロフィール参加条件も維持する。他人のthread_id / comment_idへ画像を追加・差し替えできない。
@@ -202,7 +202,7 @@ RLS:
 - `article-images`: private bucket。本人フォルダだけアップロード、更新、削除できる。authenticatedは本人フォルダのobject行だけをSELECTできる。公開記事画像の表示は、DB上の公開中・未削除記事確認後にサーバー側で発行する30分程度の短時間signed URLで行う。新規記事画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。
 - `backroom_thread_images`: Back Room参加者が公開中スレッドの画像情報をSELECTでき、INSERT / UPDATE / DELETEはスレッド投稿者本人だけに限定する。`storage_path` は `threads/{thread_id}/` 配下だけを許可する。
 - `backroom_comment_images`: Back Room参加者が公開中スレッドのコメント画像情報をSELECTでき、INSERT / UPDATE / DELETEはコメント投稿者本人だけに限定する。`storage_path` は `comments/{comment_id}/` 配下だけを許可する。
-- `backroom-images`: private bucket。Storage objectの直接SELECT policyは作らず、親投稿・コメントの本人だけにupload / update / deleteを許可する。スレッド削除に伴う他人コメント画像の削除は、所有権確認後のサーバー専用service role処理で、検証済みpathだけを対象にする。
+- `backroom-images`: private bucket。Storage objectの直接SELECT policyは作らず、親投稿・コメントの本人に限定したupload / update / delete policyをpath検証付きで持つ。現在の正式な削除UI・削除Server Actionはなく、deleteは投稿失敗時の補償処理にのみ使用する。将来の正式削除はDB側を先に成功させてからStorageを削除する。
 - `barber_shops`: 公開情報は閲覧可能。一般ユーザーの直接INSERT / DELETEは許可しない。認証済みオーナーのUPDATEは、店舗名、検索用店舗名、都道府県、市区町村、住所、郵便番号、電話番号の列に限定する。
 - `barber_shop_claims`: 申請者本人が自分の申請を確認・作成できる。
 - `barber_shop_import_batches`, `barber_shop_import_rows`: RLSを有効化し、anon / authenticated向けpolicyは作らない。CSV取込は管理者allowlist確認後、サーバー側service role clientと専用RPCで実行する。

@@ -264,6 +264,7 @@ create policy "backroom_comment_images_delete_own"
   );
 
 -- This bucket is private. There is intentionally no SELECT policy on storage.objects.
+-- DELETE policies support failed-upload compensation only; this migration adds no Back Room deletion UI or Server Action.
 drop policy if exists "backroom_images_insert_own_thread" on storage.objects;
 create policy "backroom_images_insert_own_thread"
   on storage.objects

@@ -117,7 +117,7 @@ export function BackroomImageAttachment({
           <img
             src={image.previewUrl}
             alt="選択中の画像プレビュー"
-            className="aspect-[4/3] w-full object-cover"
+            className="block max-h-[32rem] w-full bg-neutral-950 object-contain"
             loading="lazy"
             decoding="async"
           />

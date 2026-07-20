@@ -4,7 +4,6 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
-import { isSafeBackroomImageStoragePath } from "@/lib/backroomImages";
 import {
   cleanupCreatedBackroomComment,
   errorMessage,
@@ -13,7 +12,6 @@ import {
   submittedBackroomImage,
   uploadBackroomImage,
 } from "@/lib/backroomImageServer";
-import { removeBackroomImageObjects } from "@/lib/supabase/backroom-images";
 import { getPostPermissionRedirect } from "@/lib/permissions";
 import { getBackroomProfile } from "@/lib/supabase/backroom";
 import { getAccountProfile } from "@/lib/supabase/profiles";
@@ -204,59 +202,4 @@ export async function createBackroomCommentAction(formData: FormData) {
   revalidatePath("/mypage");
   revalidatePath(`/backroom/${postId}`);
   redirect(backroomPath(postId, { comment: "posted" }));
-}
-
-export async function deleteBackroomCommentAction(formData: FormData) {
-  const postId = cleanText(formData.get("postId"));
-  const commentId = cleanText(formData.get("commentId"));
-  if (!postId || !commentId) redirect("/backroom");
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user == null) redirect(pathWithParams("/login", { next: `/backroom/${postId}`, message: "削除にはログインしてください。" }));
-
-  const { data: comment, error: commentError } = await supabase
-    .from("backroom_comments")
-    .select("id, post_id, user_id")
-    .eq("id", commentId)
-    .eq("post_id", postId)
-    .maybeSingle<{ id: string; post_id: string; user_id: string }>();
-
-  if (commentError || comment == null || comment.user_id !== user.id) {
-    console.error("Back Room comment delete authorization failed", { postId, commentId, userId: user.id, message: commentError?.message ?? "not owner" });
-    redirect(backroomPath(postId, { commentError: "自分のコメントだけ削除できます。" }));
-  }
-
-  const { data: imageRows, error: imageRowsError } = await supabase
-    .from("backroom_comment_images")
-    .select("storage_path")
-    .eq("comment_id", commentId)
-    .returns<{ storage_path: string }[]>();
-
-  const missingImageTable = imageRowsError?.message.toLowerCase().includes("relation") && imageRowsError.message.toLowerCase().includes("backroom_comment_images");
-  if (imageRowsError && !missingImageTable) {
-    console.error("Back Room comment image paths select for delete failed", { postId, commentId, userId: user.id, message: imageRowsError.message });
-    redirect(backroomPath(postId, { commentError: "コメント画像を確認できませんでした。時間をおいて再度お試しください。" }));
-  }
-
-  const invalidPath = (imageRows ?? []).some((row) => !isSafeBackroomImageStoragePath(row.storage_path, "comments", commentId));
-  if (invalidPath) {
-    console.error("Back Room comment delete found an unsafe image path", { postId, commentId, userId: user.id });
-    redirect(backroomPath(postId, { commentError: "コメント画像を確認できませんでした。時間をおいて再度お試しください。" }));
-  }
-  const imagePaths = (imageRows ?? []).map((row) => row.storage_path);
-  const removed = await removeBackroomImageObjects(supabase, imagePaths, { operation: "comment delete", userId: user.id, parentId: commentId });
-  if (!removed) redirect(backroomPath(postId, { commentError: "コメント画像を削除できませんでした。もう一度お試しください。" }));
-
-  const { error } = await supabase.from("backroom_comments").delete().eq("id", commentId).eq("user_id", user.id);
-  if (error) {
-    console.error("Back Room comment delete failed", { postId, commentId, userId: user.id, message: error.message });
-    redirect(backroomPath(postId, { commentError: "コメントを削除できませんでした。時間をおいて再度お試しください。" }));
-  }
-
-  revalidatePath(`/backroom/${postId}`);
-  revalidatePath("/backroom");
-  redirect(backroomPath(postId, { comment: "deleted" }));
 }

@@ -1,4 +1,4 @@
-import { ArrowLeft, MessageCircle, Trash2, UserRound } from "lucide-react";
+import { ArrowLeft, MessageCircle, UserRound } from "lucide-react";
 import Link from "next/link";
 import { SignupRequiredCard } from "@/components/AuthGate";
 import { BackroomCommentForm } from "@/components/BackroomCommentForm";
@@ -17,15 +17,14 @@ import {
   type BackroomComment,
 } from "@/lib/supabase/backroom";
 import { createClient } from "@/lib/supabase/server";
-import { createBackroomCommentAction, deleteBackroomCommentAction } from "../actions";
-import { deleteBackroomPostAction } from "@/app/post/backroom/actions";
+import { createBackroomCommentAction } from "../actions";
 
 type BackroomDetailPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ posted?: string; comment?: string; commentError?: string; deleteError?: string }>;
+  searchParams?: Promise<{ posted?: string; comment?: string; commentError?: string }>;
 };
 
-function CommentItem({ comment, currentUserId }: { comment: BackroomComment; currentUserId: string }) {
+function CommentItem({ comment }: { comment: BackroomComment }) {
   const name = backroomCommentAuthorName(comment);
 
   return (
@@ -45,19 +44,9 @@ function CommentItem({ comment, currentUserId }: { comment: BackroomComment; cur
           key={image.id}
           src={image.url}
           alt="コメントに添付された画像"
-          className="mt-3 block max-h-[32rem] w-full rounded-[8px] object-cover object-center"
+          className="mt-3 block max-h-[32rem] w-full rounded-[8px] bg-neutral-950 object-contain object-center"
         />
       ))}
-      {comment.user_id === currentUserId ? (
-        <form action={deleteBackroomCommentAction} className="mt-2 flex justify-end">
-          <input type="hidden" name="postId" value={comment.post_id} />
-          <input type="hidden" name="commentId" value={comment.id} />
-          <button type="submit" className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[0.66rem] font-black text-mute transition hover:bg-neutral-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blush active:scale-95">
-            <Trash2 aria-hidden="true" size={12} />
-            削除
-          </button>
-        </form>
-      ) : null}
     </article>
   );
 }
@@ -142,9 +131,6 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
         {query?.posted === "1" ? (
           <div className={"mb-3 rounded-[8px] p-3 text-sm font-black text-ink " + backRoomTheme.notice}>投稿しました。</div>
         ) : null}
-        {query?.deleteError ? (
-          <div className="mb-3 rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">{query.deleteError}</div>
-        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <span className={"rounded-full px-2.5 py-1 text-[0.68rem] font-black " + backRoomTheme.tag}>{normalizeBackroomCategory(post.category)}</span>
           <span className="text-xs font-bold text-mute">{backroomDateLabel(post)}</span>
@@ -167,19 +153,10 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
               key={image.id}
               src={image.url}
               alt={post.title}
-              className="mt-4 block max-h-[min(72vh,44rem)] w-full rounded-[10px] object-cover object-center"
+              className="mt-4 block max-h-[min(72vh,44rem)] w-full rounded-[10px] bg-neutral-950 object-contain object-center"
             />
           ))}
         </div>
-        {post.user_id === user.id ? (
-          <form action={deleteBackroomPostAction} className="mt-2 flex justify-end">
-            <input type="hidden" name="postId" value={post.id} />
-            <button type="submit" className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[0.68rem] font-black text-mute transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-blush active:scale-95">
-              <Trash2 aria-hidden="true" size={13} />
-              スレッドを削除
-            </button>
-          </form>
-        ) : null}
       </article>
 
       <section className="px-4 pt-5">
@@ -207,7 +184,7 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
               <p className="mt-1 text-xs font-medium leading-relaxed text-mute">最初の返信を残すと、ここに表示されます。</p>
             </div>
           ) : (
-            comments.map((comment) => <CommentItem key={comment.id} comment={comment} currentUserId={user.id} />)
+            comments.map((comment) => <CommentItem key={comment.id} comment={comment} />)
           )}
         </div>
       </section>
