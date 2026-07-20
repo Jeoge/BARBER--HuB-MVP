@@ -12,6 +12,13 @@ const MAX_SOURCE_ROWS = 20_000;
 const MAX_SOURCE_COLUMNS = 80;
 
 const AUTO_PARSE_FAILURE_MESSAGE = "このページまたはファイルは自動解析できませんでした。手動で確認してください";
+const HTML_TABLE_NOT_FOUND_MESSAGE = "HTMLテーブルが見つかりません。CSVなどの掲載ファイルURLを直接指定してください。";
+const CSV_PARSE_FAILURE_MESSAGE = "CSVまたはTSVを表として解析できませんでした。見出し行とデータ行を確認してください。";
+const XLSX_PARSE_FAILURE_MESSAGE = "Excelファイルを表として解析できませんでした。ファイルをダウンロードして手動で確認してください。";
+const PDF_PARSE_FAILURE_MESSAGE = "このPDFは自動解析できませんでした。ファイルをダウンロードして手動で確認してください";
+const UNSUPPORTED_FORMAT_MESSAGE = "対応していないファイル形式です。CSV、TSV、xlsx、HTML表、テキストPDFに対応しています。";
+const CKAN_RESOURCE_DOWNLOAD_MESSAGE = "CKANのリソースページからダウンロード先を確認できませんでした。CSVなどのファイルURLを直接指定してください。";
+const CKAN_API_UNSUPPORTED_MESSAGE = "CKANのAPI URLには対応していません。リソースページまたはCSVダウンロードURLを指定してください。";
 
 export type SourceFormat = "CSV" | "TSV" | "xlsx" | "HTML table" | "text PDF";
 
@@ -178,6 +185,51 @@ function htmlEntityDecode(value: string) {
     .replace(/&([a-z]+);/gi, (match, name: string) => named[name.toLowerCase()] ?? match);
 }
 
+function isCkanResourcePage(url: URL) {
+  return /^\/dataset\/[^/]+\/resource\/[^/]+\/?$/i.test(url.pathname);
+}
+
+function isCkanApiUrl(url: URL) {
+  return url.hostname.toLowerCase() === "data.bodik.jp" && url.pathname.startsWith("/api/");
+}
+
+function extractCkanDownloadUrl(html: string, baseUrl: URL) {
+  const links = Array.from(html.matchAll(/<a\b[^>]*\bhref\s*=\s*(["'])([\s\S]*?)\1/gi));
+  for (const match of links) {
+    const href = htmlEntityDecode(match[2] ?? "").trim();
+    if (!href) continue;
+    try {
+      const candidate = new URL(href, baseUrl);
+      if (/^\/dataset\/[^/]+\/resource\/[^/]+\/download(?:\/|$)/i.test(candidate.pathname)) return candidate;
+    } catch {
+      // Ignore malformed links in untrusted HTML and continue searching.
+    }
+  }
+  return null;
+}
+
+function fileNameFromUrl(url: string) {
+  try {
+    const value = new URL(url).pathname.split("/").pop() ?? "";
+    return value && value !== "download" ? decodeURIComponent(value) : "";
+  } catch {
+    return "";
+  }
+}
+
+function fileNameFromContentDisposition(value: string | null) {
+  if (!value) return "";
+  const encoded = value.match(/filename\*\s*=\s*UTF-8''([^;]+)/i)?.[1];
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded.replace(/^"|"$/g, ""));
+    } catch {
+      return encoded.replace(/^"|"$/g, "");
+    }
+  }
+  return value.match(/filename\s*=\s*"?([^";]+)"?/i)?.[1]?.trim() ?? "";
+}
+
 function htmlCellText(value: string) {
   return cleanCell(
     htmlEntityDecode(value)
@@ -210,6 +262,7 @@ function parseHtmlTable(html: string): SourceTable {
     if (!best || score > recognizedHeaderCount(best.headers) || candidate.rows.length > best.rows.length) best = candidate;
   }
 
+  if (tables.length === 0) throw new BarberShopSourceError(HTML_TABLE_NOT_FOUND_MESSAGE, "parse_failed");
   if (!best) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "parse_failed");
   return best;
 }
@@ -230,13 +283,13 @@ function parsePdfLines(text: string): SourceTable {
   };
   const headerIndex = lines.slice(0, 30).findIndex((line) => recognizedHeaderCount(pdfCells(line)) > 0);
 
-  if (headerIndex < 0) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
+  if (headerIndex < 0) throw new BarberShopSourceError(PDF_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
 
   const headerLine = lines[headerIndex];
   const headers = pdfCells(headerLine).map((cell) => cleanCell(cell));
   const rows = lines.slice(headerIndex + 1).map((line) => pdfCells(line).map((cell) => cleanCell(cell))).filter((row) => row.some(Boolean));
 
-  if (rows.length === 0 || recognizedHeaderCount(headers) === 0) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
+  if (rows.length === 0 || recognizedHeaderCount(headers) === 0) throw new BarberShopSourceError(PDF_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
   return { headers, rows, format: "text PDF" };
 }
 
@@ -256,7 +309,7 @@ async function parseXlsx(bytes: Uint8Array): Promise<SourceTable> {
     return { headers, rows: rows.slice(headerIndex + 1), format: "xlsx" };
   } catch (error) {
     if (error instanceof BarberShopSourceError) throw error;
-    throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "parse_failed");
+    throw new BarberShopSourceError(XLSX_PARSE_FAILURE_MESSAGE, "parse_failed");
   }
 }
 
@@ -275,7 +328,7 @@ async function parsePdf(bytes: Uint8Array): Promise<SourceTable> {
     }
   } catch (error) {
     if (error instanceof BarberShopSourceError) throw error;
-    throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
+    throw new BarberShopSourceError(PDF_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
   }
 }
 
@@ -369,6 +422,9 @@ async function readResponseBody(response: Response) {
 
 async function fetchSource(input: string): Promise<SourceResponse> {
   let current = await assertSafeUrl(input);
+  if (isCkanApiUrl(current)) throw new BarberShopSourceError(CKAN_API_UNSUPPORTED_MESSAGE, "unsupported");
+  let fileNameHint = fileNameFromUrl(current.toString());
+  let ckanPageResolved = false;
 
   for (let redirectCount = 0; redirectCount <= MAX_SOURCE_REDIRECTS; redirectCount += 1) {
     const controller = new AbortController();
@@ -385,19 +441,36 @@ async function fetchSource(input: string): Promise<SourceResponse> {
       const location = response.headers.get("location");
       clearTimeout(timeout);
       if (!location || redirectCount === MAX_SOURCE_REDIRECTS) throw new BarberShopSourceError("リダイレクト回数が上限を超えました。", "fetch_failed");
-      current = await assertSafeUrl(new URL(location, current).toString());
+      const nextUrl = await assertSafeUrl(new URL(location, current).toString());
+      fileNameHint = fileNameFromUrl(nextUrl.toString()) || fileNameHint;
+      current = nextUrl;
       continue;
     }
     if (!response.ok) {
       clearTimeout(timeout);
-      if (response.status === 401 || response.status === 403) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "fetch_failed");
+      if (response.status === 401 || response.status === 403) throw new BarberShopSourceError("ファイルを取得できませんでした。ログインやアクセス制限のない公開URLを指定してください。", "fetch_failed");
       throw new BarberShopSourceError("公式ページを取得できませんでした。URLと公開状態を確認してください。", "fetch_failed");
     }
 
     try {
       const bytes = await readResponseBody(response);
       const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
-      return { bytes, contentType, finalUrl: current.toString(), fileName: new URL(current).pathname.split("/").pop() || "official-source" };
+      const type = contentType.split(";", 1)[0];
+      if (!ckanPageResolved && isCkanResourcePage(current) && (type === "text/html" || type === "application/xhtml+xml")) {
+        const downloadUrl = extractCkanDownloadUrl(new TextDecoder("utf-8", { fatal: false }).decode(bytes), current);
+        if (!downloadUrl) throw new BarberShopSourceError(CKAN_RESOURCE_DOWNLOAD_MESSAGE, "parse_failed");
+        fileNameHint = fileNameFromUrl(downloadUrl.toString()) || fileNameHint;
+        current = await assertSafeUrl(downloadUrl.toString());
+        ckanPageResolved = true;
+        redirectCount -= 1;
+        continue;
+      }
+      return {
+        bytes,
+        contentType,
+        finalUrl: current.toString(),
+        fileName: fileNameFromContentDisposition(response.headers.get("content-disposition")) || fileNameFromUrl(current.toString()) || fileNameHint || "official-source",
+      };
     } catch (error) {
       if (error instanceof BarberShopSourceError) throw error;
       throw new BarberShopSourceError("公式ページを取得できませんでした。", "fetch_failed");
@@ -420,13 +493,13 @@ async function parseSource(response: SourceResponse): Promise<SourceTable> {
   const textExtension = /\.(?:csv|tsv|txt)$/i.test(fileName);
 
   if (type === "application/pdf" || (pdfExtension && genericType)) return parsePdf(response.bytes);
-  if (pdfExtension && type !== "application/pdf" && !genericType) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "unsupported");
+  if (pdfExtension && type !== "application/pdf" && !genericType) throw new BarberShopSourceError(UNSUPPORTED_FORMAT_MESSAGE, "unsupported");
   if (type.includes("spreadsheet") || type === "application/vnd.ms-excel" || (xlsxExtension && genericType)) return parseXlsx(response.bytes);
-  if (xlsxExtension && !type.includes("spreadsheet") && type !== "application/vnd.ms-excel" && !genericType) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "unsupported");
+  if (xlsxExtension && !type.includes("spreadsheet") && type !== "application/vnd.ms-excel" && !genericType) throw new BarberShopSourceError(UNSUPPORTED_FORMAT_MESSAGE, "unsupported");
 
   const isHtml = type === "text/html" || type === "application/xhtml+xml" || (htmlExtension && genericType);
   if (isHtml) return parseHtmlTable(new TextDecoder("utf-8", { fatal: false }).decode(response.bytes));
-  if (htmlExtension && !isHtml && !genericType) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "unsupported");
+  if (htmlExtension && !isHtml && !genericType) throw new BarberShopSourceError(UNSUPPORTED_FORMAT_MESSAGE, "unsupported");
 
   const textType = type.startsWith("text/") || type === "application/csv" || (genericType && textExtension);
   if (textType) {
@@ -434,11 +507,11 @@ async function parseSource(response: SourceResponse): Promise<SourceTable> {
     const delimiter = detectDelimiter(decoded.text, fileName, contentType);
     const rows = parseDelimitedText(stripBom(decoded.text), delimiter).map((row) => row.slice(0, MAX_SOURCE_COLUMNS).map((cell) => cleanCell(cell)));
     const headers = rows[0] ?? [];
-    if (headers.length === 0 || rows.length < 2) throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "parse_failed");
+    if (headers.length === 0 || rows.length < 2) throw new BarberShopSourceError(CSV_PARSE_FAILURE_MESSAGE, "parse_failed");
     return { headers, rows: rows.slice(1), format: delimiter === "\t" ? "TSV" : "CSV" };
   }
 
-  throw new BarberShopSourceError(AUTO_PARSE_FAILURE_MESSAGE, "unsupported");
+  throw new BarberShopSourceError(UNSUPPORTED_FORMAT_MESSAGE, "unsupported");
 }
 
 type SourceConversionInput = {
