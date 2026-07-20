@@ -152,6 +152,8 @@ RLS:
 - INSERT / UPDATE / DELETEは親投稿・コメントの本人だけに限定し、Back Roomプロフィール参加条件も維持する。他人のthread_id / comment_idへ画像を追加・差し替えできない。
 - Storageはprivate bucketで、anon / authenticatedの直接SELECTを許可しない。通常のStorage pathはアプリ画面へ返さず、サーバー側のservice role clientが短時間signed URLへ変換したURLだけを表示用に返す。
 - 画像テーブルが未適用、画像行の取得、signed URL発行、個別画像の読み込みに失敗しても、該当画像を空にして本文・コメントを表示する。任意pathを受け取ってsigned URLを発行するAPIは作らない。
+- `backroom_comments` の通常authenticated INSERT policyは本文が1〜1000文字の非空値であることを要求し、UPDATEも公開状態の本文をnull / 空文字へ変更できない。本文なしの画像だけコメントは `create_backroom_image_comment` SECURITY DEFINER RPCでのみ作成し、本人・Back Room参加権限、公開中の親スレッド、comment path、MIME、寸法、2MB以内の容量、Storage object存在を検証する。
+- `enforce_backroom_comment_has_body_or_image` の遅延constraint triggerをコメント行とコメント画像行へ設定し、トランザクション確定時にも公開状態のコメントが本文または画像行を持つことを再確認する。画像コメントはStorage upload成功後にRPCがコメント行と画像行を同一トランザクションで保存するため、作成途中の空コメントはSELECT対象にならない。
 
 ## 店舗ディレクトリのDB設計
 

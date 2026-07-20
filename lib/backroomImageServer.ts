@@ -9,7 +9,8 @@ import {
   hasExpectedBackroomImageSignature,
   type BackroomUploadMimeType,
 } from "@/lib/imageValidation";
-import { removeBackroomImageObjects } from "@/lib/supabase/backroom-images";
+import { createSupabaseAdminClient, getSupabaseAdminConfigStatus } from "@/lib/supabase/admin";
+import { removeBackroomImageObjects, removeBackroomImageObjectsAsServer } from "@/lib/supabase/backroom-images";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type PreparedBackroomImage = {
@@ -101,6 +102,64 @@ export async function uploadBackroomImage(
   } catch (error) {
     if (error instanceof Error && error.message === "upload_failed") throw error;
     console.error("Back Room image upload threw", { kind, parentId, userId, message: errorMessage(error) });
+    throw new Error("upload_failed");
+  }
+}
+
+export async function uploadBackroomImageAsServer(
+  kind: "threads" | "comments",
+  parentId: string,
+  userId: string,
+  image: PreparedBackroomImage
+) {
+  const adminStatus = getSupabaseAdminConfigStatus();
+  if (!adminStatus.ready) {
+    console.error("Back Room server image upload skipped because admin Supabase config is missing", {
+      kind,
+      parentId,
+      userId,
+      missingCount: adminStatus.missing.length,
+    });
+    throw new Error("upload_failed");
+  }
+
+  const extension = backroomUploadFileExtension(image.contentType);
+  const uploadPath = backroomImageStoragePath(kind, parentId, extension, randomUUID());
+
+  try {
+    const adminSupabase = createSupabaseAdminClient();
+    const { data, error } = await adminSupabase.storage.from(BACKROOM_IMAGE_BUCKET).upload(uploadPath, image.file, {
+      cacheControl: "604800",
+      upsert: false,
+      contentType: image.contentType,
+    });
+
+    if (error || data?.path !== uploadPath) {
+      console.error("Back Room server image upload failed", {
+        kind,
+        parentId,
+        userId,
+        message: error?.message ?? "uploaded path verification failed",
+      });
+      throw new Error("upload_failed");
+    }
+
+    return uploadPath;
+  } catch (error) {
+    if (error instanceof Error && error.message === "upload_failed") {
+      await removeBackroomImageObjectsAsServer([uploadPath], {
+        operation: "server image upload failure cleanup",
+        userId,
+        parentId,
+      });
+      throw error;
+    }
+    console.error("Back Room server image upload threw", { kind, parentId, userId, message: errorMessage(error) });
+    await removeBackroomImageObjectsAsServer([uploadPath], {
+      operation: "server image upload exception",
+      userId,
+      parentId,
+    });
     throw new Error("upload_failed");
   }
 }
