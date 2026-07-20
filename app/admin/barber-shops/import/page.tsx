@@ -361,9 +361,14 @@ export default async function BarberShopCsvImportPage({ searchParams }: ImportPa
             店舗CSVをプレビューしてから登録します。CSV取込機能は全国共通です。想定都道府県を指定した場合は都道府県別件数で混入を確認します。
           </p>
         </div>
-        <Link href="/" className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
-          BARBER HUBへ戻る
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/barber-shops/import/source" className="inline-flex h-10 items-center justify-center rounded-[8px] border border-blush/30 bg-blushSoft px-3 text-xs font-black text-blush">
+            公式一覧からCSVを作成
+          </Link>
+          <Link href="/" className="inline-flex h-10 items-center justify-center rounded-[8px] border border-line bg-white px-3 text-xs font-black text-ink">
+            BARBER HUBへ戻る
+          </Link>
+        </div>
       </header>
 
       <section className="mt-4 grid gap-3">

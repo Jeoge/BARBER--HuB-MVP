@@ -416,6 +416,10 @@ async function fetchAllImportRowsForBatch(supabase: SupabaseClient, batchId: str
   return rows;
 }
 
+export async function getBarberShopImportRowsForExport(supabase: SupabaseClient, batchId: string) {
+  return fetchAllImportRowsForBatch(supabase, batchId);
+}
+
 export async function createBarberShopImportPreview(
   supabase: SupabaseClient,
   file: File,

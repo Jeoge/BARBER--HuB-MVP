@@ -42,7 +42,7 @@ export function decodeCsv(arrayBuffer: ArrayBuffer): { text: string; encoding: P
   return { text: utf8, encoding: "utf-8" };
 }
 
-export function parseCsvText(text: string) {
+export function parseDelimitedText(text: string, delimiter = ",") {
   const rows: string[][] = [];
   let current = "";
   let row: string[] = [];
@@ -69,7 +69,7 @@ export function parseCsvText(text: string) {
       continue;
     }
 
-    if (char === ",") {
+    if (char === delimiter) {
       row.push(current);
       current = "";
       continue;
@@ -94,6 +94,21 @@ export function parseCsvText(text: string) {
   rows.push(row);
 
   return rows.filter((item) => item.some((cell) => cell.trim().length > 0));
+}
+
+export function parseCsvText(text: string) {
+  return parseDelimitedText(text, ",");
+}
+
+function escapeCsvCell(value: string) {
+  const text = String(value ?? "");
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+export function createBarberShopCsv(rows: string[][]) {
+  return [BARBER_SHOP_CSV_HEADERS, ...rows]
+    .map((row) => row.map((cell) => escapeCsvCell(cell)).join(","))
+    .join("\r\n") + "\r\n";
 }
 
 export function parseBarberShopCsv(arrayBuffer: ArrayBuffer): ParsedCsv {
