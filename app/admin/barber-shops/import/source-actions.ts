@@ -1,22 +1,17 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { requireBarberHubAdmin } from "@/lib/admin/permissions";
-import { BarberShopSourceError, createBarberShopImportPreviewFromSource, type SourceFormat } from "@/lib/barber-import/source";
-import { createBarberShopCsv } from "@/lib/barber-import/csv";
-import { getBarberShopImportRowsForExport } from "@/lib/barber-import/importer";
-import { createSupabaseAdminClient, getSupabaseAdminConfigStatus } from "@/lib/supabase/admin";
+import { BarberShopSourceError, createBarberShopSourcePreview, type BarberShopSourcePreview } from "@/lib/barber-import/source";
 
-function redirectWithParams(params: Record<string, string | number | null | undefined>): never {
-  const searchParams = new URLSearchParams();
+export type OfficialSourceActionState = {
+  preview: BarberShopSourcePreview | null;
+  error: string | null;
+};
 
-  for (const [key, value] of Object.entries(params)) {
-    if (value != null && value !== "") searchParams.set(key, String(value));
-  }
-
-  redirect(`/admin/barber-shops/import/source?${searchParams.toString()}`);
-  throw new Error("unreachable");
-}
+export const initialOfficialSourceActionState: OfficialSourceActionState = {
+  preview: null,
+  error: null,
+};
 
 function cleanText(value: FormDataEntryValue | null, maxLength = 2048) {
   if (typeof value !== "string") return "";
@@ -30,49 +25,20 @@ function safeErrorMessage(error: unknown) {
   return "公式一覧を取得・解析できませんでした。URLと対応形式を確認してください。";
 }
 
-export async function fetchBarberShopSourceAction(formData: FormData) {
-  const user = await requireBarberHubAdmin();
-  const config = getSupabaseAdminConfigStatus();
-
-  if (!config.ready) redirectWithParams({ error: "Supabase管理用の環境変数が未設定です。" });
-
+export async function fetchBarberShopSourceAction(
+  _previousState: OfficialSourceActionState,
+  formData: FormData
+): Promise<OfficialSourceActionState> {
+  await requireBarberHubAdmin();
   const sourceUrl = cleanText(formData.get("sourceUrl"));
-  if (!sourceUrl) redirectWithParams({ error: "公式ページまたは掲載ファイルのURLを入力してください。" });
+  if (!sourceUrl) return { preview: null, error: "公式ページまたは掲載ファイルのURLを入力してください。" };
 
-  let result: Awaited<ReturnType<typeof createBarberShopImportPreviewFromSource>>;
   try {
-    result = await createBarberShopImportPreviewFromSource(createSupabaseAdminClient(), sourceUrl, user.id);
+    return { preview: await createBarberShopSourcePreview(sourceUrl), error: null };
   } catch (error) {
     console.error("Barber shop official source preview failed", {
       code: error && typeof error === "object" && "code" in error ? error.code : "unknown",
     });
-    redirectWithParams({ error: safeErrorMessage(error) });
+    return { preview: null, error: safeErrorMessage(error) };
   }
-
-  if (!result.batchId) redirectWithParams({ error: result.error ?? "公式一覧を取得・解析できませんでした。" });
-  redirectWithParams({ batch: result.batchId, format: result.format as SourceFormat | undefined, fetched: "1" });
-}
-
-export async function downloadBarberShopSourceCsvAction(batchId: string) {
-  await requireBarberHubAdmin();
-  const config = getSupabaseAdminConfigStatus();
-  if (!config.ready || !batchId || batchId.length > 80) return { csv: null, fileName: null };
-
-  const rows = await getBarberShopImportRowsForExport(createSupabaseAdminClient(), batchId);
-  if (!rows.length) return { csv: null, fileName: null };
-
-  const csv = createBarberShopCsv(rows.map((row) => [
-    row.name,
-    row.prefecture,
-    row.municipality,
-    row.address,
-    row.phone ?? "",
-    row.source ?? "",
-    "未認証",
-  ]));
-
-  return {
-    csv: `\uFEFF${csv}`,
-    fileName: `barber-hub-official-source-${batchId.slice(0, 8)}.csv`,
-  };
 }

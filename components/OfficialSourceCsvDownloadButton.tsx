@@ -2,21 +2,18 @@
 
 import { Download } from "lucide-react";
 import { useState } from "react";
-import { downloadBarberShopSourceCsvAction } from "@/app/admin/barber-shops/import/source-actions";
 
-export function OfficialSourceCsvDownloadButton({ batchId }: { batchId: string }) {
+export function OfficialSourceCsvDownloadButton({ csv, fileName }: { csv: string; fileName: string }) {
   const [pending, setPending] = useState(false);
 
   async function handleDownload() {
     setPending(true);
     try {
-      const result = await downloadBarberShopSourceCsvAction(batchId);
-      if (!result.csv || !result.fileName) return;
-      const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8" });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = result.fileName;
+      anchor.download = fileName;
       anchor.click();
       URL.revokeObjectURL(url);
     } finally {

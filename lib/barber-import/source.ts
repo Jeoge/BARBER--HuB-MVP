@@ -3,10 +3,8 @@ import "server-only";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { createBarberShopCsv, parseDelimitedText } from "./csv";
-import { createBarberShopImportPreview, type CreateImportPreviewResult } from "./importer";
 import { cleanImportText } from "./normalization";
 import { PREFECTURES } from "@/lib/japanAreas";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
 const MAX_SOURCE_REDIRECTS = 3;
@@ -17,6 +15,32 @@ const MAX_SOURCE_COLUMNS = 80;
 const PDF_PARSE_FAILURE_MESSAGE = "このPDFは自動解析できませんでした。ファイルをダウンロードして手動で確認してください";
 
 export type SourceFormat = "CSV" | "TSV" | "xlsx" | "HTML table" | "text PDF";
+
+export type BarberShopSourcePreviewRow = {
+  rowNumber: number;
+  name: string;
+  prefecture: string;
+  municipality: string;
+  address: string;
+  phone: string;
+  validationErrors: string[];
+};
+
+export type BarberShopSourcePreview = {
+  format: SourceFormat;
+  finalUrl: string;
+  fileName: string;
+  csv: string;
+  rows: BarberShopSourcePreviewRow[];
+  fetchedCount: number;
+  validCount: number;
+  blankCounts: {
+    name: number;
+    address: number;
+    phone: number;
+  };
+  errorCount: number;
+};
 
 export class BarberShopSourceError extends Error {
   constructor(
@@ -407,21 +431,53 @@ function sourceRowsToCsv(table: SourceTable, sourceUrl: string) {
   });
 
   if (rows.length === 0) throw new BarberShopSourceError("一覧データの行を確認できませんでした。", "parse_failed");
-  return createBarberShopCsv(rows);
+
+  const previewRows = rows.map((row, index): BarberShopSourcePreviewRow => {
+    const [name, prefecture, municipality, address, phone] = row;
+    const validationErrors: string[] = [];
+    if (!name) validationErrors.push("店名が空です。");
+    if (!prefecture) validationErrors.push("都道府県が空です。");
+    if (!municipality) validationErrors.push("市区町村が空です。");
+
+    return {
+      rowNumber: index + 2,
+      name,
+      prefecture,
+      municipality,
+      address,
+      phone,
+      validationErrors,
+    };
+  });
+
+  return {
+    csv: `\uFEFF${createBarberShopCsv(rows)}`,
+    rows: previewRows,
+  };
 }
 
-export async function createBarberShopImportPreviewFromSource(
-  supabase: SupabaseClient,
-  sourceUrl: string,
-  userId: string
-): Promise<CreateImportPreviewResult & { format?: SourceFormat; finalUrl?: string }> {
-  if (!sourceUrl || sourceUrl.length > 2048) return { batchId: null, error: "URLの形式を確認してください。" };
+export async function createBarberShopSourcePreview(sourceUrl: string): Promise<BarberShopSourcePreview> {
+  if (!sourceUrl || sourceUrl.length > 2048) throw new BarberShopSourceError("URLの形式を確認してください。", "invalid_url");
   const response = await fetchSource(sourceUrl);
   const table = await parseSource(response);
-  const csv = sourceRowsToCsv(table, response.finalUrl);
-  const file = new File([`\uFEFF${csv}`], `official-source-${Date.now()}.csv`, { type: "text/csv" });
-  const result = await createBarberShopImportPreview(supabase, file, userId);
-  return { ...result, format: table.format, finalUrl: response.finalUrl };
+  const transformed = sourceRowsToCsv(table, response.finalUrl);
+  const validCount = transformed.rows.filter((row) => row.validationErrors.length === 0).length;
+
+  return {
+    format: table.format,
+    finalUrl: response.finalUrl,
+    fileName: `barber-hub-official-source-${Date.now()}.csv`,
+    csv: transformed.csv,
+    rows: transformed.rows.slice(0, 50),
+    fetchedCount: transformed.rows.length,
+    validCount,
+    blankCounts: {
+      name: transformed.rows.filter((row) => !row.name).length,
+      address: transformed.rows.filter((row) => !row.address).length,
+      phone: transformed.rows.filter((row) => !row.phone).length,
+    },
+    errorCount: transformed.rows.length - validCount,
+  };
 }
 
 export function pdfParseFailureMessage() {

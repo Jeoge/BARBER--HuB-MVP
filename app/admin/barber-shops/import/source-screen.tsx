@@ -1,15 +1,12 @@
+"use client";
+
 import { AlertTriangle, ArrowRight, CheckCircle2, Link as LinkIcon, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { useActionState } from "react";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { OfficialSourceCsvDownloadButton } from "@/components/OfficialSourceCsvDownloadButton";
-import type { BarberShopImportPreview, BarberShopImportRow } from "@/lib/barber-import/importer";
-import { fetchBarberShopSourceAction } from "./source-actions";
-
-type SourceScreenProps = {
-  preview: BarberShopImportPreview | null;
-  format?: string;
-  error?: string;
-};
+import type { BarberShopSourcePreview } from "@/lib/barber-import/source";
+import { fetchBarberShopSourceAction, initialOfficialSourceActionState } from "./source-actions";
 
 function Banner({ type, message }: { type: "success" | "error" | "info"; message: string }) {
   const className =
@@ -22,28 +19,17 @@ function Banner({ type, message }: { type: "success" | "error" | "info"; message
   return <p className={`rounded-[8px] border px-3 py-2 text-xs font-semibold leading-relaxed ${className}`}>{message}</p>;
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-[8px] border border-line bg-white p-3">
       <p className="text-[0.66rem] font-black uppercase tracking-[0.12em] text-mute">{label}</p>
-      <p className="mt-1 text-xl font-black text-ink">{value.toLocaleString("ja-JP")}</p>
+      <p className="mt-1 text-xl font-black text-ink">{typeof value === "number" ? value.toLocaleString("ja-JP") : value}</p>
     </div>
   );
 }
 
-function blankCount(preview: BarberShopImportPreview, field: "店名" | "住所" | "電話番号") {
-  return preview.summary.blankCounts.find((item) => item.field === field)?.count ?? 0;
-}
-
-function duplicateLabel(type: BarberShopImportRow["duplicate_type"]) {
-  if (type === "exact") return "完全一致";
-  if (type === "file_exact") return "CSV内完全一致";
-  if (type === "candidate") return "候補";
-  return "なし";
-}
-
-function ResultTable({ preview }: { preview: BarberShopImportPreview }) {
-  const rows = preview.sampleRows;
+function ResultTable({ preview }: { preview: BarberShopSourcePreview }) {
+  const rows = preview.rows;
   return (
     <section className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -69,16 +55,16 @@ function ResultTable({ preview }: { preview: BarberShopImportPreview }) {
             </thead>
             <tbody className="divide-y divide-line">
               {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="whitespace-nowrap px-2 py-2 font-bold text-mute">{row.row_number}</td>
+                <tr key={row.rowNumber}>
+                  <td className="whitespace-nowrap px-2 py-2 font-bold text-mute">{row.rowNumber}</td>
                   <td className="max-w-[12rem] px-2 py-2 font-black text-ink">{row.name || "店名未登録"}</td>
                   <td className="whitespace-nowrap px-2 py-2 font-semibold text-ink">{row.prefecture || "未確認"}</td>
                   <td className="whitespace-nowrap px-2 py-2 font-semibold text-ink">{row.municipality || "未確認"}</td>
                   <td className="max-w-[18rem] px-2 py-2 font-medium text-ink">{row.address || "住所未登録"}</td>
                   <td className="whitespace-nowrap px-2 py-2 font-semibold text-ink">{row.phone || "電話番号未登録"}</td>
-                  <td className="whitespace-nowrap px-2 py-2 font-bold text-ink">{duplicateLabel(row.duplicate_type)}</td>
+                  <td className="whitespace-nowrap px-2 py-2 font-bold text-mute">既存画面で確認</td>
                   <td className="max-w-[16rem] px-2 py-2 font-medium leading-relaxed text-mute">
-                    {row.validation_errors.length > 0 ? row.validation_errors.join(" / ") : "確認済み"}
+                    {row.validationErrors.length > 0 ? row.validationErrors.join(" / ") : "簡易確認済み"}
                   </td>
                 </tr>
               ))}
@@ -90,7 +76,10 @@ function ResultTable({ preview }: { preview: BarberShopImportPreview }) {
   );
 }
 
-export function OfficialSourceScreen({ preview, format, error }: SourceScreenProps) {
+export function OfficialSourceScreen() {
+  const [state, formAction] = useActionState(fetchBarberShopSourceAction, initialOfficialSourceActionState);
+  const preview = state.preview;
+
   return (
     <main className="mx-auto min-h-screen max-w-[1040px] bg-white px-4 py-6 text-ink">
       <header className="flex flex-col gap-4 border-b border-line pb-5 md:flex-row md:items-center md:justify-between">
@@ -110,14 +99,14 @@ export function OfficialSourceScreen({ preview, format, error }: SourceScreenPro
       </header>
 
       <section className="mt-4 grid gap-3">
-        {error ? <Banner type="error" message={error} /> : null}
-        {preview ? <Banner type="success" message={`取得・解析しました。形式: ${format ?? "確認済み"}`} /> : null}
+        {state.error ? <Banner type="error" message={state.error} /> : null}
+        {preview ? <Banner type="success" message={`取得・解析しました。形式: ${preview.format}`} /> : null}
         <div className="rounded-[8px] border border-line bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2 text-sm font-black text-ink">
             <LinkIcon aria-hidden="true" size={17} className="text-blush" />
             公式ページまたは掲載ファイルURL
           </div>
-          <form action={fetchBarberShopSourceAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <form action={formAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
             <input
               name="sourceUrl"
               type="url"
@@ -140,40 +129,40 @@ export function OfficialSourceScreen({ preview, format, error }: SourceScreenPro
       {preview ? (
         <div className="mt-5 grid gap-4">
           <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
-            <StatCard label="取得件数" value={preview.batch.row_count} />
-            <StatCard label="有効件数" value={preview.batch.valid_row_count} />
-            <StatCard label="店名空欄" value={blankCount(preview, "店名")} />
-            <StatCard label="住所空欄" value={blankCount(preview, "住所")} />
-            <StatCard label="電話番号空欄" value={blankCount(preview, "電話番号")} />
-            <StatCard label="重複候補" value={preview.batch.duplicate_candidate_count} />
-            <StatCard label="エラー件数" value={preview.batch.error_count} />
+            <StatCard label="取得件数" value={preview.fetchedCount} />
+            <StatCard label="有効件数" value={preview.validCount} />
+            <StatCard label="店名空欄" value={preview.blankCounts.name} />
+            <StatCard label="住所空欄" value={preview.blankCounts.address} />
+            <StatCard label="電話番号空欄" value={preview.blankCounts.phone} />
+            <StatCard label="重複候補" value="既存画面" />
+            <StatCard label="エラー件数" value={preview.errorCount} />
           </section>
 
           <section className="grid gap-3 rounded-[8px] border border-amber-200 bg-amber-50 p-4 text-xs font-semibold leading-relaxed text-amber-900">
             <div className="flex items-start gap-2">
               <AlertTriangle aria-hidden="true" size={16} className="mt-0.5 shrink-0" />
-              <p>完全一致重複: {preview.batch.duplicate_exact_count.toLocaleString("ja-JP")}件。公開に不要な代表者氏名は出力せず、郵便番号は現行CSV形式に列がないため出力していません。</p>
+              <p>この画面では既存店舗との重複判定を行いません。CSVダウンロード後、既存画面のプレビューで完全一致・重複候補を確認してください。</p>
             </div>
-            <p>掲載元には取得後の公式URLを設定し、認証状態はすべて「未認証」として既存取込へ渡します。</p>
+            <p>代表者氏名など公開に不要な個人情報は出力せず、郵便番号も現行CSV形式に列がないため出力していません。掲載元には取得後の公式URLを設定し、認証状態はすべて「未認証」です。</p>
           </section>
 
           <ResultTable preview={preview} />
 
           <section className="flex flex-col gap-3 rounded-[8px] border border-line bg-white p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-center">
-            <OfficialSourceCsvDownloadButton batchId={preview.batch.id} />
-            <Link href={`/admin/barber-shops/import?batch=${encodeURIComponent(preview.batch.id)}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
+            <OfficialSourceCsvDownloadButton csv={preview.csv} fileName={preview.fileName} />
+            <Link href="/admin/barber-shops/import" className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-ink px-4 text-sm font-black text-white">
               既存のCSVインポート画面へ進む
               <ArrowRight aria-hidden="true" size={17} />
             </Link>
             <div className="basis-full text-xs font-semibold leading-relaxed text-mute">
               <CheckCircle2 aria-hidden="true" size={15} className="mr-1 inline text-emerald-600" />
-              この画面では店舗登録しません。最終インポートは次の既存画面で確認してから実行してください。
+              この画面では店舗登録も既存プレビュー作成も行いません。CSVをダウンロードして既存画面で選択し、そこで最終確認・登録してください。
             </div>
           </section>
         </div>
       ) : (
         <div className="mt-5">
-          <Banner type="info" message="URLを入力すると、変換後の店舗名・住所・電話番号、空欄、重複候補、エラーを確認できます。" />
+          <Banner type="info" message="URLを入力すると、変換後の店舗名・住所・電話番号、空欄、変換時エラーを確認できます。重複判定はCSVを既存画面へ選択した後に行います。" />
         </div>
       )}
     </main>
