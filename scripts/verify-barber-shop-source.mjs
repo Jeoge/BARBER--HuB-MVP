@@ -66,7 +66,17 @@ try {
     assert.equal(preview.outputCount, useRealUrl ? 30 : 2);
     assert.equal(preview.paginationDetected, true);
     assert.ok(preview.rows[0]?.name);
+    if (useRealUrl) {
+      assert.match(preview.rows[0]?.address ?? "", /^川崎市川崎区/);
+      assert.match(preview.rows[0]?.phone ?? "", /^044-/);
+    } else {
+      assert.equal(preview.rows[0]?.address, "東京都千代田区1-1");
+      assert.equal(preview.rows[0]?.phone, "03-0000-0001");
+    }
     assert.match(preview.csv, /^\uFEFF/);
+    const csvLines = preview.csv.split(/\r\n|\n/);
+    assert.equal(csvLines[0], "\uFEFF店名,都道府県,市区町村,住所,電話番号,掲載元,認証状態");
+    assert.match(csvLines[1] ?? "", /,未認証$/);
     if (!useRealUrl) {
       assert.match(preview.csv, /fixture barber A/);
       assert.match(preview.csv, /fixture barber B/);
