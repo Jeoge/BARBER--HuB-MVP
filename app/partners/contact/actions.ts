@@ -27,7 +27,7 @@ function hasLineBreak(value: string) {
 }
 
 function redirectWithError(message: string): never {
-  redirect(`/partners?error=${encodeURIComponent(message)}`);
+  redirect(`/partners/contact?error=${encodeURIComponent(message)}`);
 }
 
 function genericSaveError(): never {
@@ -54,7 +54,7 @@ function parseWebsiteUrl(value: string) {
 export async function createPartnerInquiryAction(formData: FormData) {
   const honeypot = cleanText(formData.get("website")).slice(0, 200);
   if (honeypot) {
-    redirect("/partners?submitted=1");
+    redirect("/partners/contact?submitted=1");
   }
 
   const contactName = cleanText(formData.get("contactName"));
@@ -150,7 +150,7 @@ export async function createPartnerInquiryAction(formData: FormData) {
     message,
     status: "new",
     user_id: user?.id ?? null,
-    source_page: "/partners",
+    source_page: "/partners/contact",
   });
 
   if (error) {
@@ -159,6 +159,6 @@ export async function createPartnerInquiryAction(formData: FormData) {
   }
 
   recentSubmissionByEmailHash.set(emailHash, now);
-  revalidatePath("/partners");
-  redirect("/partners?submitted=1");
+  revalidatePath("/partners/contact");
+  redirect("/partners/contact?submitted=1");
 }

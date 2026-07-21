@@ -5,7 +5,7 @@ export function PartnersCard() {
   return (
     <section className="px-4 pt-7" aria-label="PARTNERS">
       <Link
-        href="/partners"
+        href="/partners/contact"
         className="pressable group block rounded-[10px] border border-line bg-[#fcfcfc] p-4 shadow-[0_8px_24px_rgba(17,17,17,0.035)] hover:border-blush/35 hover:bg-blushSoft/25"
       >
         <div className="flex items-center justify-between gap-3">
