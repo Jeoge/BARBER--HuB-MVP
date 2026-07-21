@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <title>理容店検索 fixture</title>
+  </head>
+  <body>
+    <form action="/search/" method="get">
+      <label>地域<select name="address"><option>横浜市</option></select></label>
+      <input name="name" type="text">
+      <button type="submit">検索</button>
+    </form>
+    <p>2件登録されています。</p>
+    <table>
+      <thead>
+        <tr><th>店名</th><th>郵便番号</th><th>住所</th><th>TEL</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>fixture barber A</td><td>100-0001</td><td>東京都千代田区1-1</td><td>03-0000-0001</td></tr>
+        <tr><td>fixture barber B</td><td>100-0002</td><td>東京都千代田区2-2</td><td>03-0000-0002</td></tr>
+      </tbody>
+    </table>
+    <nav class="pagination">
+      <a href="/search/?post=&amp;address=&amp;name=&amp;page=1">1</a>
+      <a href="/search/?post=&amp;address=&amp;name=&amp;page=2">2</a>
+      <a href="/search/?post=&amp;address=&amp;name=&amp;page=2">次へ</a>
+    </nav>
+  </body>
+</html>

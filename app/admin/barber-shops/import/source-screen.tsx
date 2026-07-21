@@ -76,9 +76,12 @@ function SourceAnalysisPanel({ analysis, formAction }: { analysis: BarberShopSou
         <p className="mt-2 text-xs font-semibold leading-relaxed text-mute">
           取得件数（このURL）: {analysis.pageDisplayCount.toLocaleString("ja-JP")}件 / ページ内表示件数: {analysis.pageDisplayCount.toLocaleString("ja-JP")}件
         </p>
+        <p className="mt-1 break-all text-[0.68rem] font-medium leading-relaxed text-mute">
+          取得先: {analysis.finalUrl} / 形式: {analysis.format} / HTTP {analysis.responseStatus} / {analysis.contentType} / 文字コード: {analysis.encoding === "binary" ? "バイナリ" : analysis.encoding.toUpperCase()} / table: {analysis.tableCount}件 / 表データ: {analysis.pageDisplayCount}件
+        </p>
         {analysis.paginationDetected ? (
           <div className="mt-2">
-            <Banner type="info" message="ページネーションを検出しました。このURLの1ページ分のみ取得しています。全件として扱わず、必要なページのURL、CSV、Excel、PDFを指定してください。" />
+            <Banner type="info" message={`ページネーションを検出しました。このURLから取得した1ページ分のみです。${analysis.reportedTotalCount == null ? "全件ではありません。" : `全${analysis.reportedTotalCount.toLocaleString("ja-JP")}件ではありません。`} 必要なページのURL、CSV、Excel、PDFを指定してください。`} />
           </div>
         ) : null}
       </div>
@@ -245,6 +248,7 @@ export function OfficialSourceScreen() {
           <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
             <StatCard label="取得件数（このURL）" value={preview.fetchedCount} />
             <StatCard label="ページ内表示件数" value={preview.pageDisplayCount} />
+            {preview.reportedTotalCount == null ? null : <StatCard label="サイト表示の全件数" value={preview.reportedTotalCount} />}
             <StatCard label="出力予定件数" value={preview.outputCount} />
             <StatCard label="店名空欄" value={preview.blankCounts.name} />
             <StatCard label="都道府県空欄" value={preview.blankCounts.prefecture} />
@@ -257,7 +261,7 @@ export function OfficialSourceScreen() {
           </section>
 
           {preview.paginationDetected ? (
-            <Banner type="info" message="ページネーションを検出しました。このURLの1ページ分のみをCSV化しています。全件として扱わず、必要なページのURL、CSV、Excel、PDFを指定してください。" />
+            <Banner type="info" message={`ページネーションを検出しました。このURLから取得した1ページ分のみです。${preview.reportedTotalCount == null ? "全件ではありません。" : `全${preview.reportedTotalCount.toLocaleString("ja-JP")}件ではありません。`} 必要なページのURL、CSV、Excel、PDFを指定してください。`} />
           ) : null}
 
           <section className="grid gap-3 rounded-[8px] border border-amber-200 bg-amber-50 p-4 text-xs font-semibold leading-relaxed text-amber-900">
@@ -265,7 +269,7 @@ export function OfficialSourceScreen() {
               <AlertTriangle aria-hidden="true" size={16} className="mt-0.5 shrink-0" />
               <p>この画面では既存店舗との重複判定を行いません。CSVダウンロード後、既存画面のプレビューで完全一致・重複候補を確認してください。</p>
             </div>
-            <p>代表者氏名など公開に不要な個人情報は出力せず、郵便番号も現行CSV形式に列がないため出力していません。掲載元名は入力値を使い、認証状態はすべて「未認証」です。式として解釈される先頭文字はCSV側で安全化します。</p>
+            <p>取得先: <span className="break-all">{preview.finalUrl}</span> / 形式: {preview.format} / HTTP {preview.responseStatus} / {preview.contentType} / 文字コード: {preview.encoding === "binary" ? "バイナリ" : preview.encoding.toUpperCase()} / table: {preview.tableCount}件。代表者氏名など公開に不要な個人情報は出力せず、郵便番号も現行CSV形式に列がないため出力していません。掲載元名は入力値を使い、認証状態はすべて「未認証」です。式として解釈される先頭文字はCSV側で安全化します。</p>
           </section>
 
           <ResultTable preview={preview} />

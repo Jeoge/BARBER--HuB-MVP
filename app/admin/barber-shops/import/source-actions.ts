@@ -34,6 +34,15 @@ function safeErrorMessage(error: unknown) {
   return "公式一覧を取得・解析できませんでした。URLと対応形式を確認してください。";
 }
 
+function safeDiagnosticUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return "invalid-url";
+  }
+}
+
 function mappingValue(value: FormDataEntryValue | null): number | null {
   const text = cleanText(value, 12);
   if (!text) return null;
@@ -84,6 +93,7 @@ export async function fetchBarberShopSourceAction(
   } catch (error) {
     console.error("Barber shop official source preview failed", {
       code: error && typeof error === "object" && "code" in error ? error.code : "unknown",
+      sourceUrl: safeDiagnosticUrl(sourceUrl),
     });
     return { analysis: isCreate ? previousState.analysis : null, preview: null, error: safeErrorMessage(error) };
   }

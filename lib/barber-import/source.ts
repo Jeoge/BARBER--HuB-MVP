@@ -22,6 +22,7 @@ const CKAN_RESOURCE_DOWNLOAD_MESSAGE = "CKANのリソースページからダウ
 const CKAN_API_UNSUPPORTED_MESSAGE = "CKANのAPI URLには対応していません。リソースページまたはCSVダウンロードURLを指定してください。";
 
 export type SourceFormat = "CSV" | "TSV" | "xlsx" | "HTML table" | "text PDF";
+export type SourceEncoding = "utf-8" | "shift_jis" | "binary";
 
 export type SourceColumnMapping = {
   name: number | null;
@@ -33,6 +34,12 @@ export type BarberShopSourceAnalysis = {
   sourceUrl: string;
   finalUrl: string;
   format: SourceFormat;
+  responseStatus: number;
+  contentType: string;
+  byteLength: number;
+  encoding: SourceEncoding;
+  tableCount: number;
+  reportedTotalCount: number | null;
   headers: string[];
   sampleRows: string[][];
   autoMapping: SourceColumnMapping;
@@ -58,6 +65,12 @@ export type BarberShopSourcePreview = {
   format: SourceFormat;
   finalUrl: string;
   fileName: string;
+  responseStatus: number;
+  contentType: string;
+  byteLength: number;
+  encoding: SourceEncoding;
+  tableCount: number;
+  reportedTotalCount: number | null;
   csv: string;
   rows: BarberShopSourcePreviewRow[];
   fetchedCount: number;
@@ -92,12 +105,16 @@ type SourceResponse = {
   contentType: string;
   finalUrl: string;
   fileName: string;
+  status: number;
 };
 
 type SourceTable = {
   headers: string[];
   rows: string[][];
   format: SourceFormat;
+  encoding: SourceEncoding;
+  tableCount: number;
+  reportedTotalCount: number | null;
   pageDisplayCount: number;
   paginationDetected: boolean;
 };
@@ -172,20 +189,50 @@ function cleanCell(value: unknown, maxLength = 500) {
   return cleanImportText(typeof value === "string" ? value : String(value ?? ""), maxLength);
 }
 
-function decodeText(bytes: Uint8Array) {
+function normalizeDeclaredEncoding(value: string | null | undefined): Exclude<SourceEncoding, "binary"> | null {
+  const normalized = (value ?? "").trim().toLowerCase().replace(/["']/g, "");
+  if (["utf-8", "utf8"].includes(normalized)) return "utf-8";
+  if (["shift_jis", "shift-jis", "sjis", "ms932", "cp932", "windows-31j", "x-sjis"].includes(normalized)) return "shift_jis";
+  return null;
+}
+
+function charsetFromContentType(contentType: string) {
+  return normalizeDeclaredEncoding(contentType.match(/(?:^|;)\s*charset\s*=\s*([^;\s]+)/i)?.[1]);
+}
+
+function charsetFromHtml(bytes: Uint8Array) {
+  const head = new TextDecoder("latin1").decode(bytes.slice(0, 8192));
+  const direct = head.match(/<meta\b[^>]*\bcharset\s*=\s*["']?\s*([^\s"'/>;]+)/i)?.[1];
+  const content = head.match(/<meta\b[^>]*(?:content\s*=\s*["'][^"']*?charset\s*=\s*([^\s"';]+)[^"']*|charset\s*=\s*([^\s"'>;]+))/i);
+  return normalizeDeclaredEncoding(direct ?? content?.[1] ?? content?.[2]);
+}
+
+function decodeBytes(bytes: Uint8Array, encoding: Exclude<SourceEncoding, "binary">) {
+  return new TextDecoder(encoding, { fatal: false }).decode(bytes);
+}
+
+function decodeText(bytes: Uint8Array, contentType = "") {
+  const declared = charsetFromContentType(contentType);
+  if (declared) return { text: decodeBytes(bytes, declared), encoding: declared };
+
   const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
   const shiftJis = new TextDecoder("shift_jis", { fatal: false }).decode(bytes);
   const score = (text: string) => {
-    const headers = text.split(/\r\n|\n|\r/, 1)[0] ?? "";
+    const sample = text.slice(0, 65_536);
     const hints = Object.values(SOURCE_HEADER_ALIASES).flat();
-    const matched = hints.filter((hint) => headers.includes(hint)).length;
+    const matched = hints.filter((hint) => sample.includes(hint)).length;
     const replacements = (text.match(/\uFFFD/g) ?? []).length;
-    return matched * 20 - replacements;
+    return matched * 20 - replacements * 2;
   };
 
   return score(shiftJis) > score(utf8)
     ? { text: shiftJis, encoding: "shift_jis" as const }
     : { text: utf8, encoding: "utf-8" as const };
+}
+
+function decodeHtmlText(bytes: Uint8Array, contentType: string) {
+  const declared = charsetFromContentType(contentType) ?? charsetFromHtml(bytes);
+  return declared ? { text: decodeBytes(bytes, declared), encoding: declared } : decodeText(bytes, contentType);
 }
 
 function detectDelimiter(text: string, fileName: string, contentType: string) {
@@ -270,11 +317,29 @@ function htmlCellText(value: string) {
   );
 }
 
-function parseHtmlTable(html: string): SourceTable {
+function reportedTotalCountFromHtml(html: string) {
+  const text = htmlSignalText(html).replace(/\s+/g, " ");
+  const match = text.match(/([0-9][0-9,]*)\s*件(?:登録|掲載|表示|あります)/i);
+  if (!match) return null;
+  const count = Number.parseInt((match[1] ?? "").replace(/,/g, ""), 10);
+  return Number.isSafeInteger(count) ? count : null;
+}
+
+function safeDiagnosticUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return "invalid-url";
+  }
+}
+
+function parseHtmlTable(html: string, encoding: Exclude<SourceEncoding, "binary">): SourceTable {
   const safeHtml = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "");
   const tables = Array.from(safeHtml.matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)).map((match) => match[1] ?? "");
   let best: SourceTable | null = null;
   let bestHasShopSignal = false;
+  const reportedTotalCount = reportedTotalCountFromHtml(safeHtml);
 
   for (const tableHtml of tables) {
     const rowMatches = Array.from(tableHtml.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi));
@@ -293,6 +358,9 @@ function parseHtmlTable(html: string): SourceTable {
       headers,
       rows: parsedRows.slice(headerIndex + 1),
       format: "HTML table" as const,
+      encoding,
+      tableCount: tables.length,
+      reportedTotalCount,
       pageDisplayCount: parsedRows.slice(headerIndex + 1).length,
       paginationDetected: detectPagination(safeHtml),
     };
@@ -338,7 +406,7 @@ function parsePdfLines(text: string): SourceTable {
   const rows = lines.slice(headerIndex + 1).map((line) => pdfCells(line).map((cell) => cleanCell(cell))).filter((row) => row.some(Boolean));
 
   if (rows.length === 0 || recognizedHeaderCount(headers) === 0) throw new BarberShopSourceError(PDF_PARSE_FAILURE_MESSAGE, "pdf_parse_failed");
-  return { headers, rows, format: "text PDF", pageDisplayCount: rows.length, paginationDetected: false };
+  return { headers, rows, format: "text PDF", encoding: "binary", tableCount: 1, reportedTotalCount: null, pageDisplayCount: rows.length, paginationDetected: false };
 }
 
 async function parseXlsx(bytes: Uint8Array): Promise<SourceTable> {
@@ -355,7 +423,7 @@ async function parseXlsx(bytes: Uint8Array): Promise<SourceTable> {
     const headers = rows[headerIndex] ?? [];
     if (headers.length === 0) throw new Error("missing headers");
     const dataRows = rows.slice(headerIndex + 1);
-    return { headers, rows: dataRows, format: "xlsx", pageDisplayCount: dataRows.length, paginationDetected: false };
+    return { headers, rows: dataRows, format: "xlsx", encoding: "binary", tableCount: 1, reportedTotalCount: null, pageDisplayCount: dataRows.length, paginationDetected: false };
   } catch (error) {
     if (error instanceof BarberShopSourceError) throw error;
     throw new BarberShopSourceError(XLSX_PARSE_FAILURE_MESSAGE, "parse_failed");
@@ -519,6 +587,7 @@ async function fetchSource(input: string): Promise<SourceResponse> {
         contentType,
         finalUrl: current.toString(),
         fileName: fileNameFromContentDisposition(response.headers.get("content-disposition")) || fileNameFromUrl(current.toString()) || fileNameHint || "official-source",
+        status: response.status,
       };
     } catch (error) {
       if (error instanceof BarberShopSourceError) throw error;
@@ -547,18 +616,21 @@ async function parseSource(response: SourceResponse): Promise<SourceTable> {
   if (xlsxExtension && !type.includes("spreadsheet") && type !== "application/vnd.ms-excel" && !genericType) throw new BarberShopSourceError(UNSUPPORTED_FORMAT_MESSAGE, "unsupported");
 
   const isHtml = type === "text/html" || type === "application/xhtml+xml" || (htmlExtension && genericType);
-  if (isHtml) return parseHtmlTable(new TextDecoder("utf-8", { fatal: false }).decode(response.bytes));
+  if (isHtml) {
+    const decoded = decodeHtmlText(response.bytes, contentType);
+    return parseHtmlTable(decoded.text, decoded.encoding);
+  }
   if (htmlExtension && !isHtml && !genericType) throw new BarberShopSourceError(UNSUPPORTED_FORMAT_MESSAGE, "unsupported");
 
   const textType = type.startsWith("text/") || type === "application/csv" || (genericType && textExtension);
   if (textType) {
-    const decoded = decodeText(response.bytes);
+    const decoded = decodeText(response.bytes, contentType);
     const delimiter = detectDelimiter(decoded.text, fileName, contentType);
     const rows = parseDelimitedText(stripBom(decoded.text), delimiter).map((row) => row.slice(0, MAX_SOURCE_COLUMNS).map((cell) => cleanCell(cell)));
     const headers = rows[0] ?? [];
     if (headers.length === 0 || rows.length < 2) throw new BarberShopSourceError(CSV_PARSE_FAILURE_MESSAGE, "parse_failed");
     const dataRows = rows.slice(1);
-    return { headers, rows: dataRows, format: delimiter === "\t" ? "TSV" : "CSV", pageDisplayCount: dataRows.length, paginationDetected: false };
+    return { headers, rows: dataRows, format: delimiter === "\t" ? "TSV" : "CSV", encoding: decoded.encoding, tableCount: 1, reportedTotalCount: null, pageDisplayCount: dataRows.length, paginationDetected: false };
   }
 
   throw new BarberShopSourceError(UNSUPPORTED_FORMAT_MESSAGE, "unsupported");
@@ -684,14 +756,34 @@ export async function analyzeBarberShopSource(input: Omit<SourceConversionInput,
   if (!cleaned.sourceUrl) throw new BarberShopSourceError("URLの形式を確認してください。", "invalid_url");
   const response = await fetchSource(cleaned.sourceUrl);
   const table = await parseSource(response);
+  const autoMapping = autoSourceColumnMapping(table);
+  console.info("Barber shop source analyzed", {
+    responseStatus: response.status,
+    finalUrl: safeDiagnosticUrl(response.finalUrl),
+    queryPresent: new URL(response.finalUrl).search.length > 0,
+    contentType: response.contentType,
+    byteLength: response.bytes.byteLength,
+    encoding: table.encoding,
+    tableCount: table.tableCount,
+    selectedHeaders: table.headers.slice(0, 12),
+    dataRowCount: table.rows.length,
+    autoMapping,
+    paginationDetected: table.paginationDetected,
+  });
 
   return {
     ...cleaned,
     finalUrl: response.finalUrl,
     format: table.format,
+    responseStatus: response.status,
+    contentType: response.contentType,
+    byteLength: response.bytes.byteLength,
+    encoding: table.encoding,
+    tableCount: table.tableCount,
+    reportedTotalCount: table.reportedTotalCount,
     headers: table.headers,
     sampleRows: table.rows.slice(0, 10),
-    autoMapping: autoSourceColumnMapping(table),
+    autoMapping,
     pageDisplayCount: table.pageDisplayCount,
     paginationDetected: table.paginationDetected,
     excludedColumnIndexes: table.headers
@@ -707,11 +799,31 @@ export async function createBarberShopSourcePreview(input: SourceConversionInput
   const table = await parseSource(response);
   ensureMapping(input.mapping, table.headers);
   const transformed = sourceRowsToCsv(table, { ...cleaned, mapping: input.mapping });
+  console.info("Barber shop source converted", {
+    responseStatus: response.status,
+    finalUrl: safeDiagnosticUrl(response.finalUrl),
+    queryPresent: new URL(response.finalUrl).search.length > 0,
+    contentType: response.contentType,
+    byteLength: response.bytes.byteLength,
+    encoding: table.encoding,
+    tableCount: table.tableCount,
+    selectedHeaders: table.headers.slice(0, 12),
+    dataRowCount: table.rows.length,
+    outputCount: transformed.outputCount,
+    mapping: input.mapping,
+    paginationDetected: table.paginationDetected,
+  });
 
   return {
     format: table.format,
     finalUrl: response.finalUrl,
     fileName: `barber-hub-official-source-${Date.now()}.csv`,
+    responseStatus: response.status,
+    contentType: response.contentType,
+    byteLength: response.bytes.byteLength,
+    encoding: table.encoding,
+    tableCount: table.tableCount,
+    reportedTotalCount: table.reportedTotalCount,
     csv: transformed.csv,
     rows: transformed.rows.slice(0, 20),
     fetchedCount: transformed.fetchedCount,
