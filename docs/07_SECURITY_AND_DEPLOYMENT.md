@@ -175,3 +175,11 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - 一般ユーザーが他人のデータを更新できない。
 - Preview DeploymentとPRの最終commitが一致する。
 - 本番反映が必要な画像assetがcommit / pushされている。
+
+## PARTNERS問い合わせの安全対策
+
+- `/partners/contact`は未ログインでも送信できるが、ブラウザから`partner_inquiries`へ直接INSERTさせず、Server Actionで入力検証後にserver-onlyのservice role clientから保存する。ログイン中の送信だけ`user_id`を補助的に保存し、送信者向け一覧は作らない。既存の`/partners`はメーカー・ディーラー情報等のページとして維持する。
+- honeypot、必須・文字数・メール形式・改行・http/https URL・問い合わせ種別・プライバシーポリシー同意をServer ActionとDB制約の両方で検証する。Reactの通常表示だけでなく、管理画面でもユーザー入力をHTMLとして解釈しない。
+- 同一メールアドレスについて短時間の連続送信をDB上の直近件数とserver-sideの短時間重複防止で制限する。IPアドレスは保存せず、外部CAPTCHAやメール通知サービスも追加しない。
+- `partner_inquiries`はanon / authenticatedの権限をrevokeし、管理画面は既存の`BARBER_HUB_ADMIN_USER_IDS` / `NEWS_REVIEW_ADMIN_USER_IDS` allowlistで保護する。管理画面と送信完了状態はnoindexとする。
+- ログには氏名、メール、電話、URL、本文を出さず、設定不足の件数、migration・DBエラーのコード、問い合わせIDなど必要最小限だけを出す。本番migrationは既存のProduction Environment承認フローで適用する。
