@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { HorizontalRail } from "@/components/HorizontalRail";
 import { LiveEditorialCover } from "@/components/LiveEditorialCover";
 import { LegalLinks } from "@/components/LegalLinks";
+import { PartnersCard } from "@/components/PartnersCard";
 import { QASection } from "@/components/QASection";
 import { SnapSection } from "@/components/SnapSection";
 import { ContentAdCard } from "@/components/ContentAdCard";
@@ -117,6 +118,7 @@ export default async function Home() {
         <HorizontalRail title="メーカー新商品" items={manufacturerArticleRailItems} />
         <HorizontalRail title="講習会" items={seminars} hrefPrefix="/seminars" />
         <HorizontalRail title="学生・求人" items={jobs} hrefPrefix="/jobs" />
+        <PartnersCard />
         <LegalLinks />
         <FloatingPostButton />
         <BottomNavigation />
