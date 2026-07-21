@@ -23,6 +23,17 @@ function transpile(source) {
     .replace(/import\(("|')(\.\/[^"']+)(\1)\)/g, "import($1$2.mjs$3)");
 }
 
+function assertPlainSerializable(value, path = "state") {
+  if (value == null || ["string", "number", "boolean"].includes(typeof value)) return;
+  assert.notEqual(typeof value, "undefined", `${path} must not contain undefined`);
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertPlainSerializable(item, `${path}[${index}]`));
+    return;
+  }
+  assert.equal(Object.getPrototypeOf(value), Object.prototype, `${path} must be a plain object`);
+  Object.entries(value).forEach(([key, item]) => assertPlainSerializable(item, `${path}.${key}`));
+}
+
 try {
   for (const relativePath of sourceFiles) {
     const outputName = `${basename(relativePath, ".ts")}.mjs`;
@@ -47,6 +58,10 @@ try {
       sourceName: useRealUrl ? "神奈川県理容生活衛生同業組合 組合加盟店一覧" : "fixture 組合加盟店一覧",
     };
     const analysis = await analyzeBarberShopSource(input);
+    const analysisState = { analysis, preview: null, error: null };
+    assertPlainSerializable(analysisState);
+    const analysisStateBytes = new TextEncoder().encode(JSON.stringify(analysisState)).byteLength;
+    assert.ok(analysisStateBytes < 1_000_000, "analysis action state must stay below 1 MB");
 
     assert.equal(analysis.format, "HTML table");
     assert.equal(analysis.responseStatus, 200);
@@ -63,6 +78,10 @@ try {
       ...input,
       mapping: analysis.autoMapping,
     });
+    const previewState = { analysis, preview, error: null };
+    assertPlainSerializable(previewState);
+    const previewStateBytes = new TextEncoder().encode(JSON.stringify(previewState)).byteLength;
+    assert.ok(previewStateBytes < 1_000_000, "preview action state must stay below 1 MB");
     assert.equal(preview.outputCount, useRealUrl ? 30 : 2);
     assert.equal(preview.paginationDetected, true);
     assert.ok(preview.rows[0]?.name);
@@ -91,6 +110,8 @@ try {
       responseStatus: analysis.responseStatus,
       encoding: analysis.encoding,
       reportedTotalCount: analysis.reportedTotalCount,
+      analysisStateBytes,
+      previewStateBytes,
     }));
   } finally {
     globalThis.fetch = originalFetch;

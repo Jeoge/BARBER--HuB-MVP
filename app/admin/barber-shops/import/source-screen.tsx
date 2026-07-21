@@ -7,7 +7,13 @@ import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { OfficialSourceCsvDownloadButton } from "@/components/OfficialSourceCsvDownloadButton";
 import type { BarberShopSourceAnalysis, BarberShopSourcePreview } from "@/lib/barber-import/source";
 import { PREFECTURES } from "@/lib/japanAreas";
-import { fetchBarberShopSourceAction, initialOfficialSourceActionState } from "./source-actions";
+import { fetchBarberShopSourceAction, type OfficialSourceActionState } from "./source-actions";
+
+const initialOfficialSourceActionState: OfficialSourceActionState = {
+  analysis: null,
+  preview: null,
+  error: null,
+};
 
 function Banner({ type, message }: { type: "success" | "error" | "info"; message: string }) {
   const className =
