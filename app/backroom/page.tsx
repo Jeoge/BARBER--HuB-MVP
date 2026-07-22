@@ -19,7 +19,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 
 type BackroomPageProps = {
-  searchParams?: Promise<{ posted?: string; joined?: string; category?: string }>;
+  searchParams?: Promise<{ posted?: string; joined?: string; category?: string; deleted?: string; deleteError?: string }>;
 };
 
 function AuthorLine({ post }: { post: BackroomPostWithAuthor }) {
@@ -154,6 +154,16 @@ export default async function BackroomPage({ searchParams }: BackroomPageProps) 
         ) : null}
         {params?.joined === "1" ? (
           <div className={"rounded-[8px] p-3 text-sm font-black text-ink " + backRoomTheme.notice}>Back Room参加設定を保存しました。</div>
+        ) : null}
+        {params?.deleted === "1" ? (
+          <div className={"rounded-[8px] p-3 text-sm font-black text-ink " + backRoomTheme.notice} role="status">
+            スレッドを削除しました。
+          </div>
+        ) : null}
+        {params?.deleteError === "1" ? (
+          <div className="rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700" role="alert">
+            スレッドを削除できませんでした。時間をおいて再度お試しください。
+          </div>
         ) : null}
         {error ? (
           <div className="rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700">
