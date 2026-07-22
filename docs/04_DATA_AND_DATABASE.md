@@ -147,6 +147,7 @@ RLS:
 - `backroom_thread_images`: `id`, `thread_id`, `storage_path`, `sort_order`, `width`, `height`, `byte_size`, `mime_type`, `created_at`。
 - `backroom_comment_images`: `id`, `comment_id`, `storage_path`, `sort_order`, `width`, `height`, `byte_size`, `mime_type`, `created_at`。
 - `thread_id` / `comment_id` は親削除時にcascadeする。スレッド作成者本人による正式削除では、本人権限確認と全Storage pathの親ID所属検証後、`backroom_posts`を物理削除し、`backroom_comments`、`backroom_thread_images`、`backroom_comment_images`をcascade削除する。Storage objectはcascadeでは消えないため、DB削除成功後にだけserver-onlyで対象objectを削除する。Storage削除失敗ではDB削除を巻き戻さない。投稿失敗時の補償処理だけは、成功投稿として公開されていない作成途中のStorage objectを先に削除する。
+- 削除時に画像テーブルが未適用またはschema cache未更新の場合は、PostgreSQL `42P01`またはPostgREST `PGRST205`と対象の正しいテーブル名が一致するエラーだけを画像metadataなしとして継続する。曖昧なメッセージ、別テーブル、通信、認証、RLS、timeout等は無視しない。コメントIDが0件ならコメント画像テーブルを問い合わせない。親行DELETEは`id`、`user_id`、`is_deleted = false`を再指定し、exact countが1件のときだけ成功とする。
 - object pathは `threads/{thread_id}/{uuid}.webp` または `comments/{comment_id}/{uuid}.webp` とし、ユーザー入力ファイル名を使用しない。DB制約とRLSで親ID配下だけを許可する。
 - スレッド画像のSELECTはBack Room参加者かつ公開中スレッド、または本人のスレッドに限定する。コメント画像のSELECTはBack Room参加者かつ公開中スレッドのコメントに限定する。
 - INSERT / UPDATE / DELETEは親投稿・コメントの本人だけに限定し、Back Roomプロフィール参加条件も維持する。他人のthread_id / comment_idへ画像を追加・差し替えできない。
