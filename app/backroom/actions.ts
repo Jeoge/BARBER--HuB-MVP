@@ -13,10 +13,32 @@ import {
   uploadBackroomImageAsServer,
 } from "@/lib/backroomImageServer";
 import { getPostPermissionRedirect } from "@/lib/permissions";
-import { getBackroomProfile } from "@/lib/supabase/backroom";
+import { getBackroomProfile, normalizeBackroomCategory } from "@/lib/supabase/backroom";
 import { removeBackroomImageObjectsAsServer } from "@/lib/supabase/backroom-images";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
+import { isSafeBackroomImageStoragePath } from "@/lib/backroomImages";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const BACKROOM_DELETE_PAGE_SIZE = 500;
+const BACKROOM_DELETE_COMMENT_ID_CHUNK_SIZE = 200;
+
+type BackroomClient = Awaited<ReturnType<typeof createClient>>;
+type BackroomDeleteDbError = {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+  hint?: string | null;
+};
+
+type ThreadImagePathRow = {
+  storage_path: string;
+};
+
+type CommentImagePathRow = {
+  comment_id: string;
+  storage_path: string;
+};
 
 function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -25,6 +47,94 @@ function cleanText(value: FormDataEntryValue | null) {
 
 function backroomPath(postId: string, params?: Record<string, string | undefined>) {
   return pathWithParams(`/backroom/${postId}`, params ?? {});
+}
+
+function backroomDeleteFailurePath(postId?: string) {
+  if (postId && UUID_PATTERN.test(postId)) {
+    return backroomPath(postId, { deleteError: "1" });
+  }
+
+  return pathWithParams("/backroom", { deleteError: "1" });
+}
+
+function logBackroomDeleteDbError(
+  label: string,
+  operation: string,
+  context: { postId: string; userId: string; threadImageCount?: number; commentCount?: number; commentImageCount?: number },
+  error: BackroomDeleteDbError
+) {
+  console.error(label, {
+    operation,
+    ...context,
+    code: error.code ?? "unknown",
+    message: error.message ?? "unknown",
+    details: error.details ?? null,
+    hint: error.hint ?? null,
+  });
+}
+
+async function listAllBackroomThreadImagePaths(supabase: BackroomClient, postId: string) {
+  const rows: ThreadImagePathRow[] = [];
+
+  for (let from = 0; ; from += BACKROOM_DELETE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("backroom_thread_images")
+      .select("storage_path")
+      .eq("thread_id", postId)
+      .order("id", { ascending: true })
+      .range(from, from + BACKROOM_DELETE_PAGE_SIZE - 1);
+
+    if (error) return { rows, error };
+
+    const page = (data ?? []) as ThreadImagePathRow[];
+    rows.push(...page);
+    if (page.length < BACKROOM_DELETE_PAGE_SIZE) return { rows, error: null };
+  }
+}
+
+async function listAllBackroomCommentIds(supabase: BackroomClient, postId: string) {
+  const ids: string[] = [];
+
+  for (let from = 0; ; from += BACKROOM_DELETE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("backroom_comments")
+      .select("id")
+      .eq("post_id", postId)
+      .order("id", { ascending: true })
+      .range(from, from + BACKROOM_DELETE_PAGE_SIZE - 1);
+
+    if (error) return { ids, error };
+
+    const page = (data ?? []) as Array<{ id: string }>;
+    ids.push(...page.map((row) => row.id));
+    if (page.length < BACKROOM_DELETE_PAGE_SIZE) return { ids, error: null };
+  }
+}
+
+async function listAllBackroomCommentImagePaths(supabase: BackroomClient, commentIds: string[]) {
+  const rows: CommentImagePathRow[] = [];
+
+  for (let chunkStart = 0; chunkStart < commentIds.length; chunkStart += BACKROOM_DELETE_COMMENT_ID_CHUNK_SIZE) {
+    const commentIdChunk = commentIds.slice(chunkStart, chunkStart + BACKROOM_DELETE_COMMENT_ID_CHUNK_SIZE);
+
+    for (let from = 0; ; from += BACKROOM_DELETE_PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from("backroom_comment_images")
+        .select("comment_id, storage_path")
+        .in("comment_id", commentIdChunk)
+        .order("comment_id", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + BACKROOM_DELETE_PAGE_SIZE - 1);
+
+      if (error) return { rows, error };
+
+      const page = (data ?? []) as CommentImagePathRow[];
+      rows.push(...page);
+      if (page.length < BACKROOM_DELETE_PAGE_SIZE) break;
+    }
+  }
+
+  return { rows, error: null };
 }
 
 function commentErrorMessage(error: unknown) {
@@ -43,6 +153,217 @@ function commentErrorMessage(error: unknown) {
   }
 
   return "コメントを保存できませんでした。";
+}
+
+export async function deleteBackroomPostAction(formData: FormData) {
+  const postId = cleanText(formData.get("postId"));
+
+  if (!UUID_PATTERN.test(postId)) {
+    console.error("Back Room thread deletion rejected invalid post id", {
+      operation: "backroom thread deletion input validation",
+      postIdProvided: Boolean(postId),
+      postIdLength: postId.length,
+    });
+    redirect(backroomDeleteFailurePath());
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (user == null) {
+    if (userError) {
+      console.error("Back Room thread deletion auth lookup failed", {
+        operation: "backroom thread deletion auth lookup",
+        postId,
+        message: userError.message,
+      });
+    }
+
+    redirect(
+      pathWithParams("/login", {
+        next: `/backroom/${postId}`,
+        message: "スレッドの削除にはログインしてください。",
+      })
+    );
+  }
+
+  const { data: ownedPost, error: ownedPostError } = await supabase
+    .from("backroom_posts")
+    .select("id, user_id, category")
+    .eq("id", postId)
+    .eq("user_id", user.id)
+    .eq("is_deleted", false)
+    .maybeSingle<{ id: string; user_id: string; category: string }>();
+
+  if (ownedPostError) {
+    logBackroomDeleteDbError(
+      "Back Room thread deletion ownership lookup failed",
+      "backroom thread deletion ownership lookup",
+      { postId, userId: user.id },
+      ownedPostError
+    );
+    redirect(backroomDeleteFailurePath(postId));
+  }
+
+  if (ownedPost == null) {
+    console.error("Back Room thread deletion ownership verification failed", {
+      operation: "backroom thread deletion ownership verification",
+      postId,
+      userId: user.id,
+      matchedPostCount: 0,
+    });
+    redirect(backroomDeleteFailurePath(postId));
+  }
+
+  const threadImageResult = await listAllBackroomThreadImagePaths(supabase, postId);
+  if (threadImageResult.error) {
+    logBackroomDeleteDbError(
+      "Back Room thread deletion image path lookup failed",
+      "backroom thread deletion thread image lookup",
+      { postId, userId: user.id, threadImageCount: threadImageResult.rows.length },
+      threadImageResult.error
+    );
+    redirect(backroomDeleteFailurePath(postId));
+  }
+
+  const commentIdResult = await listAllBackroomCommentIds(supabase, postId);
+  if (commentIdResult.error) {
+    logBackroomDeleteDbError(
+      "Back Room thread deletion comment lookup failed",
+      "backroom thread deletion comment lookup",
+      {
+        postId,
+        userId: user.id,
+        threadImageCount: threadImageResult.rows.length,
+        commentCount: commentIdResult.ids.length,
+      },
+      commentIdResult.error
+    );
+    redirect(backroomDeleteFailurePath(postId));
+  }
+
+  if (commentIdResult.ids.some((commentId) => !UUID_PATTERN.test(commentId))) {
+    console.error("Back Room thread deletion comment id validation failed", {
+      operation: "backroom thread deletion comment id validation",
+      postId,
+      userId: user.id,
+      threadImageCount: threadImageResult.rows.length,
+      commentCount: commentIdResult.ids.length,
+    });
+    redirect(backroomDeleteFailurePath(postId));
+  }
+
+  const commentImageResult = await listAllBackroomCommentImagePaths(supabase, commentIdResult.ids);
+  if (commentImageResult.error) {
+    logBackroomDeleteDbError(
+      "Back Room thread deletion comment image path lookup failed",
+      "backroom thread deletion comment image lookup",
+      {
+        postId,
+        userId: user.id,
+        threadImageCount: threadImageResult.rows.length,
+        commentCount: commentIdResult.ids.length,
+        commentImageCount: commentImageResult.rows.length,
+      },
+      commentImageResult.error
+    );
+    redirect(backroomDeleteFailurePath(postId));
+  }
+
+  const threadPathsAreSafe = threadImageResult.rows.every(
+    (row) => typeof row.storage_path === "string" && isSafeBackroomImageStoragePath(row.storage_path, "threads", postId)
+  );
+  const commentPathsAreSafe = commentImageResult.rows.every(
+    (row) =>
+      typeof row.comment_id === "string" &&
+      typeof row.storage_path === "string" &&
+      isSafeBackroomImageStoragePath(row.storage_path, "comments", row.comment_id)
+  );
+
+  if (!threadPathsAreSafe || !commentPathsAreSafe) {
+    console.error("Back Room thread deletion image path validation failed", {
+      operation: "backroom thread deletion image path validation",
+      postId,
+      userId: user.id,
+      threadImageCount: threadImageResult.rows.length,
+      commentCount: commentIdResult.ids.length,
+      commentImageCount: commentImageResult.rows.length,
+    });
+    redirect(backroomDeleteFailurePath(postId));
+  }
+
+  const { data: deletedPost, error: deleteError } = await supabase
+    .from("backroom_posts")
+    .delete()
+    .eq("id", postId)
+    .eq("user_id", user.id)
+    .eq("is_deleted", false)
+    .select("id")
+    .maybeSingle<{ id: string }>();
+
+  if (deleteError) {
+    logBackroomDeleteDbError(
+      "Back Room thread deletion failed",
+      "backroom thread deletion database delete",
+      {
+        postId,
+        userId: user.id,
+        threadImageCount: threadImageResult.rows.length,
+        commentCount: commentIdResult.ids.length,
+        commentImageCount: commentImageResult.rows.length,
+      },
+      deleteError
+    );
+    redirect(backroomDeleteFailurePath(postId));
+  }
+
+  if (deletedPost?.id !== postId) {
+    console.error("Back Room thread deletion result verification failed", {
+      operation: "backroom thread deletion database result verification",
+      postId,
+      userId: user.id,
+      deletedPostCount: deletedPost == null ? 0 : 1,
+      threadImageCount: threadImageResult.rows.length,
+      commentCount: commentIdResult.ids.length,
+      commentImageCount: commentImageResult.rows.length,
+    });
+    redirect(backroomDeleteFailurePath(postId));
+  }
+
+  const storagePaths = Array.from(
+    new Set([
+      ...threadImageResult.rows.map((row) => row.storage_path),
+      ...commentImageResult.rows.map((row) => row.storage_path),
+    ])
+  );
+  const storageRemoved = await removeBackroomImageObjectsAsServer(storagePaths, {
+    operation: "backroom thread deletion storage cleanup",
+    userId: user.id,
+    parentId: postId,
+  });
+
+  if (!storageRemoved) {
+    console.error("Back Room thread deletion storage cleanup incomplete", {
+      operation: "backroom thread deletion storage cleanup",
+      postId,
+      userId: user.id,
+      imageCount: storagePaths.length,
+    });
+  }
+
+  revalidatePath("/backroom");
+  revalidatePath("/mypage");
+  revalidatePath(`/backroom/${postId}`);
+  revalidatePath(`/profiles/${user.id}`);
+  redirect(
+    pathWithParams("/backroom", {
+      category: normalizeBackroomCategory(ownedPost.category),
+      deleted: "1",
+    })
+  );
 }
 
 export async function createBackroomCommentAction(formData: FormData) {

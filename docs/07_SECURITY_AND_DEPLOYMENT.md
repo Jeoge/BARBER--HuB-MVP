@@ -101,7 +101,9 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - Back Room画像のDB RLSは既存のBack Room参加条件と親投稿・コメント所有者条件を維持し、他人のthread_id / comment_idや任意pathを登録できないようにする。Storage objectの直接SELECTは許可しない。
 - `backroom_comments` のauthenticated INSERT / UPDATE RLSでは公開状態の本文を非空に制限し、DBの遅延constraint triggerでも本文または `backroom_comment_images` の存在を強制する。画像だけコメントは `create_backroom_image_comment` SECURITY DEFINER RPCで、auth.uid()、Back Room参加、親スレッド、comment path、画像メタデータ、Storage object存在を再検証して確定する。RPCはauthenticatedへ必要なEXECUTEだけを許可し、service role keyはクライアントへ渡さない。
 - コメント画像はStorageへ先に一時保存し、DB側のRPCがコメント行と画像行を同一トランザクションで作成する。RPCまたは保存確認が失敗した場合は、今回のStorage objectをserver-only cleanupで削除し、DB側に公開可能な空コメントを残さない。cleanup失敗はpathを含む詳細を画面へ出さずサーバーログへ記録する。
-- 現在のBack Roomには正式な削除UI・削除Server Actionを追加しない。投稿失敗時の補償処理では、成功投稿として公開されていない作成途中のobjectを削除してから親行を片付ける。将来の正式削除では、本人権限確認、path所属検証、DB側の削除またはsoft delete、成功後のStorage object削除の順にし、Storage削除失敗は詳細ログを残してDB削除を巻き戻さない。service role keyはクライアントへ渡さない。
+- Back Roomの正式なスレッド削除は、UUID入力検証後にSupabase Authから本人IDを取得し、`backroom_posts.id`、`user_id`、`is_deleted = false`で所有を確認する。画面の本人限定表示に加え、Server Actionの再確認とowner-only DELETE RLSの両方で他人・未ログイン・管理者allowlistだけのユーザーによる削除を拒否する。
+- 削除前にスレッド画像path、対象スレッドの全コメントID、全コメント画像pathを認証済みclientで取得し、`isSafeBackroomImageStoragePath`で親ID配下か検証する。取得または所属検証に失敗した場合はDBを削除せず、pathや秘密情報を画面へ出さない。
+- DBは通常の認証済みclientで親`backroom_posts`を物理削除し、コメントと画像メタデータをcascade削除する。成功後にだけ、事前検証済みpathをservice roleのserver-only cleanupでprivate Storageから削除する。Storage削除失敗は詳細ログを残し、DB削除を巻き戻さず成功として扱う。service role keyはクライアントへ渡さない。記事とSnapの削除依頼フローには適用しない。
 - 画像テーブル・signed URL発行・個別画像読み込みの失敗では該当画像だけを非表示にし、本文・コメント・Back Room全体を壊さない。Storage pathは表示データへ含めない。
 - 投稿本文のHTMLやscriptを実行させない。
 - 記事のYouTube URLは対象カテゴリだけで受け付け、Server Action側でもYouTubeドメイン、https、動画ID、長さを検証する。検証済みURLが入力された場合だけ動画権利確認を必須にする。iframe埋め込み、自動再生、直接動画アップロード、動画Storageは行わない。
