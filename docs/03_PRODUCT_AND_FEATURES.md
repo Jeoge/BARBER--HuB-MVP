@@ -111,6 +111,7 @@ Back Roomは、理美容業界向けの会員限定コミュニティです。
 - コメントのDB側でも、公開状態のコメントは本文の非空または画像行の存在を必須とする。通常のauthenticated INSERT / UPDATEで本文なしコメントを作成・空化できず、画像だけのコメントは本人とBack Room参加条件、Storage object、path、画像メタデータを検証するServer Action経由のRPCだけで確定する。
 - スレッド削除は、Server ActionでSupabase Authの本人IDを取得し、`backroom_posts.user_id`との一致を再確認する。クライアントから送ったuserIdを権限判定に使わず、他人・未ログイン・存在しない・削除済みのスレッドは削除しない。
 - 本人削除では`backroom_posts`の親行を物理削除し、`backroom_comments`、`backroom_thread_images`、`backroom_comment_images`を外部キーcascadeで削除する。対象pathを全件取得して親IDへの所属を検証し、DB削除成功後にだけprivate `backroom-images`の対象objectをserver-onlyで削除する。
+- 削除前の画像metadata取得では、`42P01`または`PGRST205`と対象の正しい画像テーブル名を両方確認できるmissing relationだけを画像0件として扱う。通信、認証、RLS、timeout、その他のDBエラーは削除を中止する。コメント0件では`backroom_comment_images`を問い合わせず、親行DELETEはowner条件付きexact countが1件のときだけ成功とする。
 - Storage削除に失敗してもDB削除は巻き戻さず、スレッド削除成功として扱って詳細をサーバーログへ残す。記事とSnapの既存「削除依頼」フローは変更しない。
 - 画像テーブルが未適用のPreviewでも、画像取得失敗だけでBack Room全体を停止しない。画像は非表示にし、テキストを表示する。
 - Back Room一覧では代表画像を表示しない。カード高さを維持し、画像は詳細画面で大きく表示する。

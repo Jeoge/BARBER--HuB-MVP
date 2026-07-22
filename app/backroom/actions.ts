@@ -5,6 +5,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
 import {
+  deletedExactlyOneBackroomPost,
+  isMissingBackroomImageTableError,
+  listAllBackroomCommentIds,
+  listAllBackroomCommentImagePaths,
+  listAllBackroomThreadImagePaths,
+  type BackroomDeleteDbError,
+} from "@/lib/backroomThreadDelete";
+import {
   cleanupCreatedBackroomComment,
   errorMessage,
   imageErrorMessage,
@@ -20,25 +28,6 @@ import { createClient } from "@/lib/supabase/server";
 import { isSafeBackroomImageStoragePath } from "@/lib/backroomImages";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const BACKROOM_DELETE_PAGE_SIZE = 500;
-const BACKROOM_DELETE_COMMENT_ID_CHUNK_SIZE = 200;
-
-type BackroomClient = Awaited<ReturnType<typeof createClient>>;
-type BackroomDeleteDbError = {
-  code?: string | null;
-  message?: string | null;
-  details?: string | null;
-  hint?: string | null;
-};
-
-type ThreadImagePathRow = {
-  storage_path: string;
-};
-
-type CommentImagePathRow = {
-  comment_id: string;
-  storage_path: string;
-};
 
 function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -71,70 +60,6 @@ function logBackroomDeleteDbError(
     details: error.details ?? null,
     hint: error.hint ?? null,
   });
-}
-
-async function listAllBackroomThreadImagePaths(supabase: BackroomClient, postId: string) {
-  const rows: ThreadImagePathRow[] = [];
-
-  for (let from = 0; ; from += BACKROOM_DELETE_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("backroom_thread_images")
-      .select("storage_path")
-      .eq("thread_id", postId)
-      .order("id", { ascending: true })
-      .range(from, from + BACKROOM_DELETE_PAGE_SIZE - 1);
-
-    if (error) return { rows, error };
-
-    const page = (data ?? []) as ThreadImagePathRow[];
-    rows.push(...page);
-    if (page.length < BACKROOM_DELETE_PAGE_SIZE) return { rows, error: null };
-  }
-}
-
-async function listAllBackroomCommentIds(supabase: BackroomClient, postId: string) {
-  const ids: string[] = [];
-
-  for (let from = 0; ; from += BACKROOM_DELETE_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("backroom_comments")
-      .select("id")
-      .eq("post_id", postId)
-      .order("id", { ascending: true })
-      .range(from, from + BACKROOM_DELETE_PAGE_SIZE - 1);
-
-    if (error) return { ids, error };
-
-    const page = (data ?? []) as Array<{ id: string }>;
-    ids.push(...page.map((row) => row.id));
-    if (page.length < BACKROOM_DELETE_PAGE_SIZE) return { ids, error: null };
-  }
-}
-
-async function listAllBackroomCommentImagePaths(supabase: BackroomClient, commentIds: string[]) {
-  const rows: CommentImagePathRow[] = [];
-
-  for (let chunkStart = 0; chunkStart < commentIds.length; chunkStart += BACKROOM_DELETE_COMMENT_ID_CHUNK_SIZE) {
-    const commentIdChunk = commentIds.slice(chunkStart, chunkStart + BACKROOM_DELETE_COMMENT_ID_CHUNK_SIZE);
-
-    for (let from = 0; ; from += BACKROOM_DELETE_PAGE_SIZE) {
-      const { data, error } = await supabase
-        .from("backroom_comment_images")
-        .select("comment_id, storage_path")
-        .in("comment_id", commentIdChunk)
-        .order("comment_id", { ascending: true })
-        .order("id", { ascending: true })
-        .range(from, from + BACKROOM_DELETE_PAGE_SIZE - 1);
-
-      if (error) return { rows, error };
-
-      const page = (data ?? []) as CommentImagePathRow[];
-      rows.push(...page);
-      if (page.length < BACKROOM_DELETE_PAGE_SIZE) break;
-    }
-  }
-
-  return { rows, error: null };
 }
 
 function commentErrorMessage(error: unknown) {
@@ -218,15 +143,24 @@ export async function deleteBackroomPostAction(formData: FormData) {
     redirect(backroomDeleteFailurePath(postId));
   }
 
-  const threadImageResult = await listAllBackroomThreadImagePaths(supabase, postId);
+  let threadImageResult = await listAllBackroomThreadImagePaths(supabase, postId);
   if (threadImageResult.error) {
-    logBackroomDeleteDbError(
-      "Back Room thread deletion image path lookup failed",
-      "backroom thread deletion thread image lookup",
-      { postId, userId: user.id, threadImageCount: threadImageResult.rows.length },
-      threadImageResult.error
-    );
-    redirect(backroomDeleteFailurePath(postId));
+    if (isMissingBackroomImageTableError(threadImageResult.error, "backroom_thread_images")) {
+      console.warn("Back Room thread deletion continuing without thread image metadata", {
+        operation: "backroom thread deletion thread image lookup",
+        code: threadImageResult.error.code ?? "unknown",
+        table: "backroom_thread_images",
+      });
+      threadImageResult = { rows: [], error: null };
+    } else {
+      logBackroomDeleteDbError(
+        "Back Room thread deletion image path lookup failed",
+        "backroom thread deletion thread image lookup",
+        { postId, userId: user.id, threadImageCount: threadImageResult.rows.length },
+        threadImageResult.error
+      );
+      redirect(backroomDeleteFailurePath(postId));
+    }
   }
 
   const commentIdResult = await listAllBackroomCommentIds(supabase, postId);
@@ -256,21 +190,30 @@ export async function deleteBackroomPostAction(formData: FormData) {
     redirect(backroomDeleteFailurePath(postId));
   }
 
-  const commentImageResult = await listAllBackroomCommentImagePaths(supabase, commentIdResult.ids);
+  let commentImageResult = await listAllBackroomCommentImagePaths(supabase, commentIdResult.ids);
   if (commentImageResult.error) {
-    logBackroomDeleteDbError(
-      "Back Room thread deletion comment image path lookup failed",
-      "backroom thread deletion comment image lookup",
-      {
-        postId,
-        userId: user.id,
-        threadImageCount: threadImageResult.rows.length,
-        commentCount: commentIdResult.ids.length,
-        commentImageCount: commentImageResult.rows.length,
-      },
-      commentImageResult.error
-    );
-    redirect(backroomDeleteFailurePath(postId));
+    if (isMissingBackroomImageTableError(commentImageResult.error, "backroom_comment_images")) {
+      console.warn("Back Room thread deletion continuing without comment image metadata", {
+        operation: "backroom thread deletion comment image lookup",
+        code: commentImageResult.error.code ?? "unknown",
+        table: "backroom_comment_images",
+      });
+      commentImageResult = { rows: [], error: null };
+    } else {
+      logBackroomDeleteDbError(
+        "Back Room thread deletion comment image path lookup failed",
+        "backroom thread deletion comment image lookup",
+        {
+          postId,
+          userId: user.id,
+          threadImageCount: threadImageResult.rows.length,
+          commentCount: commentIdResult.ids.length,
+          commentImageCount: commentImageResult.rows.length,
+        },
+        commentImageResult.error
+      );
+      redirect(backroomDeleteFailurePath(postId));
+    }
   }
 
   const threadPathsAreSafe = threadImageResult.rows.every(
@@ -295,14 +238,12 @@ export async function deleteBackroomPostAction(formData: FormData) {
     redirect(backroomDeleteFailurePath(postId));
   }
 
-  const { data: deletedPost, error: deleteError } = await supabase
+  const { error: deleteError, count: deletedPostCount } = await supabase
     .from("backroom_posts")
-    .delete()
+    .delete({ count: "exact" })
     .eq("id", postId)
     .eq("user_id", user.id)
-    .eq("is_deleted", false)
-    .select("id")
-    .maybeSingle<{ id: string }>();
+    .eq("is_deleted", false);
 
   if (deleteError) {
     logBackroomDeleteDbError(
@@ -320,12 +261,12 @@ export async function deleteBackroomPostAction(formData: FormData) {
     redirect(backroomDeleteFailurePath(postId));
   }
 
-  if (deletedPost?.id !== postId) {
+  if (!deletedExactlyOneBackroomPost(deletedPostCount)) {
     console.error("Back Room thread deletion result verification failed", {
       operation: "backroom thread deletion database result verification",
       postId,
       userId: user.id,
-      deletedPostCount: deletedPost == null ? 0 : 1,
+      deletedPostCount,
       threadImageCount: threadImageResult.rows.length,
       commentCount: commentIdResult.ids.length,
       commentImageCount: commentImageResult.rows.length,
