@@ -2,15 +2,6 @@ name: Supabase checks
 
 on:
   pull_request:
-    paths:
-      - ".github/workflows/supabase-check.yml"
-      - ".github/workflows/supabase-production-migrate.yml"
-      - "docs/SUPABASE_DEPLOYMENT.md"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "scripts/**"
-      - "supabase/config.toml"
-      - "supabase/migrations/**"
 
 permissions:
   contents: read
