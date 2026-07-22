@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { SnapCard } from "@/components/SnapCard";
-import { MagazinePageHeader, MagazineRail, MagazineSectionHeading } from "@/components/MagazineListLayout";
+import { MagazineRail, MagazineSectionHeading } from "@/components/MagazineListLayout";
 import { PageChrome } from "@/components/PageChrome";
+import { SnapGridCard } from "@/components/SnapGridCard";
 import { createClient } from "@/lib/supabase/server";
 import { listPublishedSnaps, primarySnapImageUrl, snapAuthorMeta, snapAuthorName } from "@/lib/supabase/snaps";
 
@@ -20,12 +20,10 @@ export default async function SnapPage({ searchParams }: SnapPageProps) {
 
   return (
     <PageChrome>
-      <MagazinePageHeader
-        eyebrow="SNAP"
-        title="SNAP"
-        description="今日の1コマ　なんでも"
-        tags={["技術", "道具", "営業メモ", "日常", "編集部へ共有"]}
-      />
+      <section className="px-4 pb-1 pt-7">
+        <p className="editorial-label text-[0.78rem] uppercase text-blush">SNAP</p>
+        <h1 className="editorial-serif mt-2 text-[1.9rem] leading-[1.08] text-ink">SNAP</h1>
+      </section>
 
       <MagazineRail
         title="今日の一枚"
@@ -62,9 +60,9 @@ export default async function SnapPage({ searchParams }: SnapPageProps) {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-3">
+          <div className="grid grid-cols-2 items-start gap-x-3 gap-y-5">
             {snaps.map((snap) => (
-              <SnapCard key={snap.id} snap={snap} currentUserId={user?.id} />
+              <SnapGridCard key={snap.id} snap={snap} />
             ))}
           </div>
         )}
