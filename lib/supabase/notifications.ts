@@ -7,14 +7,15 @@ export type NotificationType =
   | "snap_comment_like"
   | "article_thanks"
   | "article_like"
-  | "article_comment";
+  | "article_comment"
+  | "follow";
 
 export type AppNotification = {
   id: string;
   recipient_id: string;
   actor_id: string;
   notification_type: NotificationType;
-  target_type: "snap" | "snap_comment" | "article" | "article_comment";
+  target_type: "snap" | "snap_comment" | "article" | "article_comment" | "profile";
   target_id: string;
   destination_id: string;
   snap_id: string | null;
@@ -127,27 +128,38 @@ export function notificationActorName(notification: Pick<AppNotification, "actor
   return notification.actor_display_name?.trim() || "プロフィール未設定のユーザー";
 }
 
-export function notificationMessage(notification: AppNotification) {
+function notificationActorSentenceName(notification: Pick<AppNotification, "actor_display_name">) {
   const name = notificationActorName(notification);
+  return name.endsWith("さん") ? name : `${name}さん`;
+}
+
+export function notificationMessage(notification: AppNotification) {
+  const name = notificationActorSentenceName(notification);
 
   switch (notification.notification_type) {
     case "snap_thanks":
-      return `${name}さんがあなたのSnapにThanksしました`;
+      return `${name}があなたのSnapにThanksしました`;
     case "snap_like":
-      return `${name}さんがあなたのSnapにいいねしました`;
+      return `${name}があなたのSnapにいいねしました`;
     case "snap_comment":
-      return `${name}さんがあなたのSnapにコメントしました`;
+      return `${name}があなたのSnapにコメントしました`;
     case "snap_comment_like":
-      return `${name}さんがあなたのコメントにいいねしました`;
+      return `${name}があなたのコメントにいいねしました`;
     case "article_thanks":
-      return `${name}さんがあなたの記事にThanksしました`;
+      return `${name}があなたの記事にThanksしました`;
     case "article_like":
-      return `${name}さんがあなたの記事にいいねしました`;
+      return `${name}があなたの記事にいいねしました`;
     case "article_comment":
-      return `${name}さんがあなたの記事にコメントしました`;
+      return `${name}があなたの記事にコメントしました`;
+    case "follow":
+      return `${name}があなたをフォローしました`;
     default:
-      return `${name}さんから新しい反応があります`;
+      return `${name}から新しい反応があります`;
   }
+}
+
+export function notificationActorHref(notification: Pick<AppNotification, "actor_id">) {
+  return `/profiles/${notification.actor_id}`;
 }
 
 export function notificationHref(notification: AppNotification) {
@@ -163,6 +175,8 @@ export function notificationHref(notification: AppNotification) {
     case "article_thanks":
     case "article_like":
       return `/articles/${notification.destination_id}`;
+    case "follow":
+      return notificationActorHref(notification);
     default:
       return "/";
   }

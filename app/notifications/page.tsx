@@ -26,7 +26,7 @@ export default async function NotificationsPage() {
       <PageHeaderBlock
         eyebrow="NOTIFICATIONS"
         title="通知"
-        body="あなたへのThanks、いいね、コメントを確認できます。"
+        body="あなたへのThanks、いいね、コメント、フォローを確認できます。"
       />
       <NotificationsList notifications={notifications} unreadCount={unreadCount} />
     </PageChrome>

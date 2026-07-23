@@ -1,8 +1,9 @@
 "use client";
 
 import { Bell, CheckCheck } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { type MouseEvent, useState, useTransition } from "react";
 import {
   getNotificationsSnapshotAction,
   markAllNotificationsReadAction,
@@ -11,6 +12,7 @@ import {
 import { dispatchNotificationUnreadCountChanged } from "@/lib/notificationUnreadEvents";
 import {
   notificationActorName,
+  notificationActorHref,
   notificationHref,
   notificationMessage,
   notificationTimeLabel,
@@ -87,10 +89,9 @@ export function NotificationsList({
     return true;
   }
 
-  function openNotification(notification: AppNotification) {
-    if (pendingId != null || pendingAll) return;
+  function openNotification(notification: AppNotification, href: string) {
+    if (pendingId != null || pendingAll) return false;
 
-    const href = notificationHref(notification);
     const wasUnread = notification.read_at == null;
 
     setPendingId(notification.id);
@@ -120,6 +121,13 @@ export function NotificationsList({
         }
       })();
     });
+
+    return true;
+  }
+
+  function handleNotificationLinkClick(event: MouseEvent<HTMLAnchorElement>, notification: AppNotification, href: string) {
+    event.preventDefault();
+    openNotification(notification, href);
   }
 
   function markAllRead() {
@@ -183,7 +191,7 @@ export function NotificationsList({
             <Bell aria-hidden="true" size={20} />
           </div>
           <p className="mt-3 text-sm font-black text-ink">通知はまだありません</p>
-          <p className="mt-1 text-xs font-medium leading-relaxed text-mute">Thanksやコメントが届くとここに表示されます。</p>
+          <p className="mt-1 text-xs font-medium leading-relaxed text-mute">反応やフォローが届くと、ここに表示されます。</p>
         </div>
       ) : (
         <div className="mt-4 grid gap-2.5">
@@ -192,33 +200,72 @@ export function NotificationsList({
             const unread = notification.read_at == null;
             const pending = pendingId === notification.id || pendingAll;
             const disabled = pendingId != null || pendingAll;
+            const actorHref = notificationActorHref(notification);
+            const contentHref = notificationHref(notification);
+            const linkState = {
+              "aria-disabled": disabled,
+              tabIndex: disabled ? -1 : undefined,
+            };
 
             return (
-              <button
+              <article
                 key={notification.id}
-                type="button"
-                onClick={() => openNotification(notification)}
-                disabled={disabled}
                 aria-busy={pending}
                 className={
-                  "flex min-h-[4.5rem] w-full items-start gap-3 rounded-[8px] border p-3 text-left transition active:scale-[0.99] disabled:active:scale-100 disabled:cursor-wait " +
+                  "flex min-h-[4.5rem] w-full items-start gap-3 rounded-[8px] border p-3 text-left " +
                   (unread ? "border-blush/20 bg-blushSoft/55" : "border-line bg-white")
                 }
               >
-                <span className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.72rem] font-black text-white">
-                  {notification.actor_avatar_url ? (
-                    <img src={notification.actor_avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    initial(actorName)
-                  )}
+                <Link
+                  href={actorHref}
+                  aria-label={`${actorName}のプロフィールを開く`}
+                  onClick={(event) => {
+                    if (disabled) {
+                      event.preventDefault();
+                      return;
+                    }
+                    handleNotificationLinkClick(event, notification, actorHref);
+                  }}
+                  {...linkState}
+                  className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.72rem] font-black text-white"
+                >
+                  {notification.actor_avatar_url ? <img src={notification.actor_avatar_url} alt="" className="h-full w-full object-cover" /> : initial(actorName)}
                   {unread ? <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full border border-white bg-blush" /> : null}
-                </span>
+                </Link>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs font-black text-ink">{actorName}</span>
-                  <span className="mt-1 block text-sm font-semibold leading-relaxed text-ink">{notificationMessage(notification)}</span>
+                  <Link
+                    href={actorHref}
+                    aria-label={`${actorName}のプロフィールを開く`}
+                    onClick={(event) => {
+                      if (disabled) {
+                        event.preventDefault();
+                        return;
+                      }
+                      handleNotificationLinkClick(event, notification, actorHref);
+                    }}
+                    {...linkState}
+                    className="block truncate text-xs font-black text-ink"
+                  >
+                    {actorName}
+                  </Link>
+                  <Link
+                    href={contentHref}
+                    aria-label={notificationMessage(notification)}
+                    onClick={(event) => {
+                      if (disabled) {
+                        event.preventDefault();
+                        return;
+                      }
+                      handleNotificationLinkClick(event, notification, contentHref);
+                    }}
+                    {...linkState}
+                    className="mt-1 block text-sm font-semibold leading-relaxed text-ink"
+                  >
+                    {notificationMessage(notification)}
+                  </Link>
                   <span className="mt-1 block text-[0.66rem] font-bold text-mute">{notificationTimeLabel(notification.created_at)}</span>
                 </span>
-              </button>
+              </article>
             );
           })}
         </div>
