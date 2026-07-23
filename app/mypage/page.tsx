@@ -3,10 +3,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { type ReactNode } from "react";
 import { logoutAction } from "@/app/auth/actions";
+import { deleteBackroomPostAction } from "@/app/backroom/actions";
 import { clearMyArticleEditorPickAction, deleteMySnapAction } from "@/app/mypage/actions";
 import { closeJobPostAction } from "@/app/post/job/actions";
 import { closeSuccessionPostAction } from "@/app/post/succession/actions";
 import { MagazineImage } from "@/components/MagazineImage";
+import { MyBackroomDeleteForm } from "@/components/MyBackroomDeleteForm";
 import { MySnapDeleteForm } from "@/components/MySnapDeleteForm";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
@@ -95,6 +97,8 @@ type MyPageProps = {
     profile?: string;
     snap?: string;
     snapError?: string;
+    backroomDelete?: string;
+    backroomDeleteError?: string;
     article?: string;
     articleError?: string;
     job?: string;
@@ -223,15 +227,24 @@ function MyBackroomList({ posts }: { posts: BackroomPostWithAuthor[] }) {
   return (
     <div className="grid max-h-[17.5rem] gap-2.5 overflow-y-auto overscroll-contain pr-1">
       {posts.map((post) => (
-        <Link key={post.id} href={`/backroom/${post.id}`} className="rounded-[8px] border border-line bg-neutral-50 p-3">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{normalizeBackroomCategory(post.category)}</span>
-            <span className="text-[0.66rem] font-bold text-mute">{backroomDateLabel(post)}</span>
-            <span className="text-[0.66rem] font-bold text-mute">コメント {post.comment_count}</span>
-          </div>
-          <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{post.title}</p>
-          <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{backroomExcerpt(post.body, 78)}</p>
-        </Link>
+        <article key={post.id} className="rounded-[8px] border border-line bg-neutral-50 p-3">
+          <Link href={`/backroom/${post.id}`} className="block rounded-[6px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush focus-visible:ring-offset-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="rounded-full bg-white px-2 py-0.5 text-[0.62rem] font-black text-blush">{normalizeBackroomCategory(post.category)}</span>
+              <span className="text-[0.66rem] font-bold text-mute">{backroomDateLabel(post)}</span>
+              <span className="text-[0.66rem] font-bold text-mute">コメント {post.comment_count}</span>
+            </div>
+            <p className="mt-1 line-clamp-1 text-sm font-black text-ink">{post.title}</p>
+            <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-mute">{backroomExcerpt(post.body, 78)}</p>
+          </Link>
+          <MyBackroomDeleteForm
+            action={deleteBackroomPostAction}
+            postId={post.id}
+            category={normalizeBackroomCategory(post.category)}
+            title={post.title}
+            excerpt={backroomExcerpt(post.body, 78)}
+          />
+        </article>
       ))}
     </div>
   );
@@ -749,6 +762,16 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           {params?.snap === "deleted" ? (
             <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
               削除しました
+            </p>
+          ) : null}
+          {params?.backroomDelete === "deleted" ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white">
+              スレッドを削除しました。
+            </p>
+          ) : null}
+          {params?.backroomDeleteError ? (
+            <p className="mt-3 rounded-[8px] border border-white/15 bg-white/10 px-3 py-2 text-[0.72rem] font-black leading-relaxed text-white" role="alert">
+              スレッドを削除できませんでした。少し時間をおいて再度お試しください。
             </p>
           ) : null}
           {params?.article === "editor_pick_cleared" ? (

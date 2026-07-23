@@ -11,8 +11,8 @@ import {
 } from "@/lib/clientImageCompression";
 import { isAllowedSnapSourceImageFile } from "@/lib/imageValidation";
 import { backRoomTheme } from "@/lib/backRoomTheme";
+import { BACKROOM_SOURCE_IMAGE_MAX_BYTES } from "@/lib/backroomImages";
 
-const MAX_SOURCE_IMAGE_SIZE = 25 * 1024 * 1024;
 const TARGET_IMAGE_BYTES = 900 * 1024;
 const MAX_COMPRESSED_IMAGE_BYTES = 2 * 1024 * 1024;
 
@@ -68,9 +68,9 @@ export function BackroomImageAttachment({
       return;
     }
 
-    if (file.size > MAX_SOURCE_IMAGE_SIZE) {
+    if (file.size > BACKROOM_SOURCE_IMAGE_MAX_BYTES) {
       clearImage();
-      setError("画像が大きすぎます。25MB以内の画像を選択してください。");
+      setError("画像は1枚10MB以下にしてください。");
       return;
     }
 
@@ -88,6 +88,7 @@ export function BackroomImageAttachment({
         fileNamePrefix: "backroom",
         targetBytes: TARGET_IMAGE_BYTES,
         hardBytes: MAX_COMPRESSED_IMAGE_BYTES,
+        preserveAlpha: true,
       });
       setImage(compressed);
       onPreparedImageChange(compressed);
@@ -159,7 +160,7 @@ export function BackroomImageAttachment({
         disabled={Boolean(status)}
       />
 
-      {status ? <p className="text-xs font-bold text-mute">圧縮が終わるまで送信できません。</p> : null}
+      {status ? <p className="text-xs font-bold text-mute">元画像10MB以下、圧縮後2MB以内で送信します。</p> : null}
       {error ? <p className="rounded-[8px] border border-red-200 bg-red-50 p-2 text-xs font-bold leading-relaxed text-red-700">{error}</p> : null}
     </div>
   );

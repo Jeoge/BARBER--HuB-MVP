@@ -4,7 +4,6 @@ import { SignupRequiredCard } from "@/components/AuthGate";
 import { BackroomCommentForm } from "@/components/BackroomCommentForm";
 import { BackroomDisplayImage } from "@/components/BackroomDisplayImage";
 import { BackroomSetupRequiredCard } from "@/components/BackroomSetupRequiredCard";
-import { BackroomThreadDeleteForm } from "@/components/BackroomThreadDeleteForm";
 import { PageChrome } from "@/components/PageChrome";
 import { backRoomTheme } from "@/lib/backRoomTheme";
 import {
@@ -18,11 +17,11 @@ import {
   type BackroomComment,
 } from "@/lib/supabase/backroom";
 import { createClient } from "@/lib/supabase/server";
-import { createBackroomCommentAction, deleteBackroomPostAction } from "../actions";
+import { createBackroomCommentAction } from "../actions";
 
 type BackroomDetailPageProps = {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ posted?: string; comment?: string; commentError?: string; deleteError?: string }>;
+  searchParams?: Promise<{ posted?: string; comment?: string; commentError?: string }>;
 };
 
 function CommentItem({ comment }: { comment: BackroomComment }) {
@@ -44,8 +43,9 @@ function CommentItem({ comment }: { comment: BackroomComment }) {
         <BackroomDisplayImage
           key={image.id}
           src={image.url}
+          thumbnailSrc={image.thumbnailUrl}
           alt="コメントに添付された画像"
-          className="mt-3 block max-h-[32rem] w-full rounded-[8px] bg-neutral-950 object-contain object-center"
+          className="mt-3"
         />
       ))}
     </article>
@@ -102,11 +102,6 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
           </Link>
         </section>
         <section className="px-4 pt-8">
-          {query?.deleteError === "1" ? (
-            <div className="mb-4 rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700" role="alert">
-              スレッドを削除できませんでした。時間をおいて再度お試しください。
-            </div>
-          ) : null}
           <h1 className="text-2xl font-black text-ink">投稿が見つかりません</h1>
           <p className="mt-3 text-sm font-medium leading-relaxed text-mute">
             指定されたBack Room投稿は削除されたか、まだ登録されていません。
@@ -137,11 +132,6 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
         {query?.posted === "1" ? (
           <div className={"mb-3 rounded-[8px] p-3 text-sm font-black text-ink " + backRoomTheme.notice}>投稿しました。</div>
         ) : null}
-        {query?.deleteError === "1" ? (
-          <div className="mb-3 rounded-[8px] border border-red-200 bg-red-50 p-3 text-sm font-black leading-relaxed text-red-700" role="alert">
-            スレッドを削除できませんでした。時間をおいて再度お試しください。
-          </div>
-        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <span className={"rounded-full px-2.5 py-1 text-[0.68rem] font-black " + backRoomTheme.tag}>{normalizeBackroomCategory(post.category)}</span>
           <span className="text-xs font-bold text-mute">{backroomDateLabel(post)}</span>
@@ -163,18 +153,13 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
             <BackroomDisplayImage
               key={image.id}
               src={image.url}
+              thumbnailSrc={image.thumbnailUrl}
               alt={post.title}
-              className="mt-4 block max-h-[min(72vh,44rem)] w-full rounded-[10px] bg-neutral-950 object-contain object-center"
+              className="mt-4"
             />
           ))}
         </div>
       </article>
-
-      {user.id === post.user_id ? (
-        <section className="px-4 pt-3">
-          <BackroomThreadDeleteForm action={deleteBackroomPostAction} postId={post.id} />
-        </section>
-      ) : null}
 
       <section className="px-4 pt-5">
         <div className="flex items-center justify-between gap-3">

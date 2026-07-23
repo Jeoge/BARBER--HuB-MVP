@@ -46,6 +46,7 @@ export type BackroomPostWithAuthor = BackroomPostRecord & {
 export type BackroomDisplayImage = {
   id: string;
   url: string | null;
+  thumbnailUrl: string | null;
   sort_order: number;
   width: number | null;
   height: number | null;
@@ -252,7 +253,7 @@ async function withBackroomThreadImages(supabase: SupabaseClient, posts: Backroo
 
     const rows = data ?? [];
     const validRows = rows.filter((row) => isSafeBackroomImageStoragePath(row.storage_path, "threads", row.thread_id));
-    const signedUrlByPath = await createBackroomSignedUrlMap(
+    const signedUrlsByPath = await createBackroomSignedUrlMap(
       validRows.map((row) => row.storage_path),
       { operation: "thread images", count: threadIds.length }
     );
@@ -262,7 +263,8 @@ async function withBackroomThreadImages(supabase: SupabaseClient, posts: Backroo
       const images = imagesByThreadId.get(row.thread_id) ?? [];
       images.push({
         id: row.id,
-        url: signedUrlByPath.get(row.storage_path) ?? null,
+        url: signedUrlsByPath.get(row.storage_path)?.url ?? null,
+        thumbnailUrl: signedUrlsByPath.get(row.storage_path)?.thumbnailUrl ?? null,
         sort_order: row.sort_order,
         width: row.width,
         height: row.height,
@@ -296,7 +298,7 @@ async function withBackroomCommentImages(supabase: SupabaseClient, comments: Bac
 
     const rows = data ?? [];
     const validRows = rows.filter((row) => isSafeBackroomImageStoragePath(row.storage_path, "comments", row.comment_id));
-    const signedUrlByPath = await createBackroomSignedUrlMap(
+    const signedUrlsByPath = await createBackroomSignedUrlMap(
       validRows.map((row) => row.storage_path),
       { operation: "comment images", count: commentIds.length }
     );
@@ -306,7 +308,8 @@ async function withBackroomCommentImages(supabase: SupabaseClient, comments: Bac
       const images = imagesByCommentId.get(row.comment_id) ?? [];
       images.push({
         id: row.id,
-        url: signedUrlByPath.get(row.storage_path) ?? null,
+        url: signedUrlsByPath.get(row.storage_path)?.url ?? null,
+        thumbnailUrl: signedUrlsByPath.get(row.storage_path)?.thumbnailUrl ?? null,
         sort_order: row.sort_order,
         width: row.width,
         height: row.height,

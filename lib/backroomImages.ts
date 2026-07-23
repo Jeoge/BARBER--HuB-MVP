@@ -1,4 +1,5 @@
 export const BACKROOM_IMAGE_BUCKET = "backroom-images";
+export const BACKROOM_SOURCE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 export const BACKROOM_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 export const BACKROOM_IMAGE_MAX_COUNT = 1;
 

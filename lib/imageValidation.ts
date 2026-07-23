@@ -257,3 +257,43 @@ export function safeDisplayImageSrc(src: string | null | undefined) {
 
   return null;
 }
+
+export type BackroomImageSourceState = {
+  displaySrc: string | null;
+  fallbackSrc: string | null;
+};
+
+export function resolveBackroomImageSources(
+  thumbnailSrc: string | null | undefined,
+  fallbackSrc: string | null | undefined
+): BackroomImageSourceState {
+  const safeThumbnailSrc = safeDisplayImageSrc(thumbnailSrc);
+  const safeFallbackSrc = safeDisplayImageSrc(fallbackSrc);
+
+  return {
+    displaySrc: safeThumbnailSrc ?? safeFallbackSrc,
+    fallbackSrc: safeFallbackSrc,
+  };
+}
+
+export function nextBackroomImageSourceAfterError(
+  currentSrc: string | null | undefined,
+  fallbackSrc: string | null | undefined,
+  fallbackAttempted: boolean
+) {
+  const safeFallbackSrc = safeDisplayImageSrc(fallbackSrc);
+
+  if (!fallbackAttempted && safeFallbackSrc && currentSrc !== safeFallbackSrc) {
+    return {
+      src: safeFallbackSrc,
+      fallbackAttempted: true,
+      exhausted: false,
+    } as const;
+  }
+
+  return {
+    src: null,
+    fallbackAttempted: true,
+    exhausted: true,
+  } as const;
+}
