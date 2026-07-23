@@ -7,6 +7,7 @@ import { clearMyArticleEditorPickAction, deleteMySnapAction } from "@/app/mypage
 import { closeJobPostAction } from "@/app/post/job/actions";
 import { closeSuccessionPostAction } from "@/app/post/succession/actions";
 import { MagazineImage } from "@/components/MagazineImage";
+import { MySnapDeleteForm } from "@/components/MySnapDeleteForm";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
 import { SnapImageCarousel } from "@/components/SnapImageCarousel";
@@ -151,12 +152,7 @@ function MySnapList({ snaps }: { snaps: SnapWithAuthor[] }) {
               </p>
             </div>
           </div>
-          <form action={deleteMySnapAction} className="mt-2">
-            <input type="hidden" name="snapId" value={snap.id} />
-            <button type="submit" className="inline-flex h-9 w-full items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-mute">
-              このSnapを削除
-            </button>
-          </form>
+          <MySnapDeleteForm action={deleteMySnapAction} snapId={snap.id} />
         </article>
         );
       })}
