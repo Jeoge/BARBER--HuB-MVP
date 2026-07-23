@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { safeDisplayImageSrc } from "@/lib/imageValidation";
+import { nextBackroomImageSourceAfterError, resolveBackroomImageSources } from "@/lib/imageValidation";
 
 type BackroomDisplayImageProps = {
   src: string | null | undefined;
@@ -13,8 +13,9 @@ type BackroomDisplayImageProps = {
 };
 
 export function BackroomDisplayImage({ src, thumbnailSrc, alt, className = "" }: BackroomDisplayImageProps) {
-  const safeSrc = safeDisplayImageSrc(src);
-  const safeThumbnailSrc = safeDisplayImageSrc(thumbnailSrc);
+  const { displaySrc: initialDisplaySrc, fallbackSrc: safeSrc } = resolveBackroomImageSources(thumbnailSrc, src);
+  const [displaySrc, setDisplaySrc] = useState(initialDisplaySrc);
+  const [fallbackAttempted, setFallbackAttempted] = useState(false);
   const [failed, setFailed] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [viewerFailed, setViewerFailed] = useState(false);
@@ -28,9 +29,11 @@ export function BackroomDisplayImage({ src, thumbnailSrc, alt, className = "" }:
   }, []);
 
   useEffect(() => {
+    setDisplaySrc(initialDisplaySrc);
+    setFallbackAttempted(false);
     setFailed(false);
     setViewerFailed(false);
-  }, [safeSrc, safeThumbnailSrc]);
+  }, [initialDisplaySrc, safeSrc]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -63,30 +66,60 @@ export function BackroomDisplayImage({ src, thumbnailSrc, alt, className = "" }:
     setIsOpen(true);
   }
 
-  if (!safeSrc || !safeThumbnailSrc || failed) return null;
+  function handleDisplayImageError() {
+    const next = nextBackroomImageSourceAfterError(displaySrc, safeSrc, fallbackAttempted);
+    setFallbackAttempted(next.fallbackAttempted);
+
+    if (next.src) {
+      setDisplaySrc(next.src);
+      return;
+    }
+
+    setFailed(true);
+  }
+
+  if (!initialDisplaySrc) return null;
+
+  if (failed) {
+    return (
+      <div className={className}>
+        <div className="flex h-40 w-40 max-w-full items-center justify-center rounded-[8px] border border-dashed border-line bg-white px-3 text-center text-xs font-bold text-mute" role="status">
+          画像を読み込めませんでした。
+        </div>
+      </div>
+    );
+  }
+
+  const thumbnailImage = (
+    <img
+      src={displaySrc ?? initialDisplaySrc}
+      alt={alt}
+      className="block h-full w-full object-cover object-center transition group-hover:opacity-90"
+      loading="lazy"
+      decoding="async"
+      onError={handleDisplayImageError}
+    />
+  );
 
   return (
     <>
       <div className={className}>
-        <button
-          ref={triggerRef}
-          type="button"
-          onClick={openViewer}
-          aria-label={`画像を拡大して表示: ${alt}`}
-          className="group block h-40 w-40 max-w-full overflow-hidden rounded-[8px] bg-neutral-950 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush focus-visible:ring-offset-2"
-        >
-          <img
-            src={safeThumbnailSrc}
-            alt={alt}
-            className="block h-full w-full object-cover object-center transition group-hover:opacity-90"
-            loading="lazy"
-            decoding="async"
-            onError={() => setFailed(true)}
-          />
-        </button>
+        {safeSrc ? (
+          <button
+            ref={triggerRef}
+            type="button"
+            onClick={openViewer}
+            aria-label={`画像を拡大して表示: ${alt}`}
+            className="group block h-40 w-40 max-w-full overflow-hidden rounded-[8px] bg-neutral-950 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush focus-visible:ring-offset-2"
+          >
+            {thumbnailImage}
+          </button>
+        ) : (
+          <div className="group block h-40 w-40 max-w-full overflow-hidden rounded-[8px] bg-neutral-950 text-left">{thumbnailImage}</div>
+        )}
       </div>
 
-      {isOpen
+      {isOpen && safeSrc
         ? createPortal(
             <dialog
               ref={viewerDialogRef}

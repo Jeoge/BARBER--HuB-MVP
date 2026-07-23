@@ -159,8 +159,8 @@ RLS:
 - object pathは `threads/{thread_id}/{uuid}.webp` または `comments/{comment_id}/{uuid}.webp` とし、ユーザー入力ファイル名を使用しない。DB制約とRLSで親ID配下だけを許可する。
 - スレッド画像のSELECTはBack Room参加者かつ公開中スレッド、または本人のスレッドに限定する。コメント画像のSELECTはBack Room参加者かつ公開中スレッドのコメントに限定する。
 - INSERT / UPDATE / DELETEは親投稿・コメントの本人だけに限定し、Back Roomプロフィール参加条件も維持する。他人のthread_id / comment_idへ画像を追加・差し替えできない。
-- Storageはprivate bucketで、anon / authenticatedの直接SELECTを許可しない。通常のStorage pathはアプリ画面へ返さず、サーバー側のservice role clientが短時間signed URLへ変換したURLだけを表示用に返す。通常画面には320px・quality 75・coverの変換URLを返し、拡大時だけ変換なしのsigned URLを読み込む。
-- 画像テーブルが未適用、画像行の取得、signed URL発行、個別画像の読み込みに失敗しても、該当画像を空にして本文・コメントを表示する。任意pathを受け取ってsigned URLを発行するAPIは作らない。
+- Storageはprivate bucketで、anon / authenticatedの直接SELECTを許可しない。通常のStorage pathはアプリ画面へ返さず、サーバー側のservice role clientが短時間signed URLへ変換したURLだけを表示用に返す。通常画面には320px・quality 75・coverの変換URLを優先し、変換が利用できない・発行できない場合は保存済み圧縮画像のsigned URLへfallbackする。拡大時は保存済み圧縮画像のsigned URLを読み込む。
+- 画像テーブルが未適用、画像行の取得、signed URL発行、個別画像の読み込みに失敗しても、変換URLから保存済み圧縮画像URLへfallbackし、両方が失敗した場合だけ該当画像をエラー表示にして本文・コメントを表示する。任意pathを受け取ってsigned URLを発行するAPIは作らない。
 - `backroom_comments` の通常authenticated INSERT policyは本文が1〜1000文字の非空値であることを要求し、UPDATEも公開状態の本文をnull / 空文字へ変更できない。本文なしの画像だけコメントは `create_backroom_image_comment` SECURITY DEFINER RPCでのみ作成し、本人・Back Room参加権限、公開中の親スレッド、comment path、MIME、寸法、2MB以内の容量、Storage object存在を検証する。
 - `enforce_backroom_comment_has_body_or_image` の遅延constraint triggerをコメント行とコメント画像行へ設定し、トランザクション確定時にも公開状態のコメントが本文または画像行を持つことを再確認する。画像コメントはStorage upload成功後にRPCがコメント行と画像行を同一トランザクションで保存するため、作成途中の空コメントはSELECT対象にならない。
 

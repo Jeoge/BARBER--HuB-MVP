@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseAdminClient, getSupabaseAdminConfigStatus } from "@/lib/supabase/admin";
 import { BACKROOM_IMAGE_BUCKET } from "@/lib/backroomImages";
+import { safeDisplayImageSrc } from "@/lib/imageValidation";
 
 export const BACKROOM_IMAGE_SIGNED_URL_EXPIRES_IN_SECONDS = 30 * 60;
 export const BACKROOM_IMAGE_THUMBNAIL_SIZE = 320;
@@ -55,8 +56,10 @@ export async function createBackroomSignedUrlMap(paths: string[], context: { ope
         const row = item as { path?: string | null; signedUrl?: string | null; error?: { message?: string } | null };
         const path = row.path?.trim() || uniquePaths[index];
 
-        if (path && row.signedUrl && !row.error) {
-          signedUrlsByPath.set(path, { url: row.signedUrl, thumbnailUrl: null });
+        const safeUrl = safeDisplayImageSrc(row.signedUrl);
+
+        if (path && safeUrl && !row.error) {
+          signedUrlsByPath.set(path, { url: safeUrl, thumbnailUrl: safeUrl });
         }
       });
     }
@@ -71,22 +74,46 @@ export async function createBackroomSignedUrlMap(paths: string[], context: { ope
 
   try {
     const adminSupabase = createSupabaseAdminClient();
+    const pathsMissingOriginalUrl = uniquePaths.filter((path) => !signedUrlsByPath.get(path)?.url);
+    const originalFallbackResults = await Promise.all(
+      pathsMissingOriginalUrl.map(async (path) => {
+        try {
+          const { data, error } = await adminSupabase.storage
+            .from(BACKROOM_IMAGE_BUCKET)
+            .createSignedUrl(path, BACKROOM_IMAGE_SIGNED_URL_EXPIRES_IN_SECONDS);
+
+          return { path, signedUrl: safeDisplayImageSrc(data?.signedUrl), error };
+        } catch (error) {
+          return { path, signedUrl: null, error: { message: errorMessage(error) } };
+        }
+      })
+    );
+
+    originalFallbackResults.forEach(({ path, signedUrl, error }) => {
+      if (!signedUrl || error) return;
+      signedUrlsByPath.set(path, { url: signedUrl, thumbnailUrl: signedUrl });
+    });
+
     const thumbnailResults = await Promise.all(
       uniquePaths.map(async (path) => {
-        const { data, error } = await adminSupabase.storage.from(BACKROOM_IMAGE_BUCKET).createSignedUrl(
-          path,
-          BACKROOM_IMAGE_SIGNED_URL_EXPIRES_IN_SECONDS,
-          {
-            transform: {
-              width: BACKROOM_IMAGE_THUMBNAIL_SIZE,
-              height: BACKROOM_IMAGE_THUMBNAIL_SIZE,
-              resize: "cover",
-              quality: 75,
+        try {
+          const { data, error } = await adminSupabase.storage.from(BACKROOM_IMAGE_BUCKET).createSignedUrl(
+            path,
+            BACKROOM_IMAGE_SIGNED_URL_EXPIRES_IN_SECONDS,
+            {
+              transform: {
+                width: BACKROOM_IMAGE_THUMBNAIL_SIZE,
+                height: BACKROOM_IMAGE_THUMBNAIL_SIZE,
+                resize: "cover",
+                quality: 75,
+              },
             },
-          }
-        );
+          );
 
-        return { path, signedUrl: data?.signedUrl ?? null, error };
+          return { path, signedUrl: safeDisplayImageSrc(data?.signedUrl), error };
+        } catch (error) {
+          return { path, signedUrl: null, error: { message: errorMessage(error) } };
+        }
       })
     );
 

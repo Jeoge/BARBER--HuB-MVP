@@ -106,7 +106,7 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - 例外は画像テーブル未適用・schema cache未更新を示す`42P01`または`PGRST205`で、かつエラー内の対象名が`backroom_thread_images`または`backroom_comment_images`と正確に一致する場合だけとし、その画像pathを空配列として扱う。コメント0件ではコメント画像テーブルを問い合わせない。通信障害、認証失敗、不明なRLS、timeout、別テーブルやcode不一致のエラーではDB削除を中止する。
 - DBは通常の認証済みclientで親`backroom_posts`を物理削除し、コメントと画像メタデータをcascade削除する。成功後にだけ、事前検証済みpathをservice roleのserver-only cleanupでprivate Storageから削除する。Storage削除失敗は詳細ログを残し、DB削除を巻き戻さず成功として扱う。service role keyはクライアントへ渡さない。記事とSnapの削除依頼フローには適用しない。
 - 親行DELETEでは`id`、`user_id = auth.uid()`、`is_deleted = false`を再指定し、exact countが1件の場合だけ成功とする。owner-only DELETE RLSを維持し、service roleでDB削除を迂回しない。
-- 画像テーブル・サムネイルsigned URL・拡大用signed URL発行・個別画像読み込みの失敗では該当画像だけを非表示またはエラー表示にし、本文・コメント・Back Room全体を壊さない。Storage pathは表示データへ含めない。
+- 画像テーブル・サムネイルsigned URL・拡大用signed URL発行・個別画像読み込みの失敗では、サーバーが発行した同じ権限の保存済み圧縮画像URLへ1回だけfallbackし、両方が失敗した場合だけ該当画像内をエラー表示にする。本文・コメント・Back Room全体を壊さず、Storage pathは表示データへ含めない。任意外部URLやservice role keyをクライアントへ渡さない。
 - 投稿本文のHTMLやscriptを実行させない。
 - 記事のYouTube URLは対象カテゴリだけで受け付け、Server Action側でもYouTubeドメイン、https、動画ID、長さを検証する。検証済みURLが入力された場合だけ動画権利確認を必須にする。iframe埋め込み、自動再生、直接動画アップロード、動画Storageは行わない。
 - 画像URLが `undefined` でも画面全体をクラッシュさせない。
