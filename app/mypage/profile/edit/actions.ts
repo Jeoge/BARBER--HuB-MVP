@@ -6,10 +6,15 @@ import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { isSelectableAccountType } from "@/lib/accountTypes";
 import { allowedImageContentType, isAllowedImageFile, safeUploadFileName } from "@/lib/imageValidation";
+import {
+  isOwnedProfileImagePath,
+  profileImageObjectPathFromPublicUrl,
+  PROFILE_IMAGE_BUCKET,
+  resolveProfileImageIntent,
+} from "@/lib/profileImages";
 import { createClient } from "@/lib/supabase/server";
 
 const MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
-const PROFILE_IMAGE_BUCKET = "profile-images";
 
 function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return null;
@@ -44,7 +49,7 @@ function cleanUrl(value: FormDataEntryValue | null) {
   }
 }
 
-function redirectToEdit(error: string) {
+function redirectToEdit(error: string): never {
   redirect(pathWithParams("/mypage/profile/edit", { error }));
 }
 
@@ -68,17 +73,17 @@ async function uploadProfileImage({
   kind: "avatar" | "cover";
 }) {
   if (!isAllowedImageFile(file)) {
-    return { url: null, error: "画像ファイルだけアップロードできます。" };
+    return { path: null, url: null, error: "画像ファイルだけアップロードできます。" };
   }
 
   if (file.size > MAX_PROFILE_IMAGE_SIZE) {
-    return { url: null, error: "プロフィール画像は1枚5MB以下で選択してください。" };
+    return { path: null, url: null, error: "プロフィール画像は1枚5MB以下で選択してください。" };
   }
 
   const contentType = allowedImageContentType(file);
 
   if (contentType == null) {
-    return { url: null, error: "画像ファイルだけアップロードできます。" };
+    return { path: null, url: null, error: "画像ファイルだけアップロードできます。" };
   }
 
   const uploadPath = `${userId}/${kind}-${Date.now()}-${randomUUID()}-${safeUploadFileName(file.name, contentType, "profile")}`;
@@ -92,15 +97,78 @@ async function uploadProfileImage({
     console.error("Profile image upload failed", {
       userId,
       kind,
-      uploadPath,
       message: uploadError.message,
     });
-    return { url: null, error: "プロフィール画像のアップロードに失敗しました。しばらく時間をおいて再度お試しください。" };
+    return { path: null, url: null, error: "プロフィール画像のアップロードに失敗しました。しばらく時間をおいて再度お試しください。" };
   }
 
   const { data } = supabase.storage.from(PROFILE_IMAGE_BUCKET).getPublicUrl(uploadPath);
 
-  return { url: data.publicUrl, error: null };
+  return { path: uploadPath, url: data.publicUrl, error: null };
+}
+
+async function removeProfileImageObjects({
+  supabase,
+  userId,
+  paths,
+  operation,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  userId: string;
+  paths: Array<string | null | undefined>;
+  operation: string;
+}) {
+  const safePaths = [...new Set(paths.filter((path): path is string => Boolean(path) && isOwnedProfileImagePath(path, userId)))];
+  if (safePaths.length === 0) return;
+
+  const { error } = await supabase.storage.from(PROFILE_IMAGE_BUCKET).remove(safePaths);
+  if (error) {
+    console.error("Profile image storage cleanup failed", {
+      operation,
+      userId,
+      pathCount: safePaths.length,
+      message: error.message,
+    });
+  }
+}
+
+async function compensateUploadedProfileImages(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  uploadedPaths: string[]
+) {
+  await removeProfileImageObjects({
+    supabase,
+    userId,
+    paths: uploadedPaths,
+    operation: "upload compensation cleanup",
+  });
+}
+
+async function cleanupReplacedProfileImages({
+  supabase,
+  userId,
+  previousUrls,
+  nextUrls,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  userId: string;
+  previousUrls: Array<string | null | undefined>;
+  nextUrls: Array<string | null | undefined>;
+}) {
+  const pathFromUrl = (url: string | null | undefined) => {
+    const objectPath = profileImageObjectPathFromPublicUrl(url);
+    return objectPath && isOwnedProfileImagePath(objectPath, userId) ? objectPath : null;
+  };
+  const retainedPaths = new Set(nextUrls.map(pathFromUrl).filter((path): path is string => path !== null));
+  const oldPaths = previousUrls.map(pathFromUrl).filter((path): path is string => path !== null && !retainedPaths.has(path));
+
+  await removeProfileImageObjects({
+    supabase,
+    userId,
+    paths: oldPaths,
+    operation: "replaced profile image cleanup",
+  });
 }
 
 function profileSaveErrorMessage(error: unknown) {
@@ -160,23 +228,28 @@ export async function saveProfileAction(formData: FormData) {
     redirectToEdit("プロフィールの確認に失敗しました。しばらく時間をおいて再度お試しください。");
   }
 
-  const avatarImage = formData.get("avatar_image");
-  const coverImage = formData.get("cover_image");
-  let avatarUrl = existingProfile?.avatar_url ?? null;
-  let coverUrl = existingProfile?.cover_url ?? null;
-
-  if (avatarImage instanceof File && avatarImage.size > 0) {
-    const upload = await uploadProfileImage({ supabase, file: avatarImage, userId: user.id, kind: "avatar" });
-
-    if (upload.error) redirectToEdit(upload.error);
-    avatarUrl = upload.url;
+  const avatarImageIntentResult = resolveProfileImageIntent({
+    libraryValue: formData.get("avatar_image_library"),
+    cameraValue: formData.get("avatar_image_camera"),
+    remove: formData.get("remove_avatar_image") === "1",
+  });
+  if (avatarImageIntentResult.error || !avatarImageIntentResult.intent) {
+    redirectToEdit(avatarImageIntentResult.error ?? "プロフィール画像の指定を確認してください。");
   }
 
-  if (coverImage instanceof File && coverImage.size > 0) {
-    const upload = await uploadProfileImage({ supabase, file: coverImage, userId: user.id, kind: "cover" });
+  const coverImageIntentResult = resolveProfileImageIntent({
+    libraryValue: formData.get("cover_image_library"),
+    cameraValue: formData.get("cover_image_camera"),
+    remove: formData.get("remove_cover_image") === "1",
+  });
+  if (coverImageIntentResult.error || !coverImageIntentResult.intent) {
+    redirectToEdit(coverImageIntentResult.error ?? "カバー写真の指定を確認してください。");
+  }
 
-    if (upload.error) redirectToEdit(upload.error);
-    coverUrl = upload.url;
+  const avatarImageIntent = avatarImageIntentResult.intent;
+  const coverImageIntent = coverImageIntentResult.intent;
+  if (!avatarImageIntent || !coverImageIntent) {
+    redirectToEdit("写真の指定を確認してください。");
   }
 
   const submittedJobType = cleanText(formData.get("job_type"));
@@ -185,6 +258,36 @@ export async function saveProfileAction(formData: FormData) {
 
   if (jobType === undefined) {
     redirectToEdit("登録区分は選択肢から選んでください。");
+  }
+
+  let avatarUrl = existingProfile?.avatar_url ?? null;
+  let coverUrl = existingProfile?.cover_url ?? null;
+  const uploadedPaths: string[] = [];
+
+  if (avatarImageIntent.kind === "remove") {
+    avatarUrl = null;
+  } else if (avatarImageIntent.kind === "replace") {
+    const upload = await uploadProfileImage({ supabase, file: avatarImageIntent.file, userId: user.id, kind: "avatar" });
+
+    if (upload.error) {
+      await compensateUploadedProfileImages(supabase, user.id, uploadedPaths);
+      redirectToEdit(upload.error);
+    }
+    avatarUrl = upload.url;
+    if (upload.path) uploadedPaths.push(upload.path);
+  }
+
+  if (coverImageIntent.kind === "remove") {
+    coverUrl = null;
+  } else if (coverImageIntent.kind === "replace") {
+    const upload = await uploadProfileImage({ supabase, file: coverImageIntent.file, userId: user.id, kind: "cover" });
+
+    if (upload.error) {
+      await compensateUploadedProfileImages(supabase, user.id, uploadedPaths);
+      redirectToEdit(upload.error);
+    }
+    coverUrl = upload.url;
+    if (upload.path) uploadedPaths.push(upload.path);
   }
 
   const profilePayload = {
@@ -222,6 +325,7 @@ export async function saveProfileAction(formData: FormData) {
       userId: user.id,
       message: error.message,
     });
+    await compensateUploadedProfileImages(supabase, user.id, uploadedPaths);
     redirectToEdit(profileSaveErrorMessage(error));
   }
 
@@ -230,8 +334,16 @@ export async function saveProfileAction(formData: FormData) {
       userId: user.id,
       savedProfileId: savedProfile?.id ?? null,
     });
+    await compensateUploadedProfileImages(supabase, user.id, uploadedPaths);
     redirectToEdit("プロフィールを保存できませんでした。ログイン中ユーザーとの紐づきを確認してください。");
   }
+
+  await cleanupReplacedProfileImages({
+    supabase,
+    userId: user.id,
+    previousUrls: [existingProfile?.avatar_url, existingProfile?.cover_url],
+    nextUrls: [avatarUrl, coverUrl],
+  });
 
   revalidatePath("/mypage");
   revalidatePath("/mypage/profile/edit");

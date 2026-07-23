@@ -187,3 +187,9 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - 同一メールアドレスについて短時間の連続送信をDB上の直近件数とserver-sideの短時間重複防止で制限する。IPアドレスは保存せず、外部CAPTCHAやメール通知サービスも追加しない。
 - `partner_inquiries`はanon / authenticatedの権限をrevokeし、管理画面は既存の`BARBER_HUB_ADMIN_USER_IDS` / `NEWS_REVIEW_ADMIN_USER_IDS` allowlistで保護する。管理画面と送信完了状態はnoindexとする。
 - ログには氏名、メール、電話、URL、本文を出さず、設定不足の件数、migration・DBエラーのコード、問い合わせIDなど必要最小限だけを出す。本番migrationは既存のProduction Environment承認フローで適用する。
+
+### プロフィール画像のStorage cleanup
+
+- プロフィール画像のcleanupでは、URL scheme、設定済みSupabase origin、bucket名`profile-images`、user folder、object pathのdecode結果を検証し、`user.id/`配下の本人所有objectだけを対象にする。他人、別bucket、外部URL、空path、`..`を含むpathは削除しない。
+- 認証済み本人clientの既存Storage policyで削除し、`service_role` keyはserver-onlyとしてクライアントへ渡さない。将来admin clientを使う場合も、Auth本人確認・profile一致・bucket・user folderを再確認する。
+- DB保存前の旧objectは削除しない。新規upload後にDB保存が失敗した場合は今回の新規objectだけを補償削除し、旧objectは維持する。旧objectの削除失敗ではDB保存を巻き戻さず、処理名・ユーザーID・件数・エラー概要だけをサーバーログへ残す。

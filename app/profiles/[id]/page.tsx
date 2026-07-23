@@ -256,10 +256,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
   return (
     <PageChrome>
       <section className="px-4 pt-4">
-        <div className="relative overflow-hidden rounded-[10px] border border-line bg-white shadow-[0_10px_28px_rgba(17,17,17,0.045)]">
-          <ProfileCover profile={profile} />
+        <div className="relative isolate overflow-hidden rounded-[10px] border border-line bg-white shadow-[0_10px_28px_rgba(17,17,17,0.045)]">
+          <div className="relative z-0">
+            <ProfileCover profile={profile} />
+          </div>
           <div className="px-4 pb-4">
-            <div className="-mt-8 flex items-end justify-between gap-3">
+            <div className="relative z-10 -mt-8 flex items-end justify-between gap-3">
               <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-full border-4 border-white bg-ink text-lg font-black text-white shadow-sm">
                 {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" /> : profileInitial(profile.displayName)}
               </div>
