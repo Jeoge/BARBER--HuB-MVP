@@ -136,7 +136,10 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - 通知作成はDB trigger / SECURITY DEFINER関数で、対象投稿またはコメントの所有者からrecipientを決定する。
 - actorとrecipientが同じ場合は通知を作らない。
 - 解除されたThanks、いいね、Snapコメントいいねに対応する通知は削除する。
+- followsのINSERT / DELETE triggerで新規フォロー通知の作成と解除通知の削除を行い、過去のfollowsはbackfillしない。フォロー成立・通知作成は同一トランザクションで扱う。
+- follow通知はactorプロフィールの存在、profile targetのID整合性、recipient本人をvisibility関数で確認する。list / unread RPCも本人だけに限定する。
 - 通知の既読化はrecipient本人の `read_at` 更新だけに限定する。
+- フォロワー人物一覧は認証済み本人のマイページだけで取得・表示し、公開プロフィールへ追加しない。Thanks / いいね総数や本人専用反応統計も公開しない。
 - migration未適用のPreviewでは、通知一覧は空状態、未読件数は0として扱い、既存ページをクラッシュさせない。
 
 ## 3MIN NEWS下書き作成

@@ -31,6 +31,14 @@
 | 店舗ディレクトリ | `barber_shops`, `barber_shop_claims`, `barber_shop_import_batches`, `barber_shop_import_rows` |
 | ニュース下書き | `news_drafts` |
 
+## フォロー通知とフォロワー一覧
+
+- `follows` の新規INSERTをDB triggerの通知作成元とし、フォローされたユーザーをrecipient、フォローしたユーザーをactorとして `notifications.notification_type = 'follow'`, `target_type = 'profile'` に保存する。既存フォローの通知化は行わない。
+- `follows` のDELETEでは対応する既読・未読のフォロー通知を削除する。triggerはフォロー行と同じトランザクションで動作し、Server Actionと二重作成しない。
+- `notification_target_is_visible` はfollow通知についてactorプロフィールの存在、`target_id` / `destination_id` とactor IDの一致、recipient本人を確認する。`list_my_notifications` と `get_unread_notification_count` は既存通知と同じ本人条件・新しい順・上限を使う。
+- フォロワー一覧は `following_id = auth.uid()` の行を `created_at desc` で取得し、follower IDのプロフィールをまとめて取得して元の順序を復元する。プロフィール未設定のIDも除外せずfallback表示する。
+- フォロワー人物一覧はログイン本人のマイページだけで表示し、公開プロフィールへは追加しない。Thanks / いいねの公開集計方針も変更しない。
+
 ## Storage
 
 主なStorage bucket:
@@ -195,8 +203,8 @@ RLS:
 - `get_public_snap_comment_counts`: 公開中かつ未削除Snapの `snap_id` と `comment_count` だけをまとめて返す公開集計RPC。個別コメント、本文、user_idは返さない。
 - `snap_comment_likes`: Snapコメントへのいいね。通常SELECTは押した本人の行だけ許可する。INSERT/DELETEは本人のみで、自分のコメント、非公開または削除済みSnapのコメントにはINSERTできない。
 - `get_public_snap_comment_like_counts`: 指定された公開Snapコメントの `comment_id` と `like_count` だけを返す公開集計RPC。誰が押したか、user_id、created_atは返さない。
-- `notifications`: アプリ内通知。recipient本人だけがSELECTでき、recipient本人だけが `read_at` を更新できる。クライアントから任意のINSERT/DELETEは許可しない。
-- `list_my_notifications` / `get_unread_notification_count`: 本人の通知一覧と未読件数だけを返すRPC。削除済みまたは非公開になったSnap/記事に紐づく通知は返さない。
+- `notifications`: アプリ内通知。recipient本人だけがSELECTでき、recipient本人だけが `read_at` を更新できる。クライアントから任意のINSERT/DELETEは許可しない。follow通知もactorプロフィールの整合性が確認できる場合だけ返す。
+- `list_my_notifications` / `get_unread_notification_count`: 本人の通知一覧と未読件数だけを返すRPC。削除済みまたは非公開になったSnap/記事に紐づく通知、actorプロフィールが存在しないfollow通知は返さない。
 - `saved_snaps`: 本人だけが閲覧・作成・削除でき、削除済みまたは非公開Snapは保存対象にしない。
 - `snap_images`: 公開中かつ未削除Snapに属する画像情報だけをanon / authenticatedが閲覧できる。投稿者本人は自分のSnap画像情報を閲覧・追加・更新・削除できる。
 - `snap-images`: 本人フォルダだけアップロードできる。新規Snap画像は `image/webp` / `image/jpeg` の圧縮済みファイルに限定する。

@@ -28,6 +28,11 @@ export type FollowingProfileSummary = {
   region: string | null;
 };
 
+export type FollowerProfileListResult = {
+  profiles: FollowingProfileSummary[];
+  error: unknown | null;
+};
+
 /** userId がフォロー中の人のプロフィール一覧（フォローした新しい順）。 */
 export async function listFollowingProfiles(
   supabase: SupabaseClient,
@@ -69,6 +74,58 @@ export async function listFollowingProfiles(
       region: (profile?.region as string | null) ?? null,
     };
   });
+}
+
+/** userId をフォローしている人のプロフィール一覧（フォローされた新しい順）。 */
+export async function listFollowerProfiles(supabase: SupabaseClient, userId: string): Promise<FollowerProfileListResult> {
+  try {
+    const { data: rows, error } = await supabase
+      .from("follows")
+      .select("follower_id, created_at")
+      .eq("following_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("follower list failed", { userId, message: error.message });
+      return { profiles: [], error };
+    }
+
+    const ids = (rows ?? []).map((row) => row.follower_id as string);
+    if (ids.length === 0) return { profiles: [], error: null };
+
+    const { data: profiles, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, display_name, job_type, salon_name, region")
+      .in("id", ids);
+
+    if (profileError) {
+      console.error("follower profiles fetch failed", { userId, message: profileError.message });
+      return { profiles: [], error: profileError };
+    }
+
+    const byId = new Map((profiles ?? []).map((profile) => [profile.id as string, profile]));
+
+    // フォローされた順を保ったまま、プロフィール未作成の相手もIDだけで残す。
+    return {
+      profiles: ids.map((id) => {
+        const profile = byId.get(id);
+        return {
+          id,
+          display_name: (profile?.display_name as string | null) ?? null,
+          job_type: (profile?.job_type as string | null) ?? null,
+          salon_name: (profile?.salon_name as string | null) ?? null,
+          region: (profile?.region as string | null) ?? null,
+        };
+      }),
+      error: null,
+    };
+  } catch (error) {
+    console.error("follower list threw unexpectedly", {
+      userId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return { profiles: [], error };
+  }
 }
 
 /** userId のフォロワー数・フォロー中数を数える。 */

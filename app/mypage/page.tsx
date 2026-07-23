@@ -31,7 +31,7 @@ import {
   normalizeBackroomCategory,
   type BackroomPostWithAuthor,
 } from "@/lib/supabase/backroom";
-import { listFollowingProfiles } from "@/lib/supabase/follows";
+import { listFollowerProfiles, listFollowingProfiles } from "@/lib/supabase/follows";
 import {
   listMyPendingBarberShopClaims,
   listOwnedVerifiedBarberShops,
@@ -669,6 +669,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const { answers: myQaAnswers, error: myQaAnswersError } = await listUserQaAnswers(supabase, user.id, 30);
   const { articles: savedArticles, error: savedArticlesError } = await listSavedArticles(supabase, user.id, 30, user.id);
   const followedProfiles = await listFollowingProfiles(supabase, user.id);
+  const { profiles: followerProfiles, error: followerProfilesError } = await listFollowerProfiles(supabase, user.id);
   const savedSnapList = await listSavedSnaps(supabase, user.id);
   const [myArticlesWithImages, savedArticlesWithImages] = await Promise.all([
     resolveArticleImageUrls(myArticles),
@@ -1007,6 +1008,37 @@ export default async function MyPage({ searchParams }: MyPageProps) {
               const meta = [profile.job_type, profile.salon_name, profile.region].filter(Boolean).join(" / ");
               return (
                 <Link key={profile.id} href={`/profiles/${profile.id}`} className="flex items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-black text-ink">
+                      {profile.display_name?.trim() || "プロフィール未設定"}
+                    </span>
+                    <span className="mt-1 block truncate text-xs font-semibold text-mute">
+                      {meta || "BARBER HUB"}
+                    </span>
+                  </span>
+                  <UserRoundCheck aria-hidden="true" size={16} className="shrink-0 text-blush" />
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard eyebrow="FOLLOWERS" title="フォロワー">
+        {followerProfilesError ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            フォロワーを読み込めませんでした。
+          </div>
+        ) : followerProfiles.length === 0 ? (
+          <div className="rounded-[8px] border border-line bg-neutral-50 p-3 text-xs font-bold leading-relaxed text-mute">
+            まだフォロワーはいません。
+          </div>
+        ) : (
+          <div className="grid max-h-[13.75rem] gap-2 overflow-y-auto overscroll-contain pr-1">
+            {followerProfiles.map((profile) => {
+              const meta = [profile.job_type, profile.salon_name, profile.region].filter(Boolean).join(" / ");
+              return (
+                <Link key={profile.id} href={`/profiles/${profile.id}`} className="flex min-h-11 items-center justify-between gap-3 rounded-[8px] bg-neutral-50 p-3">
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-black text-ink">
                       {profile.display_name?.trim() || "プロフィール未設定"}
