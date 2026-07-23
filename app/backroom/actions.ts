@@ -21,7 +21,7 @@ import {
   uploadBackroomImageAsServer,
 } from "@/lib/backroomImageServer";
 import { getPostPermissionRedirect } from "@/lib/permissions";
-import { getBackroomProfile, normalizeBackroomCategory } from "@/lib/supabase/backroom";
+import { getBackroomProfile } from "@/lib/supabase/backroom";
 import { removeBackroomImageObjectsAsServer } from "@/lib/supabase/backroom-images";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
@@ -38,12 +38,8 @@ function backroomPath(postId: string, params?: Record<string, string | undefined
   return pathWithParams(`/backroom/${postId}`, params ?? {});
 }
 
-function backroomDeleteFailurePath(postId?: string) {
-  if (postId && UUID_PATTERN.test(postId)) {
-    return backroomPath(postId, { deleteError: "1" });
-  }
-
-  return pathWithParams("/backroom", { deleteError: "1" });
+function backroomDeleteFailurePath() {
+  return pathWithParams("/mypage", { backroomDeleteError: "1" });
 }
 
 function logBackroomDeleteDbError(
@@ -109,7 +105,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
 
     redirect(
       pathWithParams("/login", {
-        next: `/backroom/${postId}`,
+        next: "/mypage",
         message: "スレッドの削除にはログインしてください。",
       })
     );
@@ -117,7 +113,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
 
   const { data: ownedPost, error: ownedPostError } = await supabase
     .from("backroom_posts")
-    .select("id, user_id, category")
+    .select("id, user_id")
     .eq("id", postId)
     .eq("user_id", user.id)
     .eq("is_deleted", false)
@@ -130,7 +126,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
       { postId, userId: user.id },
       ownedPostError
     );
-    redirect(backroomDeleteFailurePath(postId));
+    redirect(backroomDeleteFailurePath());
   }
 
   if (ownedPost == null) {
@@ -140,7 +136,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
       userId: user.id,
       matchedPostCount: 0,
     });
-    redirect(backroomDeleteFailurePath(postId));
+    redirect(backroomDeleteFailurePath());
   }
 
   let threadImageResult = await listAllBackroomThreadImagePaths(supabase, postId);
@@ -159,7 +155,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
         { postId, userId: user.id, threadImageCount: threadImageResult.rows.length },
         threadImageResult.error
       );
-      redirect(backroomDeleteFailurePath(postId));
+      redirect(backroomDeleteFailurePath());
     }
   }
 
@@ -176,7 +172,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
       },
       commentIdResult.error
     );
-    redirect(backroomDeleteFailurePath(postId));
+    redirect(backroomDeleteFailurePath());
   }
 
   if (commentIdResult.ids.some((commentId) => !UUID_PATTERN.test(commentId))) {
@@ -187,7 +183,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
       threadImageCount: threadImageResult.rows.length,
       commentCount: commentIdResult.ids.length,
     });
-    redirect(backroomDeleteFailurePath(postId));
+    redirect(backroomDeleteFailurePath());
   }
 
   let commentImageResult = await listAllBackroomCommentImagePaths(supabase, commentIdResult.ids);
@@ -212,7 +208,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
         },
         commentImageResult.error
       );
-      redirect(backroomDeleteFailurePath(postId));
+      redirect(backroomDeleteFailurePath());
     }
   }
 
@@ -235,7 +231,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
       commentCount: commentIdResult.ids.length,
       commentImageCount: commentImageResult.rows.length,
     });
-    redirect(backroomDeleteFailurePath(postId));
+    redirect(backroomDeleteFailurePath());
   }
 
   const { error: deleteError, count: deletedPostCount } = await supabase
@@ -258,7 +254,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
       },
       deleteError
     );
-    redirect(backroomDeleteFailurePath(postId));
+    redirect(backroomDeleteFailurePath());
   }
 
   if (!deletedExactlyOneBackroomPost(deletedPostCount)) {
@@ -271,7 +267,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
       commentCount: commentIdResult.ids.length,
       commentImageCount: commentImageResult.rows.length,
     });
-    redirect(backroomDeleteFailurePath(postId));
+    redirect(backroomDeleteFailurePath());
   }
 
   const storagePaths = Array.from(
@@ -299,12 +295,7 @@ export async function deleteBackroomPostAction(formData: FormData) {
   revalidatePath("/mypage");
   revalidatePath(`/backroom/${postId}`);
   revalidatePath(`/profiles/${user.id}`);
-  redirect(
-    pathWithParams("/backroom", {
-      category: normalizeBackroomCategory(ownedPost.category),
-      deleted: "1",
-    })
-  );
+  redirect(pathWithParams("/mypage", { backroomDelete: "deleted" }));
 }
 
 export async function createBackroomCommentAction(formData: FormData) {

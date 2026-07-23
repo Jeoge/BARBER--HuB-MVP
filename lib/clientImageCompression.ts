@@ -16,6 +16,7 @@ export type ClientImageCompressionOptions = {
   targetBytes?: number;
   hardBytes?: number;
   longEdgeSteps?: readonly number[];
+  preserveAlpha?: boolean;
 };
 
 type LoadedImage = {
@@ -53,7 +54,7 @@ export async function waitForPaint() {
   });
 }
 
-function canvasToBlob(canvas: HTMLCanvasElement, type: "image/webp" | "image/jpeg", quality: number) {
+function canvasToBlob(canvas: HTMLCanvasElement, type: "image/webp" | "image/jpeg" | "image/png", quality: number) {
   return new Promise<Blob | null>((resolve) => {
     canvas.toBlob((blob) => resolve(blob), type, quality);
   });
@@ -96,7 +97,7 @@ async function loadImageSource(file: File): Promise<LoadedImage> {
 }
 
 function makeCompressedFile(blob: Blob, index: number, prefix: string) {
-  const extension = blob.type === "image/webp" ? "webp" : "jpg";
+  const extension = blob.type === "image/webp" ? "webp" : blob.type === "image/png" ? "png" : "jpg";
 
   return new File([blob], `${prefix}-${index + 1}.${extension}`, {
     type: blob.type,
@@ -133,6 +134,7 @@ export async function compressClientImage(
     targetBytes = DEFAULT_TARGET_BYTES,
     hardBytes = DEFAULT_HARD_BYTES,
     longEdgeSteps = DEFAULT_LONG_EDGE_STEPS,
+    preserveAlpha = false,
   }: ClientImageCompressionOptions = {}
 ): Promise<CompressedClientImage> {
   const decoded = await loadImageSource(file);
@@ -158,7 +160,7 @@ export async function compressClientImage(
       const width = Math.max(1, Math.round(decoded.width * scale));
       const height = Math.max(1, Math.round(decoded.height * scale));
       const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d", { alpha: false });
+      const context = canvas.getContext("2d", { alpha: preserveAlpha });
 
       if (context == null) {
         throw new Error("canvas unavailable");
@@ -184,7 +186,7 @@ export async function compressClientImage(
         }
       }
 
-      if (!webpSupported || (best != null && best.blob.size > perImageHardBytes)) {
+      if (!preserveAlpha && (!webpSupported || (best != null && best.blob.size > perImageHardBytes))) {
         for (const quality of QUALITIES) {
           const jpeg = await canvasToBlob(canvas, "image/jpeg", quality);
 
@@ -197,6 +199,16 @@ export async function compressClientImage(
               return compressedImage(file, jpeg, width, height, index, fileNamePrefix);
             }
           }
+        }
+      } else if (preserveAlpha && !webpSupported) {
+        const png = await canvasToBlob(canvas, "image/png", 1);
+
+        if (png?.type === "image/png" && (best == null || png.size < best.blob.size)) {
+          best = { blob: png, width, height };
+        }
+
+        if (png?.type === "image/png" && png.size <= perImageTargetBytes) {
+          return compressedImage(file, png, width, height, index, fileNamePrefix);
         }
       }
     }

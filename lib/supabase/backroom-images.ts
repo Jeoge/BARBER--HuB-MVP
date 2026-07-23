@@ -5,6 +5,12 @@ import { createSupabaseAdminClient, getSupabaseAdminConfigStatus } from "@/lib/s
 import { BACKROOM_IMAGE_BUCKET } from "@/lib/backroomImages";
 
 export const BACKROOM_IMAGE_SIGNED_URL_EXPIRES_IN_SECONDS = 30 * 60;
+export const BACKROOM_IMAGE_THUMBNAIL_SIZE = 320;
+
+export type BackroomSignedImageUrls = {
+  url: string | null;
+  thumbnailUrl: string | null;
+};
 
 function errorMessage(error: unknown) {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
@@ -17,7 +23,8 @@ function errorMessage(error: unknown) {
 
 export async function createBackroomSignedUrlMap(paths: string[], context: { operation: string; count?: number }) {
   const uniquePaths = Array.from(new Set(paths.filter(Boolean)));
-  if (uniquePaths.length === 0) return new Map<string, string>();
+  const signedUrlsByPath = new Map<string, BackroomSignedImageUrls>();
+  if (uniquePaths.length === 0) return signedUrlsByPath;
 
   const adminStatus = getSupabaseAdminConfigStatus();
   if (!adminStatus.ready) {
@@ -27,10 +34,8 @@ export async function createBackroomSignedUrlMap(paths: string[], context: { ope
       parentCount: context.count ?? null,
       missingCount: adminStatus.missing.length,
     });
-    return new Map<string, string>();
+    return signedUrlsByPath;
   }
-
-  const signedUrlByPath = new Map<string, string>();
 
   try {
     const adminSupabase = createSupabaseAdminClient();
@@ -45,17 +50,16 @@ export async function createBackroomSignedUrlMap(paths: string[], context: { ope
         parentCount: context.count ?? null,
         message: error.message,
       });
-      return signedUrlByPath;
+    } else {
+      (data ?? []).forEach((item, index) => {
+        const row = item as { path?: string | null; signedUrl?: string | null; error?: { message?: string } | null };
+        const path = row.path?.trim() || uniquePaths[index];
+
+        if (path && row.signedUrl && !row.error) {
+          signedUrlsByPath.set(path, { url: row.signedUrl, thumbnailUrl: null });
+        }
+      });
     }
-
-    (data ?? []).forEach((item, index) => {
-      const row = item as { path?: string | null; signedUrl?: string | null; error?: { message?: string } | null };
-      const path = row.path?.trim() || uniquePaths[index];
-
-      if (path && row.signedUrl && !row.error) {
-        signedUrlByPath.set(path, row.signedUrl);
-      }
-    });
   } catch (error) {
     console.error("Back Room signed image URL generation threw", {
       operation: context.operation,
@@ -65,7 +69,42 @@ export async function createBackroomSignedUrlMap(paths: string[], context: { ope
     });
   }
 
-  return signedUrlByPath;
+  try {
+    const adminSupabase = createSupabaseAdminClient();
+    const thumbnailResults = await Promise.all(
+      uniquePaths.map(async (path) => {
+        const { data, error } = await adminSupabase.storage.from(BACKROOM_IMAGE_BUCKET).createSignedUrl(
+          path,
+          BACKROOM_IMAGE_SIGNED_URL_EXPIRES_IN_SECONDS,
+          {
+            transform: {
+              width: BACKROOM_IMAGE_THUMBNAIL_SIZE,
+              height: BACKROOM_IMAGE_THUMBNAIL_SIZE,
+              resize: "cover",
+              quality: 75,
+            },
+          }
+        );
+
+        return { path, signedUrl: data?.signedUrl ?? null, error };
+      })
+    );
+
+    thumbnailResults.forEach(({ path, signedUrl, error }) => {
+      if (!signedUrl || error) return;
+      const existing = signedUrlsByPath.get(path) ?? { url: null, thumbnailUrl: null };
+      signedUrlsByPath.set(path, { ...existing, thumbnailUrl: signedUrl });
+    });
+  } catch (error) {
+    console.error("Back Room thumbnail URL generation threw", {
+      operation: context.operation,
+      imageCount: uniquePaths.length,
+      parentCount: context.count ?? null,
+      message: errorMessage(error),
+    });
+  }
+
+  return signedUrlsByPath;
 }
 
 export async function removeBackroomImageObjects(

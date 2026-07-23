@@ -97,7 +97,7 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - private bucketの投稿画像は、公開中かつ未削除の投稿を取得するサーバー処理の中だけで30分程度の短時間signed URLを発行する。
 - 一般ユーザーが任意のStorage pathを渡してsigned URLを取得できるAPIやServer Actionを作らない。
 - アップロード後に投稿保存が失敗した場合は、今回アップロードしたStorage objectを削除する。
-- Back Roomのスレッド・コメント画像は `backroom-images` private bucketへ保存し、最大1枚・圧縮後1枚2MB以内、JPEG / PNG / WebPだけを許可する。HEIC / HEIFはブラウザ変換に成功した場合だけ送信する。
+- Back Roomのスレッド・コメント画像は選択時1枚10MB以下、`backroom-images` private bucketへ送信する圧縮後は最大1枚・1枚2MB以内、JPEG / PNG / WebPだけを許可する。HEIC / HEIFはブラウザ変換に成功した場合だけ送信する。
 - Back Room画像のDB RLSは既存のBack Room参加条件と親投稿・コメント所有者条件を維持し、他人のthread_id / comment_idや任意pathを登録できないようにする。Storage objectの直接SELECTは許可しない。
 - `backroom_comments` のauthenticated INSERT / UPDATE RLSでは公開状態の本文を非空に制限し、DBの遅延constraint triggerでも本文または `backroom_comment_images` の存在を強制する。画像だけコメントは `create_backroom_image_comment` SECURITY DEFINER RPCで、auth.uid()、Back Room参加、親スレッド、comment path、画像メタデータ、Storage object存在を再検証して確定する。RPCはauthenticatedへ必要なEXECUTEだけを許可し、service role keyはクライアントへ渡さない。
 - コメント画像はStorageへ先に一時保存し、DB側のRPCがコメント行と画像行を同一トランザクションで作成する。RPCまたは保存確認が失敗した場合は、今回のStorage objectをserver-only cleanupで削除し、DB側に公開可能な空コメントを残さない。cleanup失敗はpathを含む詳細を画面へ出さずサーバーログへ記録する。
@@ -106,7 +106,7 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - 例外は画像テーブル未適用・schema cache未更新を示す`42P01`または`PGRST205`で、かつエラー内の対象名が`backroom_thread_images`または`backroom_comment_images`と正確に一致する場合だけとし、その画像pathを空配列として扱う。コメント0件ではコメント画像テーブルを問い合わせない。通信障害、認証失敗、不明なRLS、timeout、別テーブルやcode不一致のエラーではDB削除を中止する。
 - DBは通常の認証済みclientで親`backroom_posts`を物理削除し、コメントと画像メタデータをcascade削除する。成功後にだけ、事前検証済みpathをservice roleのserver-only cleanupでprivate Storageから削除する。Storage削除失敗は詳細ログを残し、DB削除を巻き戻さず成功として扱う。service role keyはクライアントへ渡さない。記事とSnapの削除依頼フローには適用しない。
 - 親行DELETEでは`id`、`user_id = auth.uid()`、`is_deleted = false`を再指定し、exact countが1件の場合だけ成功とする。owner-only DELETE RLSを維持し、service roleでDB削除を迂回しない。
-- 画像テーブル・signed URL発行・個別画像読み込みの失敗では該当画像だけを非表示にし、本文・コメント・Back Room全体を壊さない。Storage pathは表示データへ含めない。
+- 画像テーブル・サムネイルsigned URL・拡大用signed URL発行・個別画像読み込みの失敗では該当画像だけを非表示またはエラー表示にし、本文・コメント・Back Room全体を壊さない。Storage pathは表示データへ含めない。
 - 投稿本文のHTMLやscriptを実行させない。
 - 記事のYouTube URLは対象カテゴリだけで受け付け、Server Action側でもYouTubeドメイン、https、動画ID、長さを検証する。検証済みURLが入力された場合だけ動画権利確認を必須にする。iframe埋め込み、自動再生、直接動画アップロード、動画Storageは行わない。
 - 画像URLが `undefined` でも画面全体をクラッシュさせない。

@@ -59,7 +59,7 @@
 - Snapの新規アップロードは圧縮後の `image/webp` または `image/jpeg` に限定する。
 - 記事の新規アップロードも圧縮後の `image/webp` または `image/jpeg` に限定する。
 - `content-ad-images` は広告管理用のprivate bucketとし、一般ユーザー向けのStorage policyを作らない。表示時だけサーバー側のservice roleで短時間のsigned URLを発行する。
-- `backroom-images` はBack Room専用のprivate bucketとし、JPEG / PNG / WebPだけを受け付ける。ファイルサイズ上限は1枚2MBとする。Storage objectのSELECT policyは作らず、表示時だけサーバー側で30分のsigned URLを発行する。
+- `backroom-images` はBack Room専用のprivate bucketとし、JPEG / PNG / WebPだけを受け付ける。圧縮後のファイルサイズ上限は1枚2MBとする。Storage objectのSELECT policyは作らず、表示時だけサーバー側で30分のsigned URLを発行する。通常表示には320pxの変換URL、拡大時には元画像URLを使う。
 
 ## 広告枠
 
@@ -159,7 +159,7 @@ RLS:
 - object pathは `threads/{thread_id}/{uuid}.webp` または `comments/{comment_id}/{uuid}.webp` とし、ユーザー入力ファイル名を使用しない。DB制約とRLSで親ID配下だけを許可する。
 - スレッド画像のSELECTはBack Room参加者かつ公開中スレッド、または本人のスレッドに限定する。コメント画像のSELECTはBack Room参加者かつ公開中スレッドのコメントに限定する。
 - INSERT / UPDATE / DELETEは親投稿・コメントの本人だけに限定し、Back Roomプロフィール参加条件も維持する。他人のthread_id / comment_idへ画像を追加・差し替えできない。
-- Storageはprivate bucketで、anon / authenticatedの直接SELECTを許可しない。通常のStorage pathはアプリ画面へ返さず、サーバー側のservice role clientが短時間signed URLへ変換したURLだけを表示用に返す。
+- Storageはprivate bucketで、anon / authenticatedの直接SELECTを許可しない。通常のStorage pathはアプリ画面へ返さず、サーバー側のservice role clientが短時間signed URLへ変換したURLだけを表示用に返す。通常画面には320px・quality 75・coverの変換URLを返し、拡大時だけ変換なしのsigned URLを読み込む。
 - 画像テーブルが未適用、画像行の取得、signed URL発行、個別画像の読み込みに失敗しても、該当画像を空にして本文・コメントを表示する。任意pathを受け取ってsigned URLを発行するAPIは作らない。
 - `backroom_comments` の通常authenticated INSERT policyは本文が1〜1000文字の非空値であることを要求し、UPDATEも公開状態の本文をnull / 空文字へ変更できない。本文なしの画像だけコメントは `create_backroom_image_comment` SECURITY DEFINER RPCでのみ作成し、本人・Back Room参加権限、公開中の親スレッド、comment path、MIME、寸法、2MB以内の容量、Storage object存在を検証する。
 - `enforce_backroom_comment_has_body_or_image` の遅延constraint triggerをコメント行とコメント画像行へ設定し、トランザクション確定時にも公開状態のコメントが本文または画像行を持つことを再確認する。画像コメントはStorage upload成功後にRPCがコメント行と画像行を同一トランザクションで保存するため、作成途中の空コメントはSELECT対象にならない。
