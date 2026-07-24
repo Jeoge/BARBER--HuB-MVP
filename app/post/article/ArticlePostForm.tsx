@@ -326,7 +326,7 @@ export function ArticlePostForm({
               </select>
             </label>
           ) : null}
-          <p className="text-[0.68rem] font-medium leading-relaxed text-mute">有料記事は「無料公開部分」と「ここから有料」の本文を分けて保存します。購入確定までは有料部分を公開しません。</p>
+          <p className="text-[0.68rem] font-medium leading-relaxed text-mute">無料で多くの人に読んでもらうことで、Treatにつながりやすい場合もあります。</p>
         </fieldset>
       ) : null}
 

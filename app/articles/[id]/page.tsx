@@ -277,6 +277,7 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
             reactionError={query?.reactionError}
             commentError={query?.commentError}
             commentPosted={query?.comment === "posted"}
+            monetizationEnabled={isMonetizationEnabled()}
             treatEnabled={isMonetizationEnabled() && (!isPaidArticle || canReadPaidSection)}
           />
         </article>

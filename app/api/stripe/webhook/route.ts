@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { createStripeClient, getStripeConfigStatus } from "@/lib/stripe";
 import { createSupabaseAdminClient, getSupabaseAdminConfigStatus } from "@/lib/supabase/admin";
+import { refundStatusFromAmounts } from "@/lib/monetization";
 
 export const runtime = "nodejs";
 
@@ -79,6 +80,37 @@ async function completeCheckout(session: Stripe.Checkout.Session) {
   if (error) throw error;
 }
 
+async function applyChargeRefund(charge: Stripe.Charge) {
+  const paymentIntentId = stripeId(charge.payment_intent);
+  const amountRefunded = charge.amount_refunded;
+  if (!paymentIntentId || !Number.isSafeInteger(amountRefunded) || amountRefunded <= 0) return;
+
+  const admin = createSupabaseAdminClient();
+  const timestamp = new Date().toISOString();
+  const [treatResult, purchaseResult] = await Promise.all([
+    admin.from("content_treats").select("id, amount").eq("stripe_payment_intent_id", paymentIntentId).in("status", ["completed", "partially_refunded"]).returns<Array<{ id: string; amount: number }>>(),
+    admin.from("paid_article_purchases").select("id, price_amount").eq("stripe_payment_intent_id", paymentIntentId).in("status", ["completed", "partially_refunded"]).returns<Array<{ id: string; price_amount: number }>>(),
+  ]);
+  if (treatResult.error) throw treatResult.error;
+  if (purchaseResult.error) throw purchaseResult.error;
+
+  const treatUpdates = (treatResult.data ?? []).map((treat) => {
+    const status = refundStatusFromAmounts(treat.amount, amountRefunded);
+    if (!status) return null;
+    return admin.from("content_treats").update({ status, refunded_amount: Math.min(treat.amount, amountRefunded), refunded_at: timestamp, updated_at: timestamp }).eq("id", treat.id).in("status", ["completed", "partially_refunded"]);
+  });
+  const purchaseUpdates = (purchaseResult.data ?? []).map((purchase) => {
+    const status = refundStatusFromAmounts(purchase.price_amount, amountRefunded);
+    if (!status) return null;
+    return admin.from("paid_article_purchases").update({ status, refunded_amount: Math.min(purchase.price_amount, amountRefunded), refunded_at: timestamp, updated_at: timestamp }).eq("id", purchase.id).in("status", ["completed", "partially_refunded"]);
+  });
+  for (const update of [...treatUpdates, ...purchaseUpdates]) {
+    if (update == null) continue;
+    const result = await update;
+    if (result.error) throw result.error;
+  }
+}
+
 async function handleEvent(event: Stripe.Event) {
   const admin = createSupabaseAdminClient();
 
@@ -100,16 +132,7 @@ async function handleEvent(event: Stripe.Event) {
   }
 
   if (event.type === "charge.refunded") {
-    const charge = event.data.object as Stripe.Charge;
-    const paymentIntentId = stripeId(charge.payment_intent);
-    if (!paymentIntentId) return;
-    const timestamp = new Date().toISOString();
-    const [treat, purchase] = await Promise.all([
-      admin.from("content_treats").update({ status: "refunded", refunded_at: timestamp, updated_at: timestamp }).eq("stripe_payment_intent_id", paymentIntentId).eq("status", "completed"),
-      admin.from("paid_article_purchases").update({ status: "refunded", refunded_at: timestamp, updated_at: timestamp }).eq("stripe_payment_intent_id", paymentIntentId).eq("status", "completed"),
-    ]);
-    if (treat.error) throw treat.error;
-    if (purchase.error) throw purchase.error;
+    await applyChargeRefund(event.data.object as Stripe.Charge);
     return;
   }
 

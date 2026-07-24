@@ -4,7 +4,7 @@ export const MONETIZATION_CURRENCY = "jpy";
 export const PLATFORM_FEE_PERCENT = 15;
 
 export type TreatTargetType = "snap" | "article" | "backroom_thread" | "backroom_comment";
-export type PaymentStatus = "pending" | "completed" | "expired" | "failed" | "refunded";
+export type PaymentStatus = "pending" | "completed" | "expired" | "failed" | "partially_refunded" | "refunded";
 
 export function isMonetizationEnabled() {
   return process.env.BARBER_HUB_MONETIZATION_ENABLED === "true";
@@ -38,9 +38,15 @@ export function formatJpy(amount: number) {
   return new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 }).format(amount);
 }
 
+export function refundStatusFromAmounts(originalAmount: number, amountRefunded: number): Extract<PaymentStatus, "partially_refunded" | "refunded"> | null {
+  if (!Number.isSafeInteger(originalAmount) || originalAmount <= 0 || !Number.isSafeInteger(amountRefunded) || amountRefunded <= 0) return null;
+  return amountRefunded >= originalAmount ? "refunded" : "partially_refunded";
+}
+
 export function paymentStatusLabel(status: string | null | undefined) {
   switch (status) {
     case "completed": return "完了";
+    case "partially_refunded": return "一部返金";
     case "refunded": return "返金済み";
     case "expired": return "期限切れ";
     case "failed": return "失敗";

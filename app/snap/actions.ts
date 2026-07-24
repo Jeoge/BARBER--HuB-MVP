@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isMissingSnapReactionsTableError } from "@/lib/supabase/snaps";
 
-export type SnapReactionType = "thanks";
+export type SnapReactionType = "thanks" | "like";
 
 export type SnapReactionState = {
   count: number;
@@ -28,7 +28,7 @@ type SnapReactionRow = {
   reaction_type: string;
 };
 
-const reactionTypes = new Set<SnapReactionType>(["thanks"]);
+const reactionTypes = new Set<SnapReactionType>(["thanks", "like"]);
 
 function errorMessage(error: unknown) {
   if (error && typeof error === "object" && "message" in error && typeof error.message === "string") {
@@ -39,8 +39,8 @@ function errorMessage(error: unknown) {
   return String(error || "");
 }
 
-function reactionLabel() {
-  return "Thanks";
+function reactionLabel(reactionType: SnapReactionType) {
+  return reactionType === "like" ? "いいね" : "Thanks";
 }
 
 async function countReactionsForSnap(
@@ -87,7 +87,7 @@ export async function toggleSnapReactionAction(previousState: SnapReactionState,
   const snapId = String(formData.get("snapId") ?? "").trim();
   const reactionType = String(formData.get("reactionType") ?? "thanks").trim() as SnapReactionType;
   const supabase = await createClient();
-  const label = reactionTypes.has(reactionType) ? reactionLabel() : "リアクション";
+  const label = reactionTypes.has(reactionType) ? reactionLabel(reactionType) : "リアクション";
 
   if (!snapId || !reactionTypes.has(reactionType)) {
     return {

@@ -9,7 +9,7 @@ import { ReactionBar } from "@/components/ReactionBar";
 import { SnapCommentButton } from "@/components/SnapCommentButton";
 import { SnapImageCarousel } from "@/components/SnapImageCarousel";
 import { SnapSaveButton } from "@/components/SnapSaveButton";
-import { SnapThanksButton } from "@/components/SnapThanksButton";
+import { SnapLikeButton, SnapThanksButton } from "@/components/SnapThanksButton";
 import { TreatButton } from "@/components/TreatButton";
 import { VisualTile } from "@/components/VisualTile";
 import { pathWithParams } from "@/lib/auth/redirects";
@@ -106,7 +106,20 @@ export default async function PostDetailPage({ params }: { params: Promise<{ id:
             nextPath={`/posts/${dbSnap.id}`}
             actions={
               <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
-                {isMonetizationEnabled() ? <TreatButton targetType="snap" targetId={dbSnap.id} authorId={dbSnap.author_id} currentUserId={user?.id} nextPath={`/posts/${dbSnap.id}`} compact /> : null}
+                {isMonetizationEnabled() ? (
+                  <TreatButton targetType="snap" targetId={dbSnap.id} authorId={dbSnap.author_id} currentUserId={user?.id} nextPath={`/posts/${dbSnap.id}`} compact />
+                ) : (
+                  <SnapLikeButton
+                    snapId={dbSnap.id}
+                    authorId={dbSnap.author_id}
+                    currentUserId={user?.id}
+                    initialCount={dbSnap.like_count}
+                    initiallyLiked={dbSnap.viewer_has_liked}
+                    showCount={false}
+                    nextPath={`/posts/${dbSnap.id}`}
+                    inline
+                  />
+                )}
                 <SnapCommentButton snapId={dbSnap.id} currentUserId={user?.id} showCount initialCount={dbSnap.comment_count} />
                 <SnapSaveButton snapId={dbSnap.id} currentUserId={user?.id} nextPath={`/posts/${dbSnap.id}`} />
               </div>

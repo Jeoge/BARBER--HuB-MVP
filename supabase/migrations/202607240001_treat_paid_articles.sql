@@ -138,16 +138,17 @@ create table if not exists public.paid_article_purchases (
   status text not null default 'pending',
   purchased_at timestamptz,
   refunded_at timestamptz,
+  refunded_amount integer not null default 0,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
-  constraint paid_article_purchases_status_check check (status in ('pending', 'completed', 'expired', 'failed', 'refunded')),
+  constraint paid_article_purchases_status_check check (status in ('pending', 'completed', 'expired', 'failed', 'partially_refunded', 'refunded')),
   constraint paid_article_purchases_not_self_check check (buyer_id <> seller_id),
-  constraint paid_article_purchases_amount_check check (platform_fee_amount < price_amount and seller_amount = price_amount - platform_fee_amount)
+  constraint paid_article_purchases_amount_check check (platform_fee_amount < price_amount and seller_amount = price_amount - platform_fee_amount and refunded_amount between 0 and price_amount)
 );
 
 create unique index if not exists paid_article_purchases_active_one_per_buyer_article_idx
   on public.paid_article_purchases(article_id, buyer_id)
-  where status in ('pending', 'completed');
+  where status in ('pending', 'completed', 'partially_refunded');
 create index if not exists paid_article_purchases_buyer_created_idx
   on public.paid_article_purchases(buyer_id, created_at desc);
 create index if not exists paid_article_purchases_seller_created_idx
@@ -174,8 +175,7 @@ create policy "article_paid_sections_select_entitled"
       select 1 from public.paid_article_purchases
       where paid_article_purchases.article_id = article_paid_sections.article_id
         and paid_article_purchases.buyer_id = auth.uid()
-        and paid_article_purchases.status = 'completed'
-        and paid_article_purchases.refunded_at is null
+        and paid_article_purchases.status in ('completed', 'partially_refunded')
     )
   );
 
@@ -217,19 +217,23 @@ create table if not exists public.content_treats (
   status text not null default 'pending',
   optional_message text,
   refunded_at timestamptz,
+  refunded_amount integer not null default 0,
   created_at timestamptz not null default timezone('utc', now()),
   completed_at timestamptz,
   updated_at timestamptz not null default timezone('utc', now()),
   constraint content_treats_target_type_check check (target_type in ('snap', 'article', 'backroom_thread', 'backroom_comment')),
-  constraint content_treats_status_check check (status in ('pending', 'completed', 'expired', 'failed', 'refunded')),
+  constraint content_treats_status_check check (status in ('pending', 'completed', 'expired', 'failed', 'partially_refunded', 'refunded')),
   constraint content_treats_not_self_check check (sender_id <> recipient_id),
   constraint content_treats_message_check check (optional_message is null or char_length(optional_message) <= 200),
-  constraint content_treats_amount_check check (platform_fee_amount < amount and recipient_amount = amount - platform_fee_amount)
+  constraint content_treats_amount_check check (platform_fee_amount < amount and recipient_amount = amount - platform_fee_amount and refunded_amount between 0 and amount)
 );
 
 create index if not exists content_treats_sender_created_idx on public.content_treats(sender_id, created_at desc);
 create index if not exists content_treats_recipient_created_idx on public.content_treats(recipient_id, created_at desc);
 create index if not exists content_treats_target_idx on public.content_treats(target_type, target_id);
+create unique index if not exists content_treats_pending_one_per_sender_target_amount_idx
+  on public.content_treats(sender_id, target_type, target_id, amount)
+  where status = 'pending';
 
 alter table public.content_treats enable row level security;
 revoke all on public.content_treats from anon, authenticated;

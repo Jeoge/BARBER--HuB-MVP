@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { Sparkles, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useActionState } from "react";
 import { useFormStatus } from "react-dom";
@@ -17,6 +17,12 @@ const reactionConfig = {
     pendingLabel: "送信中...",
     ownMessage: "自分の投稿にはリアクションできません",
     Icon: Sparkles,
+  },
+  like: {
+    label: "いいね",
+    pendingLabel: "保存中...",
+    ownMessage: "自分の投稿にはリアクションできません",
+    Icon: ThumbsUp,
   },
 } as const;
 
@@ -136,4 +142,6 @@ export function SnapThanksButton({
     </div>
   );
 }
-// This module intentionally exports the Thanks control only; new Snap likes are disabled.
+export function SnapLikeButton(props: Omit<Parameters<typeof SnapThanksButton>[0], "initialCount" | "initiallyThanked" | "reactionType"> & { initialCount: number; initiallyLiked: boolean }) {
+  return <SnapThanksButton {...props} initiallyThanked={props.initiallyLiked} reactionType="like" />;
+}

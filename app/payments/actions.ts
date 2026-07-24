@@ -24,6 +24,66 @@ type ConnectedAccountRow = {
   payouts_enabled: boolean;
   onboarding_status: string;
 };
+type PendingCheckoutRow = {
+  id: string;
+  stripe_checkout_session_id: string | null;
+};
+type PaymentTable = "content_treats" | "paid_article_purchases";
+type PendingCheckoutResolution = { url: string; sessionId: string } | { error: string } | null;
+
+function hasReusableCheckout(result: PendingCheckoutResolution): result is { url: string; sessionId: string } {
+  return result != null && "url" in result;
+}
+
+async function updatePendingCheckoutRecord(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  table: PaymentTable,
+  id: string,
+  values: { status?: "expired" | "failed"; updated_at: string },
+) {
+  const query = table === "content_treats" ? admin.from("content_treats") : admin.from("paid_article_purchases");
+  const { error } = await query.update(values).eq("id", id).eq("status", "pending");
+  if (error) throw error;
+}
+
+async function reuseOrClosePendingCheckout(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  table: PaymentTable,
+  pending: PendingCheckoutRow,
+): Promise<PendingCheckoutResolution> {
+  const timestamp = new Date().toISOString();
+  if (!pending.stripe_checkout_session_id) {
+    await updatePendingCheckoutRecord(admin, table, pending.id, { status: "failed", updated_at: timestamp });
+    return null;
+  }
+
+  try {
+    const session = await createStripeClient().checkout.sessions.retrieve(pending.stripe_checkout_session_id);
+    if (session.status === "open" && session.url) return { url: session.url, sessionId: session.id };
+    if (session.status === "complete") return { error: "決済の確定を確認しています。少し時間をおいて記事を再読み込みしてください。" };
+    await updatePendingCheckoutRecord(admin, table, pending.id, { status: session.status === "expired" ? "expired" : "failed", updated_at: timestamp });
+    return null;
+  } catch {
+    await updatePendingCheckoutRecord(admin, table, pending.id, { status: "failed", updated_at: timestamp });
+    return null;
+  }
+}
+
+async function expireUnselectedTreatCheckout(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  pending: PendingCheckoutRow,
+  sessionId: string,
+) {
+  const timestamp = new Date().toISOString();
+  try {
+    await createStripeClient().checkout.sessions.expire(sessionId);
+    await updatePendingCheckoutRecord(admin, "content_treats", pending.id, { status: "expired", updated_at: timestamp });
+    return true;
+  } catch {
+    await updatePendingCheckoutRecord(admin, "content_treats", pending.id, { status: "failed", updated_at: timestamp });
+    return false;
+  }
+}
 
 function cleanText(value: FormDataEntryValue | string | null | undefined) {
   return typeof value === "string" ? value.trim() : "";
@@ -80,8 +140,7 @@ async function resolveTreatTarget(
         .select("id")
         .eq("article_id", targetId)
         .eq("buyer_id", viewerId)
-        .eq("status", "completed")
-        .is("refunded_at", null)
+        .in("status", ["completed", "partially_refunded"])
         .maybeSingle<{ id: string }>();
       if (!purchase) return { recipientId: data.author_id, label: "article_locked", returnPath: `/articles/${targetId}` };
     }
@@ -103,12 +162,34 @@ async function resolveTreatTarget(
   return { recipientId: data.user_id, label: "Back Roomコメント", returnPath: `/backroom/${data.post_id}#backroom-comment-${targetId}` };
 }
 
-async function checkoutUrlForTreat(input: { senderId: string; recipientId: string; targetType: TreatTargetType; targetId: string; amount: number; message: string; returnPath: string }) {
-  const stripe = createStripeClient();
+async function checkoutUrlForTreat(input: { senderId: string; recipientId: string; targetType: TreatTargetType; targetId: string; amount: number; message: string; returnPath: string }): Promise<CheckoutResult> {
   const admin = createSupabaseAdminClient();
   const account = await recipientAccount(input.recipientId);
   if (!account) return unavailable();
   const { platformFeeAmount, recipientAmount } = calculatePlatformAmounts(input.amount);
+
+  const { data: pendingTreats, error: pendingTreatsError } = await admin
+    .from("content_treats")
+    .select("id, amount, stripe_checkout_session_id")
+    .eq("sender_id", input.senderId)
+    .eq("target_type", input.targetType)
+    .eq("target_id", input.targetId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .returns<Array<PendingCheckoutRow & { amount: number }>>();
+  if (pendingTreatsError) return { ok: false as const, error: "Treatの準備を確認できませんでした。時間をおいて再度お試しください。" };
+
+  for (const pendingTreat of pendingTreats ?? []) {
+    const existing = await reuseOrClosePendingCheckout(admin, "content_treats", pendingTreat);
+    if (existing && "error" in existing) return { ok: false as const, error: existing.error };
+    if (hasReusableCheckout(existing)) {
+      if (pendingTreat.amount === input.amount) return { ok: true as const, url: existing.url };
+      if (!(await expireUnselectedTreatCheckout(admin, pendingTreat, existing.sessionId))) {
+        return { ok: false as const, error: "以前のTreat決済を整理できませんでした。少し時間をおいて再度お試しください。" };
+      }
+    }
+  }
+
   const id = randomUUID();
   const { error: insertError } = await admin.from("content_treats").insert({
     id,
@@ -124,10 +205,26 @@ async function checkoutUrlForTreat(input: { senderId: string; recipientId: strin
     status: "pending",
     optional_message: input.message || null,
   });
-  if (insertError) return { ok: false as const, error: "Treatの準備に失敗しました。時間をおいて再度お試しください。" };
+  if (insertError) {
+    const { data: pending } = await admin
+      .from("content_treats")
+      .select("id, stripe_checkout_session_id")
+      .eq("sender_id", input.senderId)
+      .eq("target_type", input.targetType)
+      .eq("target_id", input.targetId)
+      .eq("amount", input.amount)
+      .eq("status", "pending")
+      .maybeSingle<PendingCheckoutRow>();
+    if (pending) {
+      const existing = await reuseOrClosePendingCheckout(admin, "content_treats", pending);
+      if (hasReusableCheckout(existing)) return { ok: true as const, url: existing.url };
+      if (existing && "error" in existing) return { ok: false as const, error: existing.error };
+    }
+    return { ok: false as const, error: "Treatの準備に失敗しました。時間をおいて再度お試しください。" };
+  }
 
   try {
-    const session = await stripe.checkout.sessions.create(
+    const session = await createStripeClient().checkout.sessions.create(
       {
         mode: "payment",
         line_items: [{ price_data: { currency: MONETIZATION_CURRENCY, unit_amount: input.amount, product_data: { name: `${input.returnPath.includes("/posts/") ? "Snap" : "BARBER HUB"} Treat` } }, quantity: 1 }],
@@ -179,8 +276,21 @@ export async function createArticlePurchaseCheckoutAction(input: { articleId: st
   if (article.author_id === user.id) return { ok: false, error: "投稿者本人は購入せずに全文を確認できます。" };
 
   const admin = createSupabaseAdminClient();
-  const { data: owned } = await admin.from("paid_article_purchases").select("id, status").eq("article_id", article.id).eq("buyer_id", user.id).eq("status", "completed").is("refunded_at", null).maybeSingle<{ id: string; status: string }>();
+  const { data: owned } = await admin.from("paid_article_purchases").select("id, status").eq("article_id", article.id).eq("buyer_id", user.id).in("status", ["completed", "partially_refunded"]).maybeSingle<{ id: string; status: string }>();
   if (owned) return { ok: false, error: "この記事はすでに購入済みです。" };
+  const { data: pendingPurchase, error: pendingPurchaseError } = await admin
+    .from("paid_article_purchases")
+    .select("id, stripe_checkout_session_id")
+    .eq("article_id", article.id)
+    .eq("buyer_id", user.id)
+    .eq("status", "pending")
+    .maybeSingle<PendingCheckoutRow>();
+  if (pendingPurchaseError) return { ok: false, error: "購入の準備を確認できませんでした。時間をおいて再度お試しください。" };
+  if (pendingPurchase) {
+    const existing = await reuseOrClosePendingCheckout(admin, "paid_article_purchases", pendingPurchase);
+    if (hasReusableCheckout(existing)) return { ok: true, url: existing.url };
+    if (existing && "error" in existing) return { ok: false, error: existing.error };
+  }
   const account = await recipientAccount(article.author_id);
   if (!account) return { ok: false, error: "この投稿者は現在有料記事を公開できません。" };
   const price = Number(article.price_amount);
@@ -190,7 +300,21 @@ export async function createArticlePurchaseCheckoutAction(input: { articleId: st
     id, article_id: article.id, buyer_id: user.id, seller_id: article.author_id, price_amount: price, currency: MONETIZATION_CURRENCY,
     platform_fee_amount: platformFeeAmount, seller_amount: recipientAmount, stripe_destination_account_id: account.stripe_account_id, status: "pending",
   });
-  if (insertError) return { ok: false, error: "購入の準備に失敗しました。時間をおいて再度お試しください。" };
+  if (insertError) {
+    const { data: pending } = await admin
+      .from("paid_article_purchases")
+      .select("id, stripe_checkout_session_id")
+      .eq("article_id", article.id)
+      .eq("buyer_id", user.id)
+      .eq("status", "pending")
+      .maybeSingle<PendingCheckoutRow>();
+    if (pending) {
+      const existing = await reuseOrClosePendingCheckout(admin, "paid_article_purchases", pending);
+      if (hasReusableCheckout(existing)) return { ok: true, url: existing.url };
+      if (existing && "error" in existing) return { ok: false, error: existing.error };
+    }
+    return { ok: false, error: "購入の準備に失敗しました。時間をおいて再度お試しください。" };
+  }
   try {
     const stripe = createStripeClient();
     const returnPath = `/articles/${article.id}`;

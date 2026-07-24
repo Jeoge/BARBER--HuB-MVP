@@ -4,7 +4,7 @@ import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { SnapImageCarousel } from "@/components/SnapImageCarousel";
 import { SnapCommentButton } from "@/components/SnapCommentButton";
 import { SnapSaveButton } from "@/components/SnapSaveButton";
-import { SnapThanksButton } from "@/components/SnapThanksButton";
+import { SnapLikeButton, SnapThanksButton } from "@/components/SnapThanksButton";
 import { TreatButton } from "@/components/TreatButton";
 import { isMonetizationEnabled } from "@/lib/monetization";
 import { snapAuthorMeta, snapAuthorName, snapDateLabel, snapDisplayImages, type SnapWithAuthor } from "@/lib/supabase/snaps";
@@ -77,7 +77,20 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
         nextPath={`/posts/${snap.id}`}
         actions={
           <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
-            {monetizationEnabled ? <TreatButton targetType="snap" targetId={snap.id} authorId={snap.author_id} currentUserId={currentUserId} nextPath={`/posts/${snap.id}`} compact /> : null}
+            {monetizationEnabled ? (
+              <TreatButton targetType="snap" targetId={snap.id} authorId={snap.author_id} currentUserId={currentUserId} nextPath={`/posts/${snap.id}`} compact />
+            ) : (
+              <SnapLikeButton
+                snapId={snap.id}
+                authorId={snap.author_id}
+                currentUserId={currentUserId}
+                initialCount={snap.like_count}
+                initiallyLiked={snap.viewer_has_liked}
+                showCount={false}
+                nextPath={`/posts/${snap.id}`}
+                inline
+              />
+            )}
             <SnapCommentButton snapId={snap.id} currentUserId={currentUserId} showCount initialCount={snap.comment_count} />
             <SnapSaveButton snapId={snap.id} currentUserId={currentUserId} nextPath={`/posts/${snap.id}`} />
           </div>
