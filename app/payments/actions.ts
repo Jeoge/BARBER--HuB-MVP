@@ -31,6 +31,17 @@ type PendingCheckoutRow = {
 type PaymentTable = "content_treats" | "paid_article_purchases";
 type PendingCheckoutResolution = { url: string; sessionId: string } | { error: string } | null;
 
+function logCheckoutFailure(kind: "treat" | "paid_article", error: unknown) {
+  const stripeError = error as { type?: unknown; code?: unknown; statusCode?: unknown; requestId?: unknown };
+  console.error("stripe_checkout_create_failed", {
+    kind,
+    type: typeof stripeError?.type === "string" ? stripeError.type : "unknown",
+    code: typeof stripeError?.code === "string" ? stripeError.code : null,
+    statusCode: typeof stripeError?.statusCode === "number" ? stripeError.statusCode : null,
+    requestId: typeof stripeError?.requestId === "string" ? stripeError.requestId : null,
+  });
+}
+
 function hasReusableCheckout(result: PendingCheckoutResolution): result is { url: string; sessionId: string } {
   return result != null && "url" in result;
 }
@@ -243,7 +254,8 @@ async function checkoutUrlForTreat(input: { senderId: string; recipientId: strin
     const { error: updateError } = await admin.from("content_treats").update({ stripe_checkout_session_id: session.id, updated_at: new Date().toISOString() }).eq("id", id).eq("status", "pending");
     if (updateError) throw updateError;
     return { ok: true as const, url: session.url };
-  } catch {
+  } catch (error) {
+    logCheckoutFailure("treat", error);
     await admin.from("content_treats").update({ status: "failed", updated_at: new Date().toISOString() }).eq("id", id).eq("status", "pending");
     return { ok: false as const, error: "Treat決済を開始できませんでした。時間をおいて再度お試しください。" };
   }
@@ -330,7 +342,8 @@ export async function createArticlePurchaseCheckoutAction(input: { articleId: st
     const { error: updateError } = await admin.from("paid_article_purchases").update({ stripe_checkout_session_id: session.id, updated_at: new Date().toISOString() }).eq("id", id).eq("status", "pending");
     if (updateError) throw updateError;
     return { ok: true, url: session.url };
-  } catch {
+  } catch (error) {
+    logCheckoutFailure("paid_article", error);
     await admin.from("paid_article_purchases").update({ status: "failed", updated_at: new Date().toISOString() }).eq("id", id).eq("status", "pending");
     return { ok: false, error: "購入決済を開始できませんでした。時間をおいて再度お試しください。" };
   }
