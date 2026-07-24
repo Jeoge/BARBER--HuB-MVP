@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { isPaidEligibleArticleCategory } from "../lib/articleCategories.ts";
 import { calculatePlatformAmounts, isPaidArticlePrice, isTreatAmount, refundStatusFromAmounts } from "../lib/monetization.ts";
+import { PAID_ARTICLE_PURCHASE_HISTORY_STATUSES, purchasedPaidArticleEditError } from "../lib/paidArticleIntegrity.ts";
 
 test("Treat and paid article amounts are limited to the approved JPY tiers", () => {
   assert.equal(isTreatAmount(300), true);
@@ -30,4 +31,19 @@ test("only experience and seminar report articles can be paid", () => {
   assert.equal(isPaidEligibleArticleCategory("講習会レポート"), true);
   assert.equal(isPaidEligibleArticleCategory("コンクールレポート"), false);
   assert.equal(isPaidEligibleArticleCategory("経営"), false);
+});
+
+test("purchased paid article content stays intact for completed and partially refunded purchases", () => {
+  assert.deepEqual(PAID_ARTICLE_PURCHASE_HISTORY_STATUSES, ["completed", "partially_refunded"]);
+  const unchanged = {
+    hasPurchaseHistory: true,
+    currentAccessType: "paid",
+    nextAccessType: "paid" as const,
+    existingPaidBody: "購入者向け本文",
+    nextPaidBody: "購入者向け本文",
+  };
+  assert.equal(purchasedPaidArticleEditError(unchanged), null);
+  assert.match(purchasedPaidArticleEditError({ ...unchanged, nextAccessType: "free" }) ?? "", /無料公開/);
+  assert.match(purchasedPaidArticleEditError({ ...unchanged, nextPaidBody: "" }) ?? "", /空にしたり削除/);
+  assert.match(purchasedPaidArticleEditError({ ...unchanged, nextPaidBody: "短縮した本文" }) ?? "", /編集できません/);
 });

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { isArticleCategory, isPaidEligibleArticleCategory } from "@/lib/articleCategories";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { isMonetizationEnabled, isPaidArticlePrice } from "@/lib/monetization";
+import { PAID_ARTICLE_PURCHASE_HISTORY_STATUSES, purchasedPaidArticleEditError } from "@/lib/paidArticleIntegrity";
 import { createClient } from "@/lib/supabase/server";
 
 function clean(value: FormDataEntryValue | null) {
@@ -34,11 +35,26 @@ export async function updateMyArticleAction(formData: FormData) {
   const priceAmount = Number(clean(formData.get("priceAmount")));
   const errorPath = (error: string) => pathWithParams(`/mypage/articles/${articleId}/edit`, { error });
   if (!title || title.length > 120 || !body || !isArticleCategory(category)) redirect(errorPath("タイトル、カテゴリ、本文を確認してください。"));
+
+  const [{ data: paidSection, error: paidSectionError }, { count: purchaseHistoryCount, error: purchaseHistoryError }] = await Promise.all([
+    supabase.from("article_paid_sections").select("body").eq("article_id", articleId).maybeSingle<{ body: string }>(),
+    supabase.from("paid_article_purchases").select("id", { count: "exact", head: true }).eq("article_id", articleId).in("status", PAID_ARTICLE_PURCHASE_HISTORY_STATUSES),
+  ]);
+  if (paidSectionError || purchaseHistoryError) redirect(errorPath("購入実績を確認できませんでした。もう一度お試しください。"));
+  const hasPurchaseHistory = (purchaseHistoryCount ?? 0) > 0;
+  const integrityError = purchasedPaidArticleEditError({
+    hasPurchaseHistory,
+    currentAccessType: current.access_type,
+    nextAccessType: accessType,
+    existingPaidBody: paidSection?.body ?? null,
+    nextPaidBody: paidBody,
+  });
+  if (integrityError) redirect(errorPath(integrityError));
+
   if (accessType === "paid" && (!isMonetizationEnabled() || !isPaidEligibleArticleCategory(category) || !isPaidArticlePrice(priceAmount) || !paidBody)) redirect(errorPath("有料記事の公開設定・価格・有料本文を確認してください。"));
 
   if (current.access_type === "paid" && current.price_amount !== priceAmount) {
-    const { count } = await supabase.from("paid_article_purchases").select("id", { count: "exact", head: true }).eq("article_id", articleId).eq("status", "completed");
-    if ((count ?? 0) > 0 && clean(formData.get("confirmPriceChange")) !== "1") redirect(errorPath("購入実績があります。価格変更の確認にチェックしてください。"));
+    if (hasPurchaseHistory && clean(formData.get("confirmPriceChange")) !== "1") redirect(errorPath("購入実績があります。価格変更の確認にチェックしてください。"));
   }
 
   const now = new Date().toISOString();
@@ -50,7 +66,7 @@ export async function updateMyArticleAction(formData: FormData) {
   const { error: insertCategoriesError } = deleteCategoriesError ? { error: deleteCategoriesError } : await supabase.from("article_category_assignments").insert(categories.map((assignedCategory) => ({ article_id: articleId, category: assignedCategory })));
   if (insertCategoriesError) redirect(errorPath("関連カテゴリーを保存できませんでした。"));
 
-  if (accessType === "paid") {
+  if (accessType === "paid" && !hasPurchaseHistory) {
     const { error } = await supabase.from("article_paid_sections").upsert({ article_id: articleId, body: paidBody, updated_at: now }, { onConflict: "article_id" });
     if (error) redirect(errorPath("有料部分を保存できませんでした。"));
   } else {
