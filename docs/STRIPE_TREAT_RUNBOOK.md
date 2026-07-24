@@ -1,21 +1,25 @@
 # Treat・有料記事・Stripe Connect 運用手順
 
-## 機能を有効にする前に
+## 現在の環境構成と有効化条件
 
-1. Preview環境でStripe **test mode** のキーとWebhook signing secretを設定する。
-2. `NEXT_PUBLIC_APP_URL` を対象環境のHTTPS URLに設定し、`BARBER_HUB_MONETIZATION_ENABLED=true` をPreviewだけで有効にする。
-3. Stripe Dashboardで `https://<app>/api/stripe/webhook` を登録し、少なくとも `checkout.session.completed`、`checkout.session.expired`、`charge.refunded`、`refund.created`、`refund.updated`、`refund.failed`、`account.updated`、`charge.dispute.created` を送る。
-4. Stripe Connect Expressのオンボーディング、Treat、有料記事購入、Webhookによる購入確定、返金、購入者以外の有料部分非表示を確認する。
-5. `pnpm build`、migrationの承認・適用、法務表示と問い合わせ導線の確認後にProductionを有効化する。
+BARBER HUBは現在、Supabase Productionプロジェクトを1つだけ運用している。Preview用Supabase Project／Branchは作成しない。したがって、Treat・有料記事用migrationをProduction Supabaseへ適用しない間は、Vercel Previewから決済レコード、通知、購入権限を作成・更新してはならない。
 
-Productionで有効化してよいのは、この手順のPreview実施記録と、下記の返金・チャージバック方針を運営・会計・法務が承認した後だけである。未決定のまま`sk_live_`を設定しない。
+この状態では、Vercel Previewの`BARBER_HUB_MONETIZATION_ENABLED`は**必ず`false`**に保つ。PreviewへProductionの`SUPABASE_SERVICE_ROLE_KEY`を渡さず、Stripe Sandboxのイベントを`/api/stripe/webhook`へ実送しない。migration未適用のDBでは、`content_treats`、`paid_article_purchases`、`stripe_connected_accounts`、`stripe_webhook_events`と関連RPCが存在しないためである。
 
-## 環境変数
+1. Stripe Sandbox内で、Connect Marketplace、Express account、destination charge、返金パラメータをStripe Dashboard上で確認する。
+2. Vercel Previewでは既存UIを`BARBER_HUB_MONETIZATION_ENABLED=false`のまま確認する。Snap・記事は既存「いいね」を表示し、Treatは表示しない。
+3. `pnpm build`、migration check、コード上の金額・返金・pending処理のテストを実行する。
+4. Treat・有料記事・通知・Webhook・RLSの実アプリ統合テストは、Production migrationを承認・適用した後に、Stripe Sandboxのまま承認済みの手順で実施する。Stripe live modeを先行して有効化しない。
 
-- `STRIPE_SECRET_KEY`: server-only。Previewは`sk_test_`、Productionは`sk_live_`を使用する。
-- `STRIPE_WEBHOOK_SECRET`: server-only。環境ごとのendpoint signing secretを使用する。
-- `NEXT_PUBLIC_APP_URL`: Checkoutの戻り先に使うアプリURL。
-- `BARBER_HUB_MONETIZATION_ENABLED`: `true`のときだけ購入・Treat・受取設定UIを表示する。初期値は`false`。
+Productionで有効化してよいのは、Production migrationとStripe Sandboxによるアプリ統合テストの記録、下記の返金・チャージバック方針を運営・会計・法務が承認した後だけである。未決定のまま`sk_live_`を設定しない。
+
+## Vercel Previewの環境変数
+
+- Previewは既存の`NEXT_PUBLIC_SUPABASE_URL`と`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`だけで既存画面を表示する。これらは現在のProduction Supabaseの公開接続情報であり、決済テスト用の書込み権限を与えるものではない。
+- `BARBER_HUB_MONETIZATION_ENABLED=false`をPreviewに明示する。`true`へ変更しない。
+- `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`SUPABASE_SERVICE_ROLE_KEY`は、migration未適用の単一Production Supabase構成ではPreviewへ登録しない。特にProductionの`SUPABASE_SERVICE_ROLE_KEY`をPreviewへ複製しない。
+- `NEXT_PUBLIC_APP_URL`は、決済を有効にする段階までPreviewへ登録不要である。将来有効化する場合だけ、対象環境のHTTPS originを設定する。
+- VercelのSystem Environment Variablesは有効にし、`VERCEL_ENV=preview`を利用可能にする。アプリ側はPreviewでは`sk_test_`、Productionでは`sk_live_`だけを許可する。
 
 Secretsをクライアント、Git、ログ、公開Artifactへ保存しない。Productionで`supabase db reset`は実行しない。
 
@@ -42,23 +46,24 @@ stripe refunds create --charge CHARGE_ID --amount 100 --reverse-transfer --refun
 
 Stripeの仕様: [destination chargeの返金とtransfer reversal](https://docs.stripe.com/connect/marketplace/tasks/refunds-disputes#destination-charges)、[Refund APIの`reverse_transfer`・`refund_application_fee`](https://docs.stripe.com/api/refunds/create)、[Connectプラットフォームのチャージバック責任](https://docs.stripe.com/connect/marketplace/tasks/refunds-disputes#chargebacks-and-responsibilities)。
 
-## Preview Stripe test mode 実施表
+## Stripe Sandbox確認とアプリ統合テストの区別
 
-Previewには`sk_test_`、Preview専用Webhook signing secret、Preview HTTPS URL、`BARBER_HUB_MONETIZATION_ENABLED=true`だけを設定する。Productionの環境変数・DB migration・live modeには触れない。各項目でDashboardのID（Account／Checkout Session／PaymentIntent／Charge／Refund／Transfer Reversal）とDB行を照合し、PR本文へ成功・失敗・未実施を残す。
+Production Supabase migrationを適用しない現在は、次のStripe Sandbox確認だけを行う。Stripe Dashboard上の確認は、BARBER HUBアプリのDB・通知・RLSを検証したことにはならない。
 
-| 項目 | 実施と合格条件 |
+| 項目 | 現在可能な確認 |
 | --- | --- |
-| Connect Express onboarding | 投稿者で開始し、`account.updated`後に`charges_enabled`・`payouts_enabled`がtrue、DBが`enabled`になる。 |
-| 300円Treat | Checkout完了後、Treatが`completed`、application fee 45円、投稿者配分255円になる。 |
-| コメント付きTreat・通知 | 200文字以内のコメントが正しいTreat行に保存され、投稿者通知を1件だけ確認する。 |
-| 100円有料記事 | 購入が`completed`、application fee 15円、投稿者配分85円、購入者だけが本文を読める。 |
-| 二重購入防止 | 完了済み購入者が再度開始しても新しいCheckoutを作らず、購入済みとして拒否される。 |
-| pending Checkout再利用 | 開いたままのSessionで再開始し、同じSession URLを返す。期限切れ・取得不能のSessionは`expired`／`failed`にして新規Sessionを1件だけ作る。 |
-| Webhook再送 | 同じStripe Eventを再送しても支払・通知・閲覧権限が重複しない。 |
-| 一部返金 | `amount=100`、`reverse_transfer=true`、`refund_application_fee=true`で返金する。DBは`partially_refunded`、累積返金100円、本文閲覧は維持する。 |
-| 全額返金 | 残額を同じ2フラグで返金する。DBは`refunded`、本文SELECTと画面閲覧の両方を拒否する。 |
-| 送金・手数料の差し戻し | 各返金でTransfer Reversalとapplication fee refundが返金額に比例することをDashboardで確認する。 |
-| RLS | 未購入者の`article_paid_sections` SELECTは拒否、購入者は成功、全額返金後の購入者は拒否される。 |
+| Connect Marketplace / Express account | Stripe Sandbox上で作成・状態を確認する。アプリの`stripe_connected_accounts`更新は未確認。 |
+| destination charge / application fee | Stripe Sandbox上で15%の設定・返金フラグ・比例差し戻しの仕様を確認する。アプリのTreat／有料記事レコードは作成しない。 |
+| 返金 | `reverse_transfer=true`と`refund_application_fee=true`のStripe Sandbox上の挙動を確認する。アプリDBの`partially_refunded`／`refunded`更新は未確認。 |
+| Webhook | Endpoint URLと購読イベントは将来の統合テスト用に記録するが、migration未適用の間は送信・再送しない。 |
+
+次の項目は、現構成では**未実施かつ実施不可**である。Production migrationを適用しない限り、Vercel Previewで有効化しない。
+
+- 300円Treat、コメント付きTreat、投稿者通知
+- 100円有料記事、二重購入防止、pending Checkout再利用
+- Webhook再送に伴うDB更新
+- アプリ上の一部返金・全額返金・Transfer Reversal照合
+- 未購入者SELECT拒否、購入者閲覧、全額返金後の閲覧拒否
 
 ## DBと確認項目
 
