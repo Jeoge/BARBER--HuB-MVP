@@ -61,6 +61,8 @@ export type BackroomComment = {
   profiles: BackroomAuthorProfile | null;
   backroom_profile: BackroomMemberProfile | null;
   images: BackroomDisplayImage[];
+  like_count: number;
+  viewer_has_liked: boolean;
 };
 
 type RawBackroomPost = BackroomPostRecord & {
@@ -173,6 +175,8 @@ function normalizeComments(data: unknown): BackroomComment[] {
     profiles: normalizeProfile(comment.profiles),
     backroom_profile: null,
     images: [],
+    like_count: 0,
+    viewer_has_liked: false,
   }));
 }
 
@@ -231,6 +235,46 @@ async function withCommentBackroomMembers(supabase: SupabaseClient, comments: Ba
   return comments.map((comment) => ({
     ...comment,
     backroom_profile: memberByUserId.get(comment.user_id) ?? null,
+  }));
+}
+
+type BackroomCommentLikeCountRow = { comment_id: string; like_count: number | string };
+
+async function withCommentLikes(supabase: SupabaseClient, comments: BackroomComment[], viewerId?: string | null) {
+  const commentIds = comments.map((comment) => comment.id);
+  if (commentIds.length === 0) return comments;
+  const countByCommentId = new Map<string, number>();
+  const viewerLiked = new Set<string>();
+
+  try {
+    const { data, error } = await supabase.rpc("get_public_backroom_comment_like_counts", { p_comment_ids: commentIds });
+    if (error) {
+      console.error("Back Room comment like counts select failed", { message: error.message });
+    } else {
+      ((data ?? []) as BackroomCommentLikeCountRow[]).forEach((row) => countByCommentId.set(row.comment_id, Number(row.like_count) || 0));
+    }
+
+    if (viewerId) {
+      const { data: likes, error: likesError } = await supabase
+        .from("backroom_comment_likes")
+        .select("comment_id")
+        .in("comment_id", commentIds)
+        .eq("user_id", viewerId)
+        .returns<Array<{ comment_id: string }>>();
+      if (likesError) {
+        console.error("Back Room viewer comment likes select failed", { message: likesError.message });
+      } else {
+        (likes ?? []).forEach((like) => viewerLiked.add(like.comment_id));
+      }
+    }
+  } catch (error) {
+    console.error("Back Room comment likes select threw", { message: errorMessage(error) });
+  }
+
+  return comments.map((comment) => ({
+    ...comment,
+    like_count: countByCommentId.get(comment.id) ?? 0,
+    viewer_has_liked: viewerId != null && viewerId !== comment.user_id && viewerLiked.has(comment.id),
   }));
 }
 
@@ -547,7 +591,7 @@ export async function getBackroomPostById(supabase: SupabaseClient, id: string) 
   }
 }
 
-export async function listBackroomComments(supabase: SupabaseClient, postId: string, limit = 80) {
+export async function listBackroomComments(supabase: SupabaseClient, postId: string, limit = 80, viewerId?: string | null) {
   try {
     const { data, error } = await supabase
       .from("backroom_comments")
@@ -581,7 +625,8 @@ export async function listBackroomComments(supabase: SupabaseClient, postId: str
     }
 
     const commentsWithImages = await withBackroomCommentImages(supabase, normalizeComments(data));
-    return { comments: await withCommentBackroomMembers(supabase, commentsWithImages), error };
+    const withMembers = await withCommentBackroomMembers(supabase, commentsWithImages);
+    return { comments: await withCommentLikes(supabase, withMembers, viewerId), error };
   } catch (error) {
     console.error("Back Room comments select threw", {
       postId,

@@ -8,20 +8,27 @@ export type NotificationType =
   | "article_thanks"
   | "article_like"
   | "article_comment"
-  | "follow";
+  | "follow"
+  | "snap_treat_received"
+  | "article_treat_received"
+  | "back_room_thread_treat_received"
+  | "back_room_comment_treat_received"
+  | "paid_article_purchased"
+  | "back_room_comment_liked";
 
 export type AppNotification = {
   id: string;
   recipient_id: string;
   actor_id: string;
   notification_type: NotificationType;
-  target_type: "snap" | "snap_comment" | "article" | "article_comment" | "profile";
+  target_type: "snap" | "snap_comment" | "article" | "article_comment" | "profile" | "treat" | "paid_article_purchase" | "backroom_comment";
   target_id: string;
   destination_id: string;
   snap_id: string | null;
   article_id: string | null;
   snap_comment_id: string | null;
   article_comment_id: string | null;
+  metadata?: Record<string, unknown>;
   created_at: string | null;
   read_at: string | null;
   actor_display_name: string | null;
@@ -77,6 +84,7 @@ function normalizeNotification(row: NotificationRpcRow): AppNotification {
     article_id: row.article_id ?? null,
     snap_comment_id: row.snap_comment_id ?? null,
     article_comment_id: row.article_comment_id ?? null,
+    metadata: row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata) ? row.metadata as Record<string, unknown> : {},
     actor_display_name: row.actor_display_name ?? null,
     actor_avatar_url: row.actor_avatar_url ?? null,
     read_at: row.read_at ?? null,
@@ -153,6 +161,18 @@ export function notificationMessage(notification: AppNotification) {
       return `${name}があなたの記事にコメントしました`;
     case "follow":
       return `${name}があなたをフォローしました`;
+    case "snap_treat_received":
+      return `${name}があなたのSnapにTreatを送りました`;
+    case "article_treat_received":
+      return `${name}があなたの記事にTreatを送りました`;
+    case "back_room_thread_treat_received":
+      return `${name}があなたのBack RoomスレッドにTreatを送りました`;
+    case "back_room_comment_treat_received":
+      return `${name}があなたのBack RoomコメントにTreatを送りました`;
+    case "paid_article_purchased":
+      return `${name}があなたの有料記事を購入しました`;
+    case "back_room_comment_liked":
+      return `${name}があなたのBack Roomコメントにいいねしました`;
     default:
       return `${name}から新しい反応があります`;
   }
@@ -175,6 +195,16 @@ export function notificationHref(notification: AppNotification) {
     case "article_thanks":
     case "article_like":
       return `/articles/${notification.destination_id}`;
+    case "article_treat_received":
+    case "paid_article_purchased":
+      return `/articles/${notification.destination_id}`;
+    case "snap_treat_received":
+      return `/posts/${notification.destination_id}`;
+    case "back_room_thread_treat_received":
+      return `/backroom/${notification.destination_id}`;
+    case "back_room_comment_treat_received":
+    case "back_room_comment_liked":
+      return `/backroom/${notification.destination_id}#backroom-comment-${notification.target_id}`;
     case "follow":
       return notificationActorHref(notification);
     default:

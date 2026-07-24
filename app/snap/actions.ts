@@ -40,7 +40,7 @@ function errorMessage(error: unknown) {
 }
 
 function reactionLabel(reactionType: SnapReactionType) {
-  return reactionType === "thanks" ? "Thanks" : "いいね";
+  return reactionType === "like" ? "いいね" : "Thanks";
 }
 
 async function countReactionsForSnap(

@@ -29,6 +29,15 @@ function unreadLabel(count: number) {
   return `未読 ${count}`;
 }
 
+function paymentDetail(notification: AppNotification) {
+  const metadata = notification.metadata ?? {};
+  const amount = metadata.amount;
+  const message = metadata.message;
+  const amountText = typeof amount === "number" && Number.isFinite(amount) ? `${new Intl.NumberFormat("ja-JP").format(amount)}円` : "";
+  const messageText = typeof message === "string" && message.trim() ? message.trim() : "";
+  return [amountText, messageText].filter(Boolean).join(" / ");
+}
+
 export function NotificationsList({
   notifications: initialNotifications,
   unreadCount: initialUnreadCount,
@@ -202,6 +211,7 @@ export function NotificationsList({
             const disabled = pendingId != null || pendingAll;
             const actorHref = notificationActorHref(notification);
             const contentHref = notificationHref(notification);
+            const detail = paymentDetail(notification);
             const linkState = {
               "aria-disabled": disabled,
               tabIndex: disabled ? -1 : undefined,
@@ -260,9 +270,10 @@ export function NotificationsList({
                     }}
                     {...linkState}
                     className="mt-1 block text-sm font-semibold leading-relaxed text-ink"
-                  >
-                    {notificationMessage(notification)}
-                  </Link>
+                   >
+                     {notificationMessage(notification)}
+                   </Link>
+                   {detail ? <span className="mt-1 block break-words rounded-[6px] bg-white/70 px-2 py-1 text-[0.66rem] font-semibold text-mute">{detail}</span> : null}
                   <span className="mt-1 block text-[0.66rem] font-bold text-mute">{notificationTimeLabel(notification.created_at)}</span>
                 </span>
               </article>

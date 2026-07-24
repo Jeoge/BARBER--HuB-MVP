@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/server";
 
-type ArticleReactionType = "like" | "thanks" | "save";
+type ArticleReactionType = "thanks" | "like" | "save";
 
-const reactionTypes = new Set<ArticleReactionType>(["like", "thanks", "save"]);
+const reactionTypes = new Set<ArticleReactionType>(["thanks", "like", "save"]);
 
 function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";

@@ -9,7 +9,7 @@ export default function CommercialDisclosurePage() {
       <PageHeaderBlock
         eyebrow="DISCLOSURE"
         title="特定商取引法に基づく表記"
-        body="現在のBARBER HUBでは、サイト上で決済を伴う有料販売・有料掲載の申込みは行っていません。"
+        body="Treatと有料記事を利用する場合の、購入・返金・問い合わせに関する表示です。"
       />
 
       <section className="grid gap-4 px-4 pt-5">
@@ -17,10 +17,13 @@ export default function CommercialDisclosurePage() {
           <div className="grid h-11 w-11 place-items-center rounded-full bg-blushSoft text-blush">
             <CreditCard aria-hidden="true" size={20} />
           </div>
-          <h2 className="mt-3 text-lg font-black leading-tight text-ink">オンライン販売はまだ行っていません</h2>
+          <h2 className="mt-3 text-lg font-black leading-tight text-ink">Treat・有料記事について</h2>
           <p className="mt-3 text-sm font-medium leading-relaxed text-mute">
-            現在、BARBER HUBではサイト上で決済を伴う有料販売・有料掲載の申込みは行っていません。有料掲載、月額プラン、掲載チケット、編集部作成プランなどをオンラインで販売する場合は、販売価格、支払方法、提供時期、キャンセル条件、事業者情報など必要事項を表示します。
+            Treatは300円・500円・1,000円、有料記事は100円・300円・500円・1,000円（税込）の都度決済です。決済はStripeを通じて行い、購入完了後にTreatの確定または有料部分の閲覧権が反映されます。通信費などは利用者の負担です。
           </p>
+          <p className="mt-2 text-sm font-medium leading-relaxed text-mute">有料記事の提供者は各記事の投稿者です。BARBER HUBは決済・プラットフォーム運営を担い、販売価格の15%をプラットフォーム手数料として受け取ります。</p>
+          <p className="mt-2 text-sm font-medium leading-relaxed text-mute">デジタルコンテンツの性質上、購入確定後の自己都合による取消し・返金は原則できません。二重決済、閲覧できない等の不具合、法令上必要な返金は内容を確認のうえ対応します。</p>
+          <Link href="/contact?topic=payment" className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] border border-line bg-white text-sm font-black text-ink">Treat・有料記事のお問い合わせ<ArrowRight aria-hidden="true" size={16} /></Link>
         </div>
 
         <div className="rounded-[10px] border border-line bg-white p-4 shadow-[0_10px_28px_rgba(17,17,17,0.035)]">

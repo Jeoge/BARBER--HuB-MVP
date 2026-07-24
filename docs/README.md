@@ -26,6 +26,7 @@
 | [BARBER_SHOP_IMPORT_RUNBOOK.md](BARBER_SHOP_IMPORT_RUNBOOK.md) | Barber Directory CSV取込手順 | 運営/管理者 | CSV投入手順や確認項目を変えるとき |
 | [templates/DECISION_RECORD_TEMPLATE.md](templates/DECISION_RECORD_TEMPLATE.md) | decision log追記用テンプレート | 全員 | テンプレート変更時 |
 | [SUPABASE_DEPLOYMENT.md](SUPABASE_DEPLOYMENT.md) | 本番Supabase migration承認フローの詳細 | DB/運用担当 | workflow、Secrets、承認手順を変えるとき |
+| [STRIPE_TREAT_RUNBOOK.md](STRIPE_TREAT_RUNBOOK.md) | Treat・有料記事・Stripe Connectの有効化と運用 | 開発/運用担当 | 決済導入、Webhook、返金対応を行うとき |
 
 ## 既存ドキュメント
 

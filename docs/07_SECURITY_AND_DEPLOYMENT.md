@@ -183,6 +183,13 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 - Preview DeploymentとPRの最終commitが一致する。
 - 本番反映が必要な画像assetがcommit / pushされている。
 
+## Stripe決済の追加チェック
+
+- `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`STRIPE_CONNECT_WEBHOOK_SECRET`、`SUPABASE_SERVICE_ROLE_KEY`をserver-onlyの環境変数として設定し、クライアント・Git・ログ・Artifactへ出さない。PlatformイベントとConnectイベントは別のWebhook endpoint／署名secretを使う。
+- `/api/stripe/webhook`はraw request bodyとStripe署名を検証する。success URLやクライアント送信だけで購入済みにしない。
+- Checkout Session、PaymentIntentの金額・通貨・application fee・destination accountをDBの決済レコードと照合してから確定する。
+- Treat統合テストは、Productionとは別のSupabase branch `treat-preview`にだけmigrationを適用し、Vercelの`codex/feat/stripe-treat-paid-articles` Preview branchだけを接続して行う。Previewへ渡すservice roleは`treat-preview`のものに限り、Productionのkey・DB・Webhook・migrationを使わない。詳細は[STRIPE_TREAT_RUNBOOK.md](STRIPE_TREAT_RUNBOOK.md)を参照する。
+
 ## PARTNERS問い合わせの安全対策
 
 - `/partners/contact`は未ログインでも送信できるが、ブラウザから`partner_inquiries`へ直接INSERTさせず、Server Actionで入力検証後にserver-onlyのservice role clientから保存する。ログイン中の送信だけ`user_id`を補助的に保存し、送信者向け一覧は作らない。既存の`/partners`はメーカー・ディーラー情報等のページとして維持する。

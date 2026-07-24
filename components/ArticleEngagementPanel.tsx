@@ -6,6 +6,7 @@ import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ThanksActionButton } from "@/components/ThanksActionButton";
+import { TreatButton } from "@/components/TreatButton";
 import { pathWithParams } from "@/lib/auth/redirects";
 import type { ArticleComment, ArticleMetrics } from "@/lib/supabase/articles";
 
@@ -18,6 +19,8 @@ type ArticleEngagementPanelProps = {
   reactionError?: string;
   commentError?: string;
   commentPosted?: boolean;
+  monetizationEnabled?: boolean;
+  treatEnabled?: boolean;
 };
 
 const reactionButtonBase =
@@ -40,8 +43,6 @@ const reactionConfig = {
     pressedKey: "viewer_has_saved",
   },
 } as const;
-
-const reactionOrder: Array<keyof typeof reactionConfig> = ["thanks", "like", "save"];
 
 function commentDateLabel(value: string | null) {
   if (!value) return "";
@@ -90,8 +91,11 @@ export function ArticleEngagementPanel({
   reactionError,
   commentError,
   commentPosted,
+  monetizationEnabled = false,
+  treatEnabled = false,
 }: ArticleEngagementPanelProps) {
   const isOwnArticle = currentUserId != null && authorId != null && currentUserId === authorId;
+  const reactionOrder: Array<keyof typeof reactionConfig> = monetizationEnabled ? ["thanks", "save"] : ["thanks", "like", "save"];
 
   return (
     <section className="mt-5 rounded-[8px] border border-line/80 bg-white p-3.5 shadow-[0_8px_20px_rgba(17,17,17,0.035)]">
@@ -148,7 +152,8 @@ export function ArticleEngagementPanel({
           return (
             <Fragment key={reactionType}>
               {button}
-              {reactionType === "like" ? <CommentActionButton commentCount={metrics.comment_count} /> : null}
+              {reactionType === "thanks" && monetizationEnabled && treatEnabled ? <TreatButton targetType="article" targetId={articleId} authorId={authorId} currentUserId={currentUserId} nextPath={`/articles/${articleId}`} /> : null}
+              {((monetizationEnabled && reactionType === "save") || (!monetizationEnabled && reactionType === "like")) ? <CommentActionButton commentCount={metrics.comment_count} /> : null}
             </Fragment>
           );
         })}

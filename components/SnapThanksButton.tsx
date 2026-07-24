@@ -20,7 +20,7 @@ const reactionConfig = {
   },
   like: {
     label: "いいね",
-    pendingLabel: "送信中...",
+    pendingLabel: "保存中...",
     ownMessage: "自分の投稿にはリアクションできません",
     Icon: ThumbsUp,
   },
@@ -65,7 +65,6 @@ function SubmitReactionButton({ active, reactionType }: { active: boolean; react
     </button>
   );
 }
-
 export function SnapThanksButton({
   snapId,
   authorId,
@@ -143,7 +142,6 @@ export function SnapThanksButton({
     </div>
   );
 }
-
-export function SnapLikeButton(props: Omit<Parameters<typeof SnapThanksButton>[0], "reactionType">) {
-  return <SnapThanksButton {...props} reactionType="like" inline />;
+export function SnapLikeButton(props: Omit<Parameters<typeof SnapThanksButton>[0], "initialCount" | "initiallyThanked" | "reactionType"> & { initialCount: number; initiallyLiked: boolean }) {
+  return <SnapThanksButton {...props} initiallyThanked={props.initiallyLiked} reactionType="like" />;
 }
