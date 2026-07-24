@@ -1,25 +1,35 @@
 # Treat・有料記事・Stripe Connect 運用手順
 
-## 現在の環境構成と有効化条件
+## 現在のPreview検証構成と有効化条件
 
-BARBER HUBは現在、Supabase Productionプロジェクトを1つだけ運用している。Preview用Supabase Project／Branchは作成しない。したがって、Treat・有料記事用migrationをProduction Supabaseへ適用しない間は、Vercel Previewから決済レコード、通知、購入権限を作成・更新してはならない。
+Treat・有料記事の統合テストは、次の隔離された組合せだけで行う。Production `main`、Production Supabase、Stripe Live modeには触れない。
 
-この状態では、Vercel Previewの`BARBER_HUB_MONETIZATION_ENABLED`は**必ず`false`**に保つ。PreviewへProductionの`SUPABASE_SERVICE_ROLE_KEY`を渡さず、Stripe Sandboxのイベントを`/api/stripe/webhook`へ実送しない。migration未適用のDBでは、`content_treats`、`paid_article_purchases`、`stripe_connected_accounts`、`stripe_webhook_events`と関連RPCが存在しないためである。
+| 対象 | Preview検証で使うもの | 禁止するもの |
+| --- | --- | --- |
+| Git / Vercel | `codex/feat/stripe-treat-paid-articles` のPreview deployment | `main`、Production deployment |
+| Supabase | `treat-preview` branch（schemaはProduction由来、テストデータはここだけ） | Production branchへのmigration・テストデータ投入 |
+| Stripe | BARBER HUB Stripe Sandboxの`sk_test_` | Live mode、`sk_live_` |
 
-1. Stripe Sandbox内で、Connect Marketplace、Express account、destination charge、返金パラメータをStripe Dashboard上で確認する。
-2. Vercel Previewでは既存UIを`BARBER_HUB_MONETIZATION_ENABLED=false`のまま確認する。Snap・記事は既存「いいね」を表示し、Treatは表示しない。
-3. `pnpm build`、migration check、コード上の金額・返金・pending処理のテストを実行する。
-4. Treat・有料記事・通知・Webhook・RLSの実アプリ統合テストは、Production migrationを承認・適用した後に、Stripe Sandboxのまま承認済みの手順で実施する。Stripe live modeを先行して有効化しない。
+`treat-preview`には基盤migrationと`202607240001_treat_paid_articles.sql`、`202607240002_protect_purchased_paid_articles.sql`を適用済みである。実行前に対象project refとbranch名をDashboardで再確認し、Production branchを開いていないことを確認する。
 
 Productionで有効化してよいのは、Production migrationとStripe Sandboxによるアプリ統合テストの記録、下記の返金・チャージバック方針を運営・会計・法務が承認した後だけである。未決定のまま`sk_live_`を設定しない。
 
 ## Vercel Previewの環境変数
 
-- Previewは既存の`NEXT_PUBLIC_SUPABASE_URL`と`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`だけで既存画面を表示する。これらは現在のProduction Supabaseの公開接続情報であり、決済テスト用の書込み権限を与えるものではない。
-- `BARBER_HUB_MONETIZATION_ENABLED=false`をPreviewに明示する。`true`へ変更しない。
-- `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`SUPABASE_SERVICE_ROLE_KEY`は、migration未適用の単一Production Supabase構成ではPreviewへ登録しない。特にProductionの`SUPABASE_SERVICE_ROLE_KEY`をPreviewへ複製しない。
-- `NEXT_PUBLIC_APP_URL`は、決済を有効にする段階までPreviewへ登録不要である。将来有効化する場合だけ、対象環境のHTTPS originを設定する。
-- VercelのSystem Environment Variablesは有効にし、`VERCEL_ENV=preview`を利用可能にする。アプリ側はPreviewでは`sk_test_`、Productionでは`sk_live_`だけを許可する。
+すべてVercelの**Preview**かつGit branch **`codex/feat/stripe-treat-paid-articles`限定**で設定する。Productionの同名変数は変更・削除しない。
+
+| 変数 | 値 / 取得元 | 公開範囲 |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | `treat-preview` branchのProject URL | Preview branch限定 |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `treat-preview` branchのpublishable key | Preview branch限定 |
+| `SUPABASE_SERVICE_ROLE_KEY` | `treat-preview` branchのservice role key | Preview branch限定・server only |
+| `BARBER_HUB_MONETIZATION_ENABLED` | `true` | Preview branch限定 |
+| `NEXT_PUBLIC_APP_URL` | 対象Previewのbranch固定HTTPS origin（末尾の`/`なし） | Preview branch限定 |
+| `STRIPE_SECRET_KEY` | Stripe Sandboxの`sk_test_` | Preview branch限定・server only |
+| `STRIPE_WEBHOOK_SECRET` | Platform scope endpointの署名secret | Preview branch限定・server only |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | Connected account scope endpointの署名secret | Preview branch限定・server only |
+
+VercelのSystem Environment Variablesは有効にし、`VERCEL_ENV=preview`を利用可能にする。アプリ側はPreviewでは`sk_test_`、Productionでは`sk_live_`だけを許可する。Secretsの値をチャット、Git、PR本文、端末ログへ貼らない。
 
 Secretsをクライアント、Git、ログ、公開Artifactへ保存しない。Productionで`supabase db reset`は実行しない。
 
@@ -46,24 +56,19 @@ stripe refunds create --charge CHARGE_ID --amount 100 --reverse-transfer --refun
 
 Stripeの仕様: [destination chargeの返金とtransfer reversal](https://docs.stripe.com/connect/marketplace/tasks/refunds-disputes#destination-charges)、[Refund APIの`reverse_transfer`・`refund_application_fee`](https://docs.stripe.com/api/refunds/create)、[Connectプラットフォームのチャージバック責任](https://docs.stripe.com/connect/marketplace/tasks/refunds-disputes#chargebacks-and-responsibilities)。
 
-## Stripe Sandbox確認とアプリ統合テストの区別
+## Stripe SandboxとPreviewアプリ統合テスト
 
-Production Supabase migrationを適用しない現在は、次のStripe Sandbox確認だけを行う。Stripe Dashboard上の確認は、BARBER HUBアプリのDB・通知・RLSを検証したことにはならない。
+Stripe Dashboard上の設定確認と、PreviewアプリのDB・通知・RLS確認は別の工程として記録する。以下は`treat-preview`とVercel Previewだけで実施し、テストデータは完了後にPreview branch内でのみ削除できる。
 
-| 項目 | 現在可能な確認 |
-| --- | --- |
-| Connect Marketplace / Express account | Stripe Sandbox上で作成・状態を確認する。アプリの`stripe_connected_accounts`更新は未確認。 |
-| destination charge / application fee | Stripe Sandbox上で15%の設定・返金フラグ・比例差し戻しの仕様を確認する。アプリのTreat／有料記事レコードは作成しない。 |
-| 返金 | `reverse_transfer=true`と`refund_application_fee=true`のStripe Sandbox上の挙動を確認する。アプリDBの`partially_refunded`／`refunded`更新は未確認。 |
-| Webhook | Endpoint URLと購読イベントは将来の統合テスト用に記録するが、migration未適用の間は送信・再送しない。 |
+1. Platform scope endpointをPreviewの`/api/stripe/webhook`へ作成し、`checkout.session.completed`、`checkout.session.expired`、`charge.refunded`、`refund.created`、`refund.updated`、`refund.failed`、`charge.dispute.created`を購読する。署名secretを`STRIPE_WEBHOOK_SECRET`へ登録する。
+2. Connected account scope endpointを同じPreview URLへ作成し、`account.updated`を購読する。こちらの別の署名secretを`STRIPE_CONNECT_WEBHOOK_SECRET`へ登録する。
+3. Vercel Previewを再デプロイしてから、Stripeのテストイベント送信とWebhook deliveryの再送で署名検証・冪等処理を確認する。未対応イベントは200で受領しても購入完了にはしない。
+4. 投稿者用のConnect Express accountをPreviewアプリから開始し、Sandboxのテストonboardingを完了する。`stripe_connected_accounts`の状態更新を確認する。
+5. 投稿者と購入者を別のPreviewユーザーとして作成し、300円のコメント付きTreat、100円の有料記事購入、通知、重複購入防止、pending Checkout再利用を確認する。
+6. Stripe Sandboxで一部返金・全額返金を行い、destination transfer reversal・application fee refundの金額を照合する。DBが一部返金を`partially_refunded`、全額返金だけを`refunded`として扱うこと、全額返金後だけ有料本文を拒否することを確認する。
+7. publishable keyで未購入者の有料本文SELECTが拒否されること、購入者は読めることを確認する。RLS検証にservice role keyを使わない。
 
-次の項目は、現構成では**未実施かつ実施不可**である。Production migrationを適用しない限り、Vercel Previewで有効化しない。
-
-- 300円Treat、コメント付きTreat、投稿者通知
-- 100円有料記事、二重購入防止、pending Checkout再利用
-- Webhook再送に伴うDB更新
-- アプリ上の一部返金・全額返金・Transfer Reversal照合
-- 未購入者SELECT拒否、購入者閲覧、全額返金後の閲覧拒否
+実行結果はPR本文に「実行済み」「未実施」「ブロック理由」を分け、Production migrationやLive Stripeを実施したように記載しない。
 
 ## DBと確認項目
 

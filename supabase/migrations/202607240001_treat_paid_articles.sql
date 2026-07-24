@@ -225,7 +225,7 @@ create table if not exists public.content_treats (
   constraint content_treats_status_check check (status in ('pending', 'completed', 'expired', 'failed', 'partially_refunded', 'refunded')),
   constraint content_treats_not_self_check check (sender_id <> recipient_id),
   constraint content_treats_message_check check (optional_message is null or char_length(optional_message) <= 200),
-  constraint content_treats_amount_check check (platform_fee_amount < amount and recipient_amount = amount - platform_fee_amount and refunded_amount between 0 and amount)
+  constraint content_treats_fee_split_check check (platform_fee_amount < amount and recipient_amount = amount - platform_fee_amount and refunded_amount between 0 and amount)
 );
 
 create index if not exists content_treats_sender_created_idx on public.content_treats(sender_id, created_at desc);
@@ -483,7 +483,7 @@ drop function if exists public.list_my_notifications(integer);
 create function public.list_my_notifications(p_limit integer default 30)
 returns table(
   id uuid, recipient_id uuid, actor_id uuid, notification_type text, target_type text, target_id text, destination_id text,
-  snap_id uuid, article_id uuid, snap_comment_id uuid, article_comment_id uuid, metadata jsonb,
+  snap_id uuid, article_id text, snap_comment_id uuid, article_comment_id uuid, metadata jsonb,
   created_at timestamptz, read_at timestamptz, actor_display_name text, actor_avatar_url text
 )
 language sql stable security definer set search_path = public

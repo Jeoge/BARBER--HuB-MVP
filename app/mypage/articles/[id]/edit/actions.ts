@@ -66,9 +66,11 @@ export async function updateMyArticleAction(formData: FormData) {
   const { error: insertCategoriesError } = deleteCategoriesError ? { error: deleteCategoriesError } : await supabase.from("article_category_assignments").insert(categories.map((assignedCategory) => ({ article_id: articleId, category: assignedCategory })));
   if (insertCategoriesError) redirect(errorPath("関連カテゴリーを保存できませんでした。"));
 
-  if (accessType === "paid" && !hasPurchaseHistory) {
-    const { error } = await supabase.from("article_paid_sections").upsert({ article_id: articleId, body: paidBody, updated_at: now }, { onConflict: "article_id" });
-    if (error) redirect(errorPath("有料部分を保存できませんでした。"));
+  if (accessType === "paid") {
+    if (!hasPurchaseHistory) {
+      const { error } = await supabase.from("article_paid_sections").upsert({ article_id: articleId, body: paidBody, updated_at: now }, { onConflict: "article_id" });
+      if (error) redirect(errorPath("有料部分を保存できませんでした。"));
+    }
   } else {
     const { error } = await supabase.from("article_paid_sections").delete().eq("article_id", articleId);
     if (error) redirect(errorPath("有料部分を更新できませんでした。"));

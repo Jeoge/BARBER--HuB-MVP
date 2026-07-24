@@ -185,10 +185,10 @@ Supabase FREEプランでは、自動日次バックアップやPITRを前提に
 
 ## Stripe決済の追加チェック
 
-- `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`SUPABASE_SERVICE_ROLE_KEY`をserver-onlyの環境変数として設定し、クライアント・Git・ログ・Artifactへ出さない。
+- `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`STRIPE_CONNECT_WEBHOOK_SECRET`、`SUPABASE_SERVICE_ROLE_KEY`をserver-onlyの環境変数として設定し、クライアント・Git・ログ・Artifactへ出さない。PlatformイベントとConnectイベントは別のWebhook endpoint／署名secretを使う。
 - `/api/stripe/webhook`はraw request bodyとStripe署名を検証する。success URLやクライアント送信だけで購入済みにしない。
 - Checkout Session、PaymentIntentの金額・通貨・application fee・destination accountをDBの決済レコードと照合してから確定する。
-- 現在はSupabase Productionプロジェクトだけを運用し、Preview DBは作成しない。Treat・有料記事migrationが未適用の間は、Vercel Previewの機能フラグをOFFに保ち、Productionの`SUPABASE_SERVICE_ROLE_KEY`をPreviewへ渡さず、Webhookを実送しない。Stripe Sandboxの設定確認と、アプリDBを伴う統合テストを混同しない。詳細は[STRIPE_TREAT_RUNBOOK.md](STRIPE_TREAT_RUNBOOK.md)を参照する。
+- Treat統合テストは、Productionとは別のSupabase branch `treat-preview`にだけmigrationを適用し、Vercelの`codex/feat/stripe-treat-paid-articles` Preview branchだけを接続して行う。Previewへ渡すservice roleは`treat-preview`のものに限り、Productionのkey・DB・Webhook・migrationを使わない。詳細は[STRIPE_TREAT_RUNBOOK.md](STRIPE_TREAT_RUNBOOK.md)を参照する。
 
 ## PARTNERS問い合わせの安全対策
 

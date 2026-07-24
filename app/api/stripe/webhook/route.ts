@@ -23,6 +23,24 @@ function accountId(value: string | Stripe.Account | null | undefined) {
   return typeof value === "string" ? value : value?.id ?? null;
 }
 
+function webhookSecrets() {
+  return [process.env.STRIPE_WEBHOOK_SECRET, process.env.STRIPE_CONNECT_WEBHOOK_SECRET].filter(
+    (secret): secret is string => Boolean(secret?.trim()),
+  );
+}
+
+function constructWebhookEvent(payload: string, signature: string) {
+  let lastError: unknown;
+  for (const secret of webhookSecrets()) {
+    try {
+      return createStripeClient().webhooks.constructEvent(payload, signature, secret);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError ?? new Error("missing_webhook_secret");
+}
+
 async function verifyCheckoutPayment(session: Stripe.Checkout.Session, row: PaymentRow) {
   if (session.mode !== "payment" || session.payment_status !== "paid") return false;
   const paymentIntentId = stripeId(session.payment_intent);
@@ -157,7 +175,7 @@ async function handleEvent(event: Stripe.Event) {
 export async function POST(request: Request) {
   const stripeStatus = getStripeConfigStatus();
   const adminStatus = getSupabaseAdminConfigStatus();
-  if (!stripeStatus.ready || !adminStatus.ready || !process.env.STRIPE_WEBHOOK_SECRET) {
+  if (!stripeStatus.ready || !adminStatus.ready || webhookSecrets().length === 0) {
     return NextResponse.json({ error: "Webhook is not configured." }, { status: 503 });
   }
 
@@ -166,7 +184,7 @@ export async function POST(request: Request) {
 
   let event: Stripe.Event;
   try {
-    event = createStripeClient().webhooks.constructEvent(await request.text(), signature, process.env.STRIPE_WEBHOOK_SECRET);
+    event = constructWebhookEvent(await request.text(), signature);
   } catch {
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
