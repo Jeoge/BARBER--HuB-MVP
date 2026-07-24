@@ -7,6 +7,7 @@ import { defaultArticleCategory } from "@/lib/articleCategories";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { isNewsReviewAdminUserId } from "@/lib/news-drafts/review";
 import { getPostPermissionRedirect } from "@/lib/permissions";
+import { isMonetizationEnabled } from "@/lib/monetization";
 import { getAccountProfile } from "@/lib/supabase/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { ArticlePostForm } from "./ArticlePostForm";
@@ -122,7 +123,7 @@ export default async function ArticlePostPage({ searchParams }: ArticlePostPageP
         </div>
       </section>
 
-      <ArticlePostForm defaultCategory={defaultCategory} error={params?.error} canSetEditorPick={canSetEditorPick} />
+        <ArticlePostForm defaultCategory={defaultCategory} error={params?.error} canSetEditorPick={canSetEditorPick} paidPublishingEnabled={isMonetizationEnabled()} />
     </PageChrome>
   );
 }

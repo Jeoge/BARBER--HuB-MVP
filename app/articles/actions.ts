@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { createClient } from "@/lib/supabase/server";
 
-type ArticleReactionType = "like" | "thanks" | "save";
+type ArticleReactionType = "thanks" | "save";
 
-const reactionTypes = new Set<ArticleReactionType>(["like", "thanks", "save"]);
+const reactionTypes = new Set<ArticleReactionType>(["thanks", "save"]);
 
 function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -112,7 +112,7 @@ export async function toggleArticleReactionAction(formData: FormData) {
     }
 
     if (article?.author_id === user.id && reactionType !== "save") {
-      redirect(articlePath(articleId, { reactionError: "自分の記事へのThanks・いいねはカウントされません。" }));
+      redirect(articlePath(articleId, { reactionError: "自分の記事へのThanksはカウントされません。" }));
     }
   }
 

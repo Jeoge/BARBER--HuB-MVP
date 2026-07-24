@@ -4,7 +4,9 @@ import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { SnapImageCarousel } from "@/components/SnapImageCarousel";
 import { SnapCommentButton } from "@/components/SnapCommentButton";
 import { SnapSaveButton } from "@/components/SnapSaveButton";
-import { SnapLikeButton, SnapThanksButton } from "@/components/SnapThanksButton";
+import { SnapThanksButton } from "@/components/SnapThanksButton";
+import { TreatButton } from "@/components/TreatButton";
+import { isMonetizationEnabled } from "@/lib/monetization";
 import { snapAuthorMeta, snapAuthorName, snapDateLabel, snapDisplayImages, type SnapWithAuthor } from "@/lib/supabase/snaps";
 
 export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapWithAuthor; compact?: boolean; currentUserId?: string | null }) {
@@ -15,6 +17,7 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
   const hasImage = images.length > 0;
   const isOwnSnap = currentUserId != null && snap.author_id === currentUserId;
   const authorHref = `/profiles/${snap.author_id}`;
+  const monetizationEnabled = isMonetizationEnabled();
 
   return (
     <article className="min-w-0 overflow-hidden rounded-[10px] border border-line/80 bg-white p-3 shadow-[0_10px_26px_rgba(17,17,17,0.035)]">
@@ -74,15 +77,7 @@ export function SnapCard({ snap, compact = false, currentUserId }: { snap: SnapW
         nextPath={`/posts/${snap.id}`}
         actions={
           <div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
-            <SnapLikeButton
-              snapId={snap.id}
-              authorId={snap.author_id}
-              currentUserId={currentUserId}
-              initialCount={snap.like_count}
-              initiallyThanked={snap.viewer_has_liked}
-              showCount={false}
-              nextPath={`/posts/${snap.id}`}
-            />
+            {monetizationEnabled ? <TreatButton targetType="snap" targetId={snap.id} authorId={snap.author_id} currentUserId={currentUserId} nextPath={`/posts/${snap.id}`} compact /> : null}
             <SnapCommentButton snapId={snap.id} currentUserId={currentUserId} showCount initialCount={snap.comment_count} />
             <SnapSaveButton snapId={snap.id} currentUserId={currentUserId} nextPath={`/posts/${snap.id}`} />
           </div>

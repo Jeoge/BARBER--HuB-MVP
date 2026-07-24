@@ -12,10 +12,12 @@ import { MyBackroomDeleteForm } from "@/components/MyBackroomDeleteForm";
 import { MySnapDeleteForm } from "@/components/MySnapDeleteForm";
 import { PageChrome } from "@/components/PageChrome";
 import { PageHeaderBlock } from "@/components/PageHeaderBlock";
+import { StripeAccountPanel } from "@/components/StripeAccountPanel";
 import { SnapImageCarousel } from "@/components/SnapImageCarousel";
 import { classifyAccountType, getAccountTypeLabel } from "@/lib/accountTypes";
 import { pathWithParams } from "@/lib/auth/redirects";
 import { isNewsReviewAdminUserId } from "@/lib/news-drafts/review";
+import { isMonetizationEnabled } from "@/lib/monetization";
 import { resolveArticleImageUrls } from "@/lib/supabase/article-images";
 import {
   articleDateLabel,
@@ -53,6 +55,7 @@ import {
 } from "@/lib/supabase/qa";
 import { listSavedSnaps } from "@/lib/supabase/saved";
 import { createClient } from "@/lib/supabase/server";
+import { getMyMonetizationSummary } from "@/lib/supabase/monetization";
 import { listMySnapReactionCounts, listUserSnaps, snapDateLabel, snapDisplayImages, type SnapWithAuthor } from "@/lib/supabase/snaps";
 import {
   listUserSuccessionPosts,
@@ -107,6 +110,7 @@ type MyPageProps = {
     successionError?: string;
     store?: string;
     storeError?: string;
+    stripe?: string;
   }>;
 };
 
@@ -205,6 +209,7 @@ function MyArticleList({ articles, canManageEditorPick }: { articles: ArticleWit
               </button>
             </form>
           ) : null}
+          <Link href={`/mypage/articles/${article.id}/edit`} className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-[8px] border border-line bg-white text-xs font-black text-ink">編集する</Link>
         </article>
       ))}
     </div>
@@ -707,6 +712,7 @@ export default async function MyPage({ searchParams }: MyPageProps) {
   const { posts: mySuccessionPosts, error: mySuccessionPostsError } = await listUserSuccessionPosts(supabase, user.id, 30);
   const showSalonAdmin = Boolean(hasVerifiedBarberShop || salonJobPostings.length > 0 || salonJobPostingsError);
   const showSuccessionAdmin = Boolean(hasVerifiedBarberShop || mySuccessionPosts.length > 0 || mySuccessionPostsError);
+  const monetizationSummary = isMonetizationEnabled() ? await getMyMonetizationSummary(supabase, user.id) : null;
 
   const snapCountsById = new Map(snapReactionCounts.map((counts) => [counts.snap_id, counts]));
   const articleCountsById = new Map(articleReactionCounts.map((counts) => [counts.article_id, counts]));
@@ -1046,6 +1052,8 @@ export default async function MyPage({ searchParams }: MyPageProps) {
           </div>
         )}
       </SectionCard>
+
+      {monetizationSummary ? <SectionCard eyebrow="TREAT & PAYOUT" title="Treat・受取設定"><StripeAccountPanel summary={monetizationSummary} refreshOnMount={params?.stripe === "returned" || params?.stripe === "refresh"} /></SectionCard> : null}
 
       <SectionCard eyebrow="FOLLOWERS" title="フォロワー">
         {followerProfilesError ? (

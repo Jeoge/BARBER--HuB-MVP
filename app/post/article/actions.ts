@@ -9,7 +9,8 @@ import {
   normalizeYoutubeUrl,
   shouldRequireArticleVideoRightsConfirmation,
 } from "@/lib/articleMedia";
-import { supportsArticleYoutubeUrl, topicSlugsForArticleCategory } from "@/lib/articleCategories";
+import { isArticleCategory, isPaidEligibleArticleCategory, supportsArticleYoutubeUrl, topicSlugsForArticleCategory } from "@/lib/articleCategories";
+import { isMonetizationEnabled, isPaidArticlePrice } from "@/lib/monetization";
 import { pathWithParams } from "@/lib/auth/redirects";
 import {
   allowedCompressedUploadContentType,
@@ -360,6 +361,10 @@ export async function createArticleAction(formData: FormData) {
 
   const title = cleanText(formData.get("title"));
   const body = cleanText(formData.get("body"));
+  const accessType = cleanText(formData.get("accessType")) === "paid" ? "paid" : "free";
+  const priceAmount = Number(cleanText(formData.get("priceAmount")));
+  const paidBody = cleanText(formData.get("paidBody"));
+  const experienceCategories = Array.from(new Set(formData.getAll("experienceCategory").map((entry) => cleanText(entry)).filter((entry) => entry && entry !== "経験記事" && isArticleCategory(entry))));
   const takeaway = cleanText(formData.get("takeaway"));
   const youtubeInput = cleanText(formData.get("youtubeUrl"));
   const submittedImages = formData
@@ -384,6 +389,15 @@ export async function createArticleAction(formData: FormData) {
 
   if (!hasSafetyConfirmations(formData, ARTICLE_SAFETY_FIELDS)) {
     redirectToArticlePost({ error: SAFETY_CONFIRMATION_ERROR });
+  }
+
+  if (accessType === "paid") {
+    if (!isMonetizationEnabled() || !isPaidEligibleArticleCategory(category)) {
+      redirectToArticlePost({ error: "有料公開は経験記事または講習会レポートで設定できます。" });
+    }
+    if (!isPaidArticlePrice(priceAmount) || !paidBody) {
+      redirectToArticlePost({ error: "有料記事の価格と有料部分の本文を確認してください。" });
+    }
   }
 
   if (submittedImages.length > MAX_ARTICLE_IMAGE_COUNT) {
@@ -487,6 +501,9 @@ export async function createArticleAction(formData: FormData) {
       title,
       category,
       body: articleBody,
+      access_type: accessType,
+      price_amount: accessType === "paid" ? priceAmount : null,
+      currency: "jpy",
       youtube_url: normalizedYoutube.url,
       image_url: null,
       image_path: uploadedImages[0]?.storagePath ?? null,
@@ -519,6 +536,25 @@ export async function createArticleAction(formData: FormData) {
     });
     await removeUploadedArticleImages(supabase, user.id, uploadedImages.map((image) => image.storagePath), "article insert verification failed");
     redirectToArticlePost({ error: "記事を保存できませんでした。もう一度お試しください。" });
+  }
+
+  const articleCategories = Array.from(new Set([category, ...(category === "経験記事" ? experienceCategories : [])]));
+  const { error: categoryAssignmentsError } = await supabase.from("article_category_assignments").insert(
+    articleCategories.map((assignedCategory) => ({ article_id: articleId, category: assignedCategory }))
+  );
+  if (categoryAssignmentsError) {
+    console.error("Article category assignments insert failed", { userId: user.id, articleId, message: categoryAssignmentsError.message });
+    await markArticleDeletedAfterMediaFailure(supabase, user.id, articleId, "category assignments insert error");
+    redirectToArticlePost({ error: "記事カテゴリーを保存できませんでした。もう一度お試しください。" });
+  }
+
+  if (accessType === "paid") {
+    const { error: paidSectionError } = await supabase.from("article_paid_sections").insert({ article_id: articleId, body: paidBody, created_at: now, updated_at: now });
+    if (paidSectionError) {
+      console.error("Article paid section insert failed", { userId: user.id, articleId, message: paidSectionError.message });
+      await markArticleDeletedAfterMediaFailure(supabase, user.id, articleId, "paid section insert error");
+      redirectToArticlePost({ error: "有料部分を保存できませんでした。もう一度お試しください。" });
+    }
   }
 
   if (uploadedImages.length > 0) {

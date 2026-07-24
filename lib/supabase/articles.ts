@@ -22,6 +22,10 @@ export type ArticleRecord = {
   title: string;
   body: string;
   category: string | null;
+  access_type?: "free" | "paid" | null;
+  price_amount?: number | null;
+  currency?: string | null;
+  categories?: string[];
   youtube_url: string | null;
   image_url: string | null;
   image_path: string | null;
@@ -117,6 +121,9 @@ export const articleSelect = `
   title,
   body,
   category,
+  access_type,
+  price_amount,
+  currency,
   youtube_url,
   image_url,
   image_path,
@@ -156,6 +163,9 @@ const articleSelectWithEditorPick = `
   title,
   body,
   category,
+  access_type,
+  price_amount,
+  currency,
   youtube_url,
   image_url,
   image_path,
@@ -248,6 +258,7 @@ function articleWithDefaults(article: RawArticleWithAuthor): ArticleWithAuthor {
   return {
     ...article,
     youtube_url: article.youtube_url ?? null,
+    categories: article.category ? [article.category] : [],
     profiles: Array.isArray(article.profiles) ? article.profiles[0] ?? null : article.profiles ?? null,
     images: fallbackArticleImages(article),
     ...emptyMetrics,
@@ -533,9 +544,77 @@ async function withArticleEngagement(supabase: SupabaseClient, articles: Article
   }));
 }
 
+async function withArticleCategories(supabase: SupabaseClient, articles: ArticleWithAuthor[]) {
+  const articleIds = articles.map((article) => article.id);
+  if (articleIds.length === 0) return articles;
+  const categoriesByArticleId = new Map<string, string[]>();
+
+  try {
+    const { data, error } = await supabase
+      .from("article_category_assignments")
+      .select("article_id, category")
+      .in("article_id", articleIds)
+      .returns<Array<{ article_id: string; category: string }>>();
+    if (error) {
+      console.error("Article category assignments select failed", { message: error.message });
+      return articles;
+    }
+    (data ?? []).forEach((row) => {
+      const categories = categoriesByArticleId.get(row.article_id) ?? [];
+      if (!categories.includes(row.category)) categories.push(row.category);
+      categoriesByArticleId.set(row.article_id, categories);
+    });
+  } catch (error) {
+    console.error("Article category assignments select threw", { message: errorMessage(error) });
+    return articles;
+  }
+
+  return articles.map((article) => ({
+    ...article,
+    categories: categoriesByArticleId.get(article.id) ?? (article.category ? [article.category] : []),
+  }));
+}
+
 async function hydrateArticles(supabase: SupabaseClient, articles: ArticleWithAuthor[], viewerId?: string | null) {
   const withImages = await withArticleImages(supabase, articles);
-  return withArticleEngagement(supabase, withImages, viewerId);
+  const withCategories = await withArticleCategories(supabase, withImages);
+  return withArticleEngagement(supabase, withCategories, viewerId);
+}
+
+async function includeAssignedCategoryArticles(
+  supabase: SupabaseClient,
+  articles: ArticleWithAuthor[],
+  categories: string[],
+  limit: number,
+  viewerId?: string | null
+) {
+  try {
+    const { data: assignments, error: assignmentsError } = await supabase
+      .from("article_category_assignments")
+      .select("article_id")
+      .in("category", categories)
+      .returns<Array<{ article_id: string }>>();
+    if (assignmentsError) return articles;
+    const existingIds = new Set(articles.map((article) => article.id));
+    const ids = Array.from(new Set((assignments ?? []).map((row) => row.article_id))).filter((id) => !existingIds.has(id));
+    if (ids.length === 0) return articles;
+    const { data, error } = await supabase
+      .from("articles")
+      .select(articleSelect)
+      .in("id", ids)
+      .eq("is_published", true)
+      .eq("is_deleted", false)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) return articles;
+    const extra = await hydrateArticles(supabase, normalizeArticles(data), viewerId);
+    return [...articles, ...extra]
+      .sort((left, right) => String(right.published_at ?? right.created_at ?? "").localeCompare(String(left.published_at ?? left.created_at ?? "")))
+      .slice(0, limit);
+  } catch {
+    return articles;
+  }
 }
 
 export async function getPublishedArticleById(supabase: SupabaseClient, id: string, viewerId?: string | null) {
@@ -627,6 +706,24 @@ export async function listUserArticles(supabase: SupabaseClient, userId: string,
       message: errorMessage(error),
     });
     return { articles: [], error };
+  }
+}
+
+export async function getEntitledArticlePaidSection(supabase: SupabaseClient, articleId: string) {
+  try {
+    const { data, error } = await supabase
+      .from("article_paid_sections")
+      .select("body")
+      .eq("article_id", articleId)
+      .maybeSingle<{ body: string }>();
+    if (error) {
+      console.error("Paid article section select failed", { articleId, message: error.message });
+      return null;
+    }
+    return data?.body ?? null;
+  } catch (error) {
+    console.error("Paid article section select threw", { articleId, message: errorMessage(error) });
+    return null;
   }
 }
 
@@ -751,7 +848,8 @@ export async function listPublishedArticlesByCategories(
         .limit(limit);
 
       if (!fallback.error) {
-        return { articles: await hydrateArticles(supabase, normalizeArticles(fallback.data), viewerId), error: null };
+        const hydrated = await hydrateArticles(supabase, normalizeArticles(fallback.data), viewerId);
+        return { articles: await includeAssignedCategoryArticles(supabase, hydrated, cleanedCategories, limit, viewerId), error: null };
       }
 
       console.error("Category published articles fallback select failed", {
@@ -760,7 +858,8 @@ export async function listPublishedArticlesByCategories(
       });
     }
 
-    return { articles: await hydrateArticles(supabase, normalizeArticles(data), viewerId), error };
+    const hydrated = await hydrateArticles(supabase, normalizeArticles(data), viewerId);
+    return { articles: await includeAssignedCategoryArticles(supabase, hydrated, cleanedCategories, limit, viewerId), error };
   } catch (error) {
     console.error("Category published articles select threw", {
       categories: cleanedCategories,
@@ -802,7 +901,8 @@ export async function listPublishedArticlesByTopic(supabase: SupabaseClient, top
         .limit(limit);
 
       if (!fallback.error) {
-        return { articles: await hydrateArticles(supabase, normalizeArticles(fallback.data), viewerId), error: null };
+        const hydrated = await hydrateArticles(supabase, normalizeArticles(fallback.data), viewerId);
+        return { articles: await includeAssignedCategoryArticles(supabase, hydrated, categories, limit, viewerId), error: null };
       }
 
       console.error("Topic published articles fallback select failed", {
@@ -811,7 +911,8 @@ export async function listPublishedArticlesByTopic(supabase: SupabaseClient, top
       });
     }
 
-    return { articles: await hydrateArticles(supabase, normalizeArticles(data), viewerId), error };
+    const hydrated = await hydrateArticles(supabase, normalizeArticles(data), viewerId);
+    return { articles: await includeAssignedCategoryArticles(supabase, hydrated, categories, limit, viewerId), error };
   } catch (error) {
     console.error("Topic published articles select threw", {
       topicSlug,

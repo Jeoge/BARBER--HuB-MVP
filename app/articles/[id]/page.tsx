@@ -6,10 +6,12 @@ import { ArticleEngagementPanel } from "@/components/ArticleEngagementPanel";
 import { BackRoomPromptCard } from "@/components/BackRoomPromptCard";
 import { ContentAdCard } from "@/components/ContentAdCard";
 import { MagazineImage } from "@/components/MagazineImage";
+import { PaidArticleCheckoutButton } from "@/components/PaidArticleCheckoutButton";
 import { PageChrome } from "@/components/PageChrome";
 import { ProfileMiniLink } from "@/components/ProfileMiniLink";
 import { ARTICLE_IMAGE_MARKER_PATTERN, normalizeArticleImageMarkers, validArticleImageMarkerIndexes } from "@/lib/articleMedia";
 import { imageVariantForArticleCategory, primaryTopicSlugForArticleCategory } from "@/lib/articleCategories";
+import { isMonetizationEnabled } from "@/lib/monetization";
 import { getBackRoomPromptState } from "@/lib/backroomPrompt";
 import { resolveArticleImageUrl, resolveArticleImageUrls } from "@/lib/supabase/article-images";
 import {
@@ -19,6 +21,7 @@ import {
   articleAuthorName,
   articleDateLabel,
   getPublishedArticleById,
+  getEntitledArticlePaidSection,
   listRelatedPublishedArticles,
   listArticleComments,
 } from "@/lib/supabase/articles";
@@ -185,12 +188,15 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
     const authorName = articleAuthorName(resolvedDbArticle);
     const authorMeta = articleAuthorMeta(resolvedDbArticle);
     const primaryTopicSlug = primaryTopicSlugForArticleCategory(resolvedDbArticle.category);
+    const isPaidArticle = resolvedDbArticle.access_type === "paid";
     const [commentResult, relatedResult, contentAd, backRoomState] = await Promise.all([
       listArticleComments(supabase, id, 30),
       listRelatedPublishedArticles(supabase, resolvedDbArticle, 3, user?.id),
       getActiveContentAd(supabase, "article_bottom", primaryTopicSlug ?? "all"),
       getBackRoomPromptState(supabase, user?.id),
     ]);
+    const paidBody = isPaidArticle ? await getEntitledArticlePaidSection(supabase, resolvedDbArticle.id) : null;
+    const canReadPaidSection = !isPaidArticle || paidBody != null || user?.id === resolvedDbArticle.author_id;
     const signedRelatedArticles = await resolveArticleImageUrls(relatedResult.articles);
     const articleBody = normalizeArticleImageMarkers(resolvedDbArticle.body, resolvedDbArticle.images.length);
     const inlineImageIndexes = validArticleImageMarkerIndexes(articleBody, resolvedDbArticle.images.length);
@@ -215,9 +221,11 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
               記事は投稿できました。EDITOR&apos;S PICK設定は保存できませんでした。
             </div>
           ) : null}
-          <span className="rounded-full bg-blushSoft px-2.5 py-1 text-[0.68rem] font-black text-blush">
-            {resolvedDbArticle.category ?? "経験記事"}
-          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {(resolvedDbArticle.categories?.length ? resolvedDbArticle.categories : [resolvedDbArticle.category ?? "経験記事"]).map((category) => (
+              <span key={category} className="rounded-full bg-blushSoft px-2.5 py-1 text-[0.68rem] font-black text-blush">{category}</span>
+            ))}
+          </div>
           <h1 className="mt-3 text-[1.55rem] font-black leading-tight text-ink">{resolvedDbArticle.title}</h1>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-bold text-mute">
             <ProfileMiniLink
@@ -236,6 +244,30 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
 
           <ArticleImageStack images={resolvedDbArticle.images} title={resolvedDbArticle.title} excludeIndexes={renderedInlineImageIndexes} />
 
+          <div className="mt-5 space-y-4 text-[0.92rem] font-medium leading-relaxed text-ink">
+            {renderArticleBodyBlocks(articleBody, resolvedDbArticle.images, resolvedDbArticle.title)}
+          </div>
+
+          {isPaidArticle ? (
+            canReadPaidSection ? (
+              <section className="mt-5 rounded-[10px] border border-amber-200 bg-amber-50/50 p-4">
+                <p className="text-xs font-black text-amber-800">ここから有料</p>
+                <div className="mt-3 space-y-4 text-[0.92rem] font-medium leading-relaxed text-ink">
+                  {renderArticleBodyBlocks(paidBody ?? "", [], resolvedDbArticle.title)}
+                </div>
+              </section>
+            ) : (
+              <section className="mt-5 rounded-[10px] border border-amber-200 bg-amber-50/50 p-4">
+                <p className="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-[0.64rem] font-black text-amber-900">ここから有料</p>
+                <h2 className="mt-3 text-lg font-black text-ink">続きを読むには購入が必要です</h2>
+                <p className="mt-1 text-sm font-medium leading-relaxed text-mute">購入確定後に、有料部分をすぐに読めます。</p>
+                {isMonetizationEnabled() && resolvedDbArticle.price_amount ? <PaidArticleCheckoutButton articleId={resolvedDbArticle.id} price={resolvedDbArticle.price_amount} currentUserId={user?.id} /> : <p className="mt-3 text-sm font-bold text-mute">この有料記事は現在購入準備中です。</p>}
+              </section>
+            )
+          ) : null}
+
+          {resolvedDbArticle.youtube_url && (!isPaidArticle || canReadPaidSection) ? <YoutubeArticleLink url={resolvedDbArticle.youtube_url} /> : null}
+
           <ArticleEngagementPanel
             articleId={resolvedDbArticle.id}
             authorId={resolvedDbArticle.author_id}
@@ -245,13 +277,8 @@ export default async function ArticleDetailPage({ params, searchParams }: Articl
             reactionError={query?.reactionError}
             commentError={query?.commentError}
             commentPosted={query?.comment === "posted"}
+            treatEnabled={isMonetizationEnabled() && (!isPaidArticle || canReadPaidSection)}
           />
-
-          <div className="mt-5 space-y-4 text-[0.92rem] font-medium leading-relaxed text-ink">
-            {renderArticleBodyBlocks(articleBody, resolvedDbArticle.images, resolvedDbArticle.title)}
-          </div>
-
-          {resolvedDbArticle.youtube_url ? <YoutubeArticleLink url={resolvedDbArticle.youtube_url} /> : null}
         </article>
 
         <ContentAdCard ad={contentAd} />

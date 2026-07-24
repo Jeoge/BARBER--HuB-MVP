@@ -74,6 +74,10 @@ export function isArticleCategory(value: string) {
   return ARTICLE_CATEGORIES.includes(value as (typeof ARTICLE_CATEGORIES)[number]);
 }
 
+export function isPaidEligibleArticleCategory(category: string | null | undefined) {
+  return category === "経験記事" || category === "講習会レポート";
+}
+
 export function defaultArticleCategory(categoryParam: string | undefined, typeParam: string | undefined) {
   const value = categoryParam ?? typeParam;
   if (value === "seminar_report") return "講習会レポート";

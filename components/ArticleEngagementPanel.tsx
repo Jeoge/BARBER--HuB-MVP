@@ -1,4 +1,4 @@
-import { Bookmark, MessageCircle, Send, Sparkles, ThumbsUp } from "lucide-react";
+import { Bookmark, MessageCircle, Send, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 import { createArticleCommentAction, toggleArticleReactionAction } from "@/app/articles/actions";
@@ -6,6 +6,7 @@ import { FormDisclaimer } from "@/components/FormDisclaimer";
 import { LoadingSubmitButton } from "@/components/LoadingButton";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ThanksActionButton } from "@/components/ThanksActionButton";
+import { TreatButton } from "@/components/TreatButton";
 import { pathWithParams } from "@/lib/auth/redirects";
 import type { ArticleComment, ArticleMetrics } from "@/lib/supabase/articles";
 
@@ -18,6 +19,7 @@ type ArticleEngagementPanelProps = {
   reactionError?: string;
   commentError?: string;
   commentPosted?: boolean;
+  treatEnabled?: boolean;
 };
 
 const reactionButtonBase =
@@ -29,11 +31,6 @@ const reactionConfig = {
     icon: Sparkles,
     pressedKey: "viewer_has_thanked",
   },
-  like: {
-    label: "いいね",
-    icon: ThumbsUp,
-    pressedKey: "viewer_has_liked",
-  },
   save: {
     label: "保存",
     icon: Bookmark,
@@ -41,7 +38,7 @@ const reactionConfig = {
   },
 } as const;
 
-const reactionOrder: Array<keyof typeof reactionConfig> = ["thanks", "like", "save"];
+const reactionOrder: Array<keyof typeof reactionConfig> = ["thanks", "save"];
 
 function commentDateLabel(value: string | null) {
   if (!value) return "";
@@ -90,6 +87,7 @@ export function ArticleEngagementPanel({
   reactionError,
   commentError,
   commentPosted,
+  treatEnabled = false,
 }: ArticleEngagementPanelProps) {
   const isOwnArticle = currentUserId != null && authorId != null && currentUserId === authorId;
 
@@ -148,14 +146,15 @@ export function ArticleEngagementPanel({
           return (
             <Fragment key={reactionType}>
               {button}
-              {reactionType === "like" ? <CommentActionButton commentCount={metrics.comment_count} /> : null}
+              {reactionType === "thanks" && treatEnabled ? <TreatButton targetType="article" targetId={articleId} authorId={authorId} currentUserId={currentUserId} nextPath={`/articles/${articleId}`} /> : null}
+              {reactionType === "save" ? <CommentActionButton commentCount={metrics.comment_count} /> : null}
             </Fragment>
           );
         })}
       </div>
 
       {isOwnArticle ? (
-        <p className="mt-2 text-[0.68rem] font-semibold text-mute">自分の記事へのThanks・いいねはカウントされません。</p>
+        <p className="mt-2 text-[0.68rem] font-semibold text-mute">自分の記事へのThanksはカウントされません。</p>
       ) : null}
       {reactionError ? <p className="mt-2 text-[0.72rem] font-black leading-relaxed text-red-600">{reactionError}</p> : null}
 

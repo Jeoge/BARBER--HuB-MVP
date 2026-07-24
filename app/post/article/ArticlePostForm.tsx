@@ -10,7 +10,8 @@ import {
   removeArticleImageMarkerReferences,
   shouldShowArticleVideoRightsConfirmation,
 } from "@/lib/articleMedia";
-import { ARTICLE_CATEGORIES, supportsArticleYoutubeUrl } from "@/lib/articleCategories";
+import { ARTICLE_CATEGORIES, isPaidEligibleArticleCategory, supportsArticleYoutubeUrl } from "@/lib/articleCategories";
+import { PAID_ARTICLE_PRICES } from "@/lib/monetization";
 import {
   compressClientImage,
   fileSizeLabel,
@@ -79,13 +80,18 @@ export function ArticlePostForm({
   defaultCategory,
   error,
   canSetEditorPick,
+  paidPublishingEnabled,
 }: {
   defaultCategory: string;
   error?: string;
   canSetEditorPick: boolean;
+  paidPublishingEnabled: boolean;
 }) {
   const [category, setCategory] = useState(defaultCategory);
   const [body, setBody] = useState("");
+  const [paidBody, setPaidBody] = useState("");
+  const [accessType, setAccessType] = useState<"free" | "paid">("free");
+  const [priceAmount, setPriceAmount] = useState<number>(PAID_ARTICLE_PRICES[1]);
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [selectedImages, setSelectedImages] = useState<SelectedArticleImage[]>([]);
   const [imageError, setImageError] = useState("");
@@ -97,7 +103,9 @@ export function ArticlePostForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const selectedImagesRef = useRef<SelectedArticleImage[]>([]);
-  const bodyRequired = body.trim().length === 0;
+  const paidEligible = isPaidEligibleArticleCategory(category);
+  const isPaidArticle = paidPublishingEnabled && paidEligible && accessType === "paid";
+  const bodyRequired = body.trim().length === 0 || (isPaidArticle && paidBody.trim().length === 0);
   const youtubeEnabled = supportsArticleYoutubeUrl(category);
   const youtubeVideoConfirmationRequired = shouldShowArticleVideoRightsConfirmation(youtubeEnabled, youtubeUrl);
 
@@ -306,6 +314,32 @@ export function ArticlePostForm({
         />
       </label>
 
+      {paidPublishingEnabled && paidEligible ? (
+        <fieldset className="grid gap-2 rounded-[8px] border border-amber-200 bg-amber-50/60 p-3">
+          <legend className="px-1 text-sm font-black text-ink">公開設定</legend>
+          <label className="flex items-center gap-2 text-sm font-black text-ink"><input type="radio" name="accessType" value="free" checked={accessType === "free"} onChange={() => setAccessType("free")} className="accent-ink" />無料公開</label>
+          <label className="flex items-center gap-2 text-sm font-black text-ink"><input type="radio" name="accessType" value="paid" checked={accessType === "paid"} onChange={() => setAccessType("paid")} className="accent-ink" />有料公開</label>
+          {accessType === "paid" ? (
+            <label className="mt-1 grid gap-1 text-xs font-black text-ink">販売価格
+              <select name="priceAmount" value={priceAmount} onChange={(event) => setPriceAmount(Number(event.target.value))} className="h-10 rounded-[8px] border border-line bg-white px-3 text-sm font-black text-ink">
+                {PAID_ARTICLE_PRICES.map((price) => <option key={price} value={price}>{price}円</option>)}
+              </select>
+            </label>
+          ) : null}
+          <p className="text-[0.68rem] font-medium leading-relaxed text-mute">有料記事は「無料公開部分」と「ここから有料」の本文を分けて保存します。購入確定までは有料部分を公開しません。</p>
+        </fieldset>
+      ) : null}
+
+      {category === "経験記事" ? (
+        <fieldset className="grid gap-2 rounded-[8px] border border-line bg-neutral-50 p-3">
+          <legend className="px-1 text-sm font-black text-ink">経験記事の関連カテゴリ（複数可）</legend>
+          <p className="text-[0.68rem] font-medium text-mute">記事一覧やテーマ導線で使う追加カテゴリです。主カテゴリは「経験記事」のまま残ります。</p>
+          <div className="flex flex-wrap gap-x-3 gap-y-2">
+            {ARTICLE_CATEGORIES.filter((item) => item !== "経験記事").map((item) => <label key={item} className="inline-flex items-center gap-1.5 text-xs font-bold text-ink"><input type="checkbox" name="experienceCategory" value={item} className="accent-ink" />{item}</label>)}
+          </div>
+        </fieldset>
+      ) : null}
+
       <label className="grid gap-2">
         <span className="text-sm font-black text-ink">カテゴリー</span>
         <select
@@ -341,7 +375,7 @@ export function ArticlePostForm({
       ) : null}
 
       <label className="grid gap-2">
-        <span className="text-sm font-black text-ink">本文</span>
+        <span className="text-sm font-black text-ink">{isPaidArticle ? "無料公開部分" : "本文"}</span>
         <textarea
           ref={bodyRef}
           name="body"
@@ -350,9 +384,16 @@ export function ArticlePostForm({
           value={body}
           onChange={(event) => setBody(event.target.value)}
           className="resize-none rounded-[8px] border border-line bg-white px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-blush"
-          placeholder="背景、試したこと、結果、学びを書いてください。"
+          placeholder={isPaidArticle ? "購入前に公開する導入・要約を書いてください。" : "背景、試したこと、結果、学びを書いてください。"}
         />
       </label>
+
+      {isPaidArticle ? (
+        <label className="grid gap-2">
+          <span className="text-sm font-black text-ink">ここから有料</span>
+          <textarea name="paidBody" rows={9} required value={paidBody} onChange={(event) => setPaidBody(event.target.value)} className="resize-none rounded-[8px] border border-amber-200 bg-amber-50/40 px-3 py-3 text-sm font-medium leading-relaxed text-ink outline-none focus:border-amber-400" placeholder="購入者だけに公開する詳細・手順・数値・学びを書いてください。" />
+        </label>
+      ) : null}
 
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-3">

@@ -29,6 +29,8 @@ import { isSafeBackroomImageStoragePath } from "@/lib/backroomImages";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export type BackroomCommentLikeState = { count: number; liked: boolean; error?: string };
+
 function cleanText(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
   return value.trim();
@@ -457,4 +459,39 @@ export async function createBackroomCommentAction(formData: FormData) {
   revalidatePath("/mypage");
   revalidatePath(`/backroom/${postId}`);
   redirect(backroomPath(postId, { comment: "posted" }));
+}
+
+export async function toggleBackroomCommentLikeAction(previousState: BackroomCommentLikeState, formData: FormData): Promise<BackroomCommentLikeState> {
+  const commentId = cleanText(formData.get("commentId"));
+  if (!UUID_PATTERN.test(commentId)) return { ...previousState, error: "コメントを確認できませんでした。" };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ...previousState, error: "いいねするにはログインしてください。" };
+
+  const { data: comment, error: commentError } = await supabase
+    .from("backroom_comments")
+    .select("id, post_id, user_id, is_deleted, backroom_posts!inner(is_deleted)")
+    .eq("id", commentId)
+    .maybeSingle<{ id: string; post_id: string; user_id: string; is_deleted: boolean | null; backroom_posts: { is_deleted: boolean | null } | null }>();
+  if (commentError || !comment || comment.is_deleted || comment.backroom_posts?.is_deleted) return { ...previousState, error: "このコメントにはいいねできません。" };
+  if (comment.user_id === user.id) return { count: previousState.count, liked: false, error: "自分のコメントにはいいねできません。" };
+
+  const { data: existing, error: existingError } = await supabase
+    .from("backroom_comment_likes")
+    .select("comment_id")
+    .eq("comment_id", commentId)
+    .eq("user_id", user.id)
+    .maybeSingle<{ comment_id: string }>();
+  if (existingError) return { ...previousState, error: "いいねを確認できませんでした。" };
+
+  const mutation = existing
+    ? supabase.from("backroom_comment_likes").delete().eq("comment_id", commentId).eq("user_id", user.id)
+    : supabase.from("backroom_comment_likes").insert({ comment_id: commentId, user_id: user.id });
+  const { error: mutationError } = await mutation;
+  if (mutationError) return { ...previousState, error: "いいねを保存できませんでした。" };
+
+  const { data: countRows } = await supabase.rpc("get_public_backroom_comment_like_counts", { p_comment_ids: [commentId] });
+  const count = Number(((countRows ?? []) as Array<{ like_count: number | string }>)[0]?.like_count ?? 0);
+  revalidatePath(`/backroom/${comment.post_id}`);
+  return { count, liked: !existing };
 }

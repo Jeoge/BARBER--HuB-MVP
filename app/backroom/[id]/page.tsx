@@ -2,10 +2,13 @@ import { ArrowLeft, MessageCircle, UserRound } from "lucide-react";
 import Link from "next/link";
 import { SignupRequiredCard } from "@/components/AuthGate";
 import { BackroomCommentForm } from "@/components/BackroomCommentForm";
+import { BackroomCommentLikeButton } from "@/components/BackroomCommentLikeButton";
 import { BackroomDisplayImage } from "@/components/BackroomDisplayImage";
 import { BackroomSetupRequiredCard } from "@/components/BackroomSetupRequiredCard";
 import { PageChrome } from "@/components/PageChrome";
+import { TreatButton } from "@/components/TreatButton";
 import { backRoomTheme } from "@/lib/backRoomTheme";
+import { isMonetizationEnabled } from "@/lib/monetization";
 import {
   backroomAuthorName,
   backroomCommentAuthorName,
@@ -24,11 +27,11 @@ type BackroomDetailPageProps = {
   searchParams?: Promise<{ posted?: string; comment?: string; commentError?: string }>;
 };
 
-function CommentItem({ comment }: { comment: BackroomComment }) {
+function CommentItem({ comment, currentUserId, treatEnabled }: { comment: BackroomComment; currentUserId: string; treatEnabled: boolean }) {
   const name = backroomCommentAuthorName(comment);
 
   return (
-    <article className="rounded-[8px] border border-line bg-white p-3 shadow-sm">
+    <article id={`backroom-comment-${comment.id}`} className="scroll-mt-4 rounded-[8px] border border-line bg-white p-3 shadow-sm">
       <div className="flex min-w-0 items-center gap-2">
         <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-ink text-[0.68rem] font-black text-white">
           {name.slice(0, 1)}
@@ -48,6 +51,10 @@ function CommentItem({ comment }: { comment: BackroomComment }) {
           className="mt-3"
         />
       ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <BackroomCommentLikeButton commentId={comment.id} authorId={comment.user_id} currentUserId={currentUserId} initialCount={comment.like_count} initiallyLiked={comment.viewer_has_liked} />
+        {treatEnabled ? <TreatButton targetType="backroom_comment" targetId={comment.id} authorId={comment.user_id} currentUserId={currentUserId} nextPath={`/backroom/${comment.post_id}#backroom-comment-${comment.id}`} compact /> : null}
+      </div>
     </article>
   );
 }
@@ -116,7 +123,7 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
     );
   }
 
-  const { comments, error: commentsError } = await listBackroomComments(supabase, post.id, 80);
+  const { comments, error: commentsError } = await listBackroomComments(supabase, post.id, 80, user.id);
   const authorName = backroomAuthorName(post);
 
   return (
@@ -158,6 +165,7 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
               className="mt-4"
             />
           ))}
+          {isMonetizationEnabled() ? <div className="mt-4"><TreatButton targetType="backroom_thread" targetId={post.id} authorId={post.user_id} currentUserId={user.id} nextPath={`/backroom/${post.id}`} /></div> : null}
         </div>
       </article>
 
@@ -186,7 +194,7 @@ export default async function BackroomDetailPage({ params, searchParams }: Backr
               <p className="mt-1 text-xs font-medium leading-relaxed text-mute">最初の返信を残すと、ここに表示されます。</p>
             </div>
           ) : (
-            comments.map((comment) => <CommentItem key={comment.id} comment={comment} />)
+            comments.map((comment) => <CommentItem key={comment.id} comment={comment} currentUserId={user.id} treatEnabled={isMonetizationEnabled()} />)
           )}
         </div>
       </section>
